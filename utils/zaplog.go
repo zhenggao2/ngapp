@@ -47,17 +47,16 @@ func NewZapLogger(path string) *zap.Logger {
 		//Sampling: nil,
 		Encoding:         "json",
 		EncoderConfig:    encoderConfig,
-		//OutputPaths:      []string{"stdout", "./logs/ngapp.log"},
 		OutputPaths:      []string{path},
 		ErrorOutputPaths: []string{"stderr"},
 		InitialFields:    map[string]interface{}{"serviceName": "ngapp"},
 	}
 
 	logger, err := config.Build()
-
 	if err != nil {
 		panic(fmt.Sprintf("Fail to initialize logger: %v", err))
 	}
+
 	defer logger.Sync()
 	logger.Info("Logger initialized.")
 

@@ -99,14 +99,11 @@ func NewNgApp(logger *zap.Logger) *NgApp {
 	}
 
 	app.logger = logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
-		// don't print debug/info on ngapp UI
-		if entry.Level < zap.WarnLevel {
-			return nil
-		} else {
-			app.logEdit.Append(fmt.Sprintf("<b>[%v]</b> : %v : %v : %s", entry.Level.CapitalString(), entry.Time.Format("2006-01-02 15:04:05.999"), entry.Caller.TrimmedPath(), entry.Message))
+		app.logEdit.Append(fmt.Sprintf("<b>[%v]</b> : %v : %v : %s", entry.Level.CapitalString(), entry.Time.Format("2006-01-02 15:04:05.999"), entry.Caller.TrimmedPath(), entry.Message))
+		if entry.Level >= zap.ErrorLevel {
 			app.logEdit.Append(entry.Stack)
-			return nil
 		}
+		return nil
 	}))
 
 	app.createActions()
