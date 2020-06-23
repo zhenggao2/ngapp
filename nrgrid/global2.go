@@ -1,5 +1,11 @@
 package nrgrid
 
+import (
+	"fmt"
+	"errors"
+	"github.com/zhenggao2/ngapp/utils"
+)
+
 // DmrsSchInfo contains information of PDSCH/PUSCH DMRS per antenna port.
 type DmrsSchInfo struct {
 	CdmGroup int
@@ -9,7 +15,7 @@ type DmrsSchInfo struct {
 // refer to 3GPP 38.211 vf30
 //  Table 7.4.1.1.2-1: Parameters for PDSCH DM-RS configuration type 1.
 //  Table 6.4.1.1.3-1: Parameters for PUSCH DM-RS configuration type 1.
-var DmrsSchCfgType1 = map[int]DmrsSchInfo{
+var DmrsSchCfgType1 = map[int]*DmrsSchInfo{
 	0: {0, 0},
 	1: {0, 0},
 	2: {1, 1},
@@ -23,7 +29,7 @@ var DmrsSchCfgType1 = map[int]DmrsSchInfo{
 // refer to 3GPP 38.211 vf30
 //  Table 7.4.1.1.2-2: Parameters for PDSCH DM-RS configuration type 2.
 //  Table 6.4.1.1.3-2: Parameters for PUSCH DM-RS configuration type 2.
-var DmrsSchCfgType2 = map[int]DmrsSchInfo{
+var DmrsSchCfgType2 = map[int]*DmrsSchInfo{
 	0:  {0, 0},
 	1:  {0, 0},
 	2:  {1, 2},
@@ -628,7 +634,7 @@ type CommonPucchResInfo struct {
 
 // refer to 3GPP 38.213 vf30
 //  Table 9.2.1-1: PUCCH resource sets before dedicated PUCCH resource configuration
-var CommonPucchResSets = map[int]CommonPucchResInfo{
+var CommonPucchResSets = map[int]*CommonPucchResInfo{
 	0:  {0, 12, 2, 0, []int{0, 3}},
 	1:  {0, 12, 2, 0, []int{0, 4, 8}},
 	2:  {0, 12, 2, 3, []int{0, 4, 8}},
@@ -704,7 +710,7 @@ type SrsBwInfo struct {
 // refer to 3GPP 38.211 vf40
 //  Table 6.4.1.4.3-1: SRS bandwidth configuration.
 // key=cSrs, val=[mSRSb, Nb]
-var SrsBwCfg = map[string]SrsBwInfo{
+var SrsBwCfg = map[string]*SrsBwInfo{
 	"0":  {[]int{4, 4, 4, 4}, []int{1, 1, 1, 1}},
 	"1":  {[]int{8, 4, 4, 4}, []int{1, 2, 1, 1}},
 	"2":  {[]int{12, 4, 4, 4}, []int{1, 3, 1, 1}},
@@ -785,21 +791,173 @@ var LrbsMsg3PuschTp = []int{}
 var LrbsDedPuschTp = []int{}
 
 // SLIV look-up tables for PDSCH
-var PdschToSliv = 0
-var PdschFromSliv = 0
+var PdschToSliv, PdschFromSliv = initPdschSliv()
 
 // SLIV look-up tables for PUSCH
-var PuschToSliv = 0
-var PuschFromSliv = 0
+var PuschToSliv, PuschFromSliv = initPuschSliv()
 
 // constants
 const (
 	NumScPerPrb = 12
 )
 
-func makeSliv(S, L int) int {
+func initPdschSliv() (map[string]int, map[string][]int) {
+	// prefix
+	// "00": mapping type A + normal cp
+	// "01": mapping type A + extended cp
+	// "10": mapping type B + normal cp
+	// "11": mapping type B + extended cp
+	pdschToSliv := make(map[string]int)
+	pdschFromSliv := make(map[string][]int)
+	var prefix string
+
+	// case #1: prefix="00"
+	prefix = "00"
+	for _, S := range utils.PyRange(0, 4, 1) {
+		for _, L := range utils.PyRange(3, 15, 1) {
+			if S+L >= 3 && S+L < 15 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					pdschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #2: prefix="01"
+	prefix = "01"
+	for _, S := range utils.PyRange(0, 4, 1) {
+		for _, L := range utils.PyRange(3, 13, 1) {
+			if S+L >= 3 && S+L < 13 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					pdschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #3: prefix="10"
+	prefix = "10"
+	for _, S := range utils.PyRange(0, 13, 1) {
+		for _, L := range []int{2, 4, 7} {
+			if S+L >= 2 && S+L < 15 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					pdschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #4: prefix="11"
+	prefix = "11"
+	for _, S := range utils.PyRange(0, 11, 1) {
+		for _, L := range []int{2, 4, 6} {
+			if S+L >= 2 && S+L < 13 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					pdschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	return pdschToSliv, pdschFromSliv
+}
+
+func initPuschSliv() (map[string]int, map[string][]int) {
+	// prefix
+	// "00": mapping type A + normal cp
+	// "01": mapping type A + extended cp
+	// "10": mapping type B + normal cp
+	// "11": mapping type B + extended cp
+	puschToSliv := make(map[string]int)
+	puschFromSliv := make(map[string][]int)
+	var prefix string
+
+	// case #1: prefix="00"
+	prefix = "00"
+	for _, S := range []int{0} {
+		for _, L := range utils.PyRange(4, 15, 1) {
+			if S+L >= 4 && S+L < 15 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #2: prefix="01"
+	prefix = "01"
+	for _, S := range []int{0} {
+		for _, L := range utils.PyRange(4, 13, 1) {
+			if S+L >= 4 && S+L < 13 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #3: prefix="10"
+	prefix = "10"
+	for _, S := range utils.PyRange(0, 14, 1) {
+		for _, L := range utils.PyRange(1, 15, 1) {
+			if S+L >= 1 && S+L < 15 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #4: prefix="11"
+	prefix = "11"
+	for _, S := range utils.PyRange(0, 13, 1) {
+		for _, L := range utils.PyRange(1, 13, 1) {
+			if S+L >= 1 && S+L < 13 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	return puschToSliv, puschFromSliv
+}
+
+func makeSliv(S, L int) (int, error) {
 	if L <= 0 || L > 14-S {
-		return -1
+		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
 	}
 
 	sliv := 0
@@ -809,7 +967,7 @@ func makeSliv(S, L int) int {
 		sliv = 14*(14-L+1) + (14-1-S)
 	}
 
-	return sliv
+	return sliv, nil
 }
 
 /*

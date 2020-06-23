@@ -84,7 +84,7 @@ type Coreset0Info struct {
 //  Table 13-3: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
 //  Table 13-4: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
 // Table for FR1 with minimum channel bandwidth of 5MHz/10MHz
-var Coreset0Fr1MinChBw5m10m = map[string]Coreset0Info{
+var Coreset0Fr1MinChBw5m10m = map[string]*Coreset0Info{
 	"15_15_0":  {1, 24, 2, []int{0}},
 	"15_15_1":  {1, 24, 2, []int{2}},
 	"15_15_2":  {1, 24, 2, []int{4}},
@@ -155,7 +155,7 @@ var Coreset0Fr1MinChBw5m10m = map[string]Coreset0Info{
 //  Table 13-5: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz
 //  Table 13-6: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz
 // Table for FR1 with minimum channel bandwidth of 40MHz
-var Coreset0Fr1MinChBw40m = map[string]Coreset0Info{
+var Coreset0Fr1MinChBw40m = map[string]*Coreset0Info{
 	"30_15_0":  {1, 48, 1, []int{4}},
 	"30_15_1":  {1, 48, 2, []int{4}},
 	"30_15_2":  {1, 48, 3, []int{4}},
@@ -196,7 +196,7 @@ var Coreset0Fr1MinChBw40m = map[string]Coreset0Info{
 //  Table 13-9: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {240, 60} kHz
 //  Table 13-10: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {240, 120} kHz
 // Table for FR2
-var Coreset0Fr2 = map[string]Coreset0Info{
+var Coreset0Fr2 = map[string]*Coreset0Info{
 	"120_60_0":   {1, 48, 1, []int{0}},
 	"120_60_1":   {1, 48, 1, []int{8}},
 	"120_60_2":   {1, 48, 2, []int{0}},
@@ -307,7 +307,7 @@ type RachInfo struct {
 
 // refer to 3GPP 38.211 vf30
 //  Table 6.3.3.2-2: Random access configurations for FR1 and paired spectrum/supplementary uplink.
-var RaCfgFr1FddSUl = map[int]RachInfo{
+var RaCfgFr1FddSUl = map[int]*RachInfo{
 	0:   {"0", 16, []int{1}, []int{1}, 0, 1, 1, 0},
 	1:   {"0", 16, []int{1}, []int{4}, 0, 1, 1, 0},
 	2:   {"0", 16, []int{1}, []int{7}, 0, 1, 1, 0},
@@ -568,7 +568,7 @@ var RaCfgFr1FddSUl = map[int]RachInfo{
 
 // refer to 3GPP 38.211 vf30
 //  Table 6.3.3.2-3: Random access configurations for FR1 and unpaired spectrum.
-var RaCfgFr1Tdd = map[int]RachInfo{
+var RaCfgFr1Tdd = map[int]*RachInfo{
 	0:   {"0", 16, []int{1}, []int{9}, 0, 1, 1, 0},
 	1:   {"0", 8, []int{1}, []int{9}, 0, 1, 1, 0},
 	2:   {"0", 4, []int{1}, []int{9}, 0, 1, 1, 0},
@@ -827,19 +827,9 @@ var RaCfgFr1Tdd = map[int]RachInfo{
 	255: {"A3/B3", 1, []int{0}, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, 1, 2, 6},
 }
 
-// PyRange returns a slice similar to python's range.
-func PyRange(a, b, step int) []int {
-	r := make([]int, 0)
-	for i := a; i < b; i += step {
-		r = append(r, i)
-	}
-
-	return r
-}
-
 // refer to 3GPP 38.211 vf30
 //  Table 6.3.3.2-4: Random access configurations for FR2 and unpaired spectrum.
-var RaCfgFr2Tdd = map[int]RachInfo{
+var RaCfgFr2Tdd = map[int]*RachInfo{
 	0:  {"A1", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 6, 2},
 	1:  {"A1", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 6, 2},
 	2:  {"A1", 8, []int{1, 2}, []int{9, 19, 29, 39}, 0, 2, 6, 2},
@@ -869,8 +859,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	26: {"A1", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 6, 2},
 	//27: {"A1", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 6, 2},
 	//28: {"A1", 1, []int{0}, tuple{range{40}}, 7, 1, 3, 2},
-	27: {"A1", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 6, 2},
-	28: {"A1", 1, []int{0}, PyRange(0, 40, 1), 7, 1, 3, 2},
+	27: {"A1", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 6, 2},
+	28: {"A1", 1, []int{0}, utils.PyRange(0, 40, 1), 7, 1, 3, 2},
 	29: {"A2", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 3, 4},
 	30: {"A2", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 3, 4},
 	31: {"A2", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 3, 4},
@@ -901,8 +891,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	56: {"A2", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 3, 4},
 	//57: {"A2", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 3, 4},
 	//58: {"A2", 1, []int{0}, tuple{range{40}}, 5, 1, 2, 4},
-	57: {"A2", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 3, 4},
-	58: {"A2", 1, []int{0}, PyRange(0, 40, 1), 5, 1, 2, 4},
+	57: {"A2", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 3, 4},
+	58: {"A2", 1, []int{0}, utils.PyRange(0, 40, 1), 5, 1, 2, 4},
 	59: {"A3", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 2, 6},
 	60: {"A3", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 2, 6},
 	61: {"A3", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 2, 6},
@@ -933,8 +923,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	86: {"A3", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 2, 6},
 	//87: {"A3", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 2, 6},
 	//88: {"A3", 1, []int{0}, tuple{range{40}}, 7, 1, 1, 6},
-	87:  {"A3", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 2, 6},
-	88:  {"A3", 1, []int{0}, PyRange(0, 40, 1), 7, 1, 1, 6},
+	87:  {"A3", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 2, 6},
+	88:  {"A3", 1, []int{0}, utils.PyRange(0, 40, 1), 7, 1, 1, 6},
 	89:  {"B1", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 2, 6, 2},
 	90:  {"B1", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 2, 6, 2},
 	91:  {"B1", 8, []int{1, 2}, []int{9, 19, 29, 39}, 2, 2, 6, 2},
@@ -958,8 +948,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	109: {"B1", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 6, 2},
 	//110: {"B1", 1, []int{0}, tuple{range{1, 40, 2}}, 2, 1, 6, 2},
 	//111: {"B1", 1, []int{0}, tuple{range{40}}, 8, 1, 3, 2},
-	110: {"B1", 1, []int{0}, PyRange(1, 40, 2), 2, 1, 6, 2},
-	111: {"B1", 1, []int{0}, PyRange(0, 40, 1), 8, 1, 3, 2},
+	110: {"B1", 1, []int{0}, utils.PyRange(1, 40, 2), 2, 1, 6, 2},
+	111: {"B1", 1, []int{0}, utils.PyRange(0, 40, 1), 8, 1, 3, 2},
 	112: {"B4", 16, []int{1, 2}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 1, 12},
 	113: {"B4", 16, []int{1, 2}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 1, 12},
 	114: {"B4", 8, []int{1, 2}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 1, 12},
@@ -992,10 +982,10 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	//141: {"B4", 1, []int{0}, tuple{range{3, 26, 2}}, 0, 2, 1, 12},
 	//142: {"B4", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 1, 12},
 	//143: {"B4", 1, []int{0}, tuple{range{40}}, 2, 1, 1, 12},
-	140: {"B4", 1, []int{0}, PyRange(3, 26, 2), 2, 1, 1, 12},
-	141: {"B4", 1, []int{0}, PyRange(3, 26, 2), 0, 2, 1, 12},
-	142: {"B4", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 1, 12},
-	143: {"B4", 1, []int{0}, PyRange(0, 40, 1), 2, 1, 1, 12},
+	140: {"B4", 1, []int{0}, utils.PyRange(3, 26, 2), 2, 1, 1, 12},
+	141: {"B4", 1, []int{0}, utils.PyRange(3, 26, 2), 0, 2, 1, 12},
+	142: {"B4", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 1, 12},
+	143: {"B4", 1, []int{0}, utils.PyRange(0, 40, 1), 2, 1, 1, 12},
 	144: {"C0", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 7, 2},
 	145: {"C0", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 7, 2},
 	146: {"C0", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 1, 7, 2},
@@ -1025,8 +1015,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	170: {"C0", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 7, 2},
 	//171: {"C0", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 7, 2},
 	//172: {"C0", 1, []int{0}, tuple{range{40}}, 8, 1, 3, 2},
-	171: {"C0", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 7, 2},
-	172: {"C0", 1, []int{0}, PyRange(0, 40, 1), 8, 1, 3, 2},
+	171: {"C0", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 7, 2},
+	172: {"C0", 1, []int{0}, utils.PyRange(0, 40, 1), 8, 1, 3, 2},
 	173: {"C2", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 2, 6},
 	174: {"C2", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 2, 6},
 	175: {"C2", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 2, 6},
@@ -1056,8 +1046,8 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	199: {"C2", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 0, 1, 2, 6},
 	//200: {"C2", 1, []int{0}, tuple{range{1, 40, 2}}, 0, 1, 2, 6},
 	//201: {"C2", 1, []int{0}, tuple{range{40}}, 7, 1, 1, 6},
-	200: {"C2", 1, []int{0}, PyRange(1, 40, 2), 0, 1, 2, 6},
-	201: {"C2", 1, []int{0}, PyRange(0, 40, 1), 7, 1, 1, 6},
+	200: {"C2", 1, []int{0}, utils.PyRange(1, 40, 2), 0, 1, 2, 6},
+	201: {"C2", 1, []int{0}, utils.PyRange(0, 40, 1), 7, 1, 1, 6},
 	202: {"A1/B1", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 6, 2},
 	203: {"A1/B1", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 6, 2},
 	204: {"A1/B1", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 6, 2},
@@ -1076,7 +1066,7 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	217: {"A1/B1", 1, []int{0}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 6, 2},
 	218: {"A1/B1", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 6, 2},
 	//219: {"A1/B1", 1, []int{0}, tuple{range{1, 40, 2}}, 2, 1, 6, 2},
-	219: {"A1/B1", 1, []int{0}, PyRange(1, 40, 2), 2, 1, 6, 2},
+	219: {"A1/B1", 1, []int{0}, utils.PyRange(1, 40, 2), 2, 1, 6, 2},
 	220: {"A2/B2", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 3, 4},
 	221: {"A2/B2", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 3, 4},
 	222: {"A2/B2", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 3, 4},
@@ -1095,7 +1085,7 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	235: {"A2/B2", 1, []int{0}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 3, 4},
 	236: {"A2/B2", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 3, 4},
 	//237: {"A2/B2", 1, []int{0}, tuple{range{1, 40, 2}}, 2, 1, 3, 4},
-	237: {"A2/B2", 1, []int{0}, PyRange(1, 40, 2), 2, 1, 3, 4},
+	237: {"A2/B2", 1, []int{0}, utils.PyRange(1, 40, 2), 2, 1, 3, 4},
 	238: {"A3/B3", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 2, 6},
 	239: {"A3/B3", 16, []int{1}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 2, 6},
 	240: {"A3/B3", 8, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 1, 2, 6},
@@ -1114,7 +1104,7 @@ var RaCfgFr2Tdd = map[int]RachInfo{
 	253: {"A3/B3", 1, []int{0}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 2, 2, 2, 6},
 	254: {"A3/B3", 1, []int{0}, []int{3, 7, 11, 15, 19, 23, 27, 31, 35, 39}, 2, 1, 2, 6},
 	//255: {"A3/B3", 1, []int{0}, tuple{range{1, 40, 2}}, 2, 1, 2, 6},
-	255: {"A3/B3", 1, []int{0}, PyRange(1, 40, 2), 2, 1, 2, 6},
+	255: {"A3/B3", 1, []int{0}, utils.PyRange(1, 40, 2), 2, 1, 2, 6},
 }
 
 // TimeAllocInfo contains information of PDSCH/PUSCH time-domain allocation.
@@ -1127,7 +1117,7 @@ type TimeAllocInfo struct {
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
-var PdschTimeAllocDefANormCp = map[string]TimeAllocInfo{
+var PdschTimeAllocDefANormCp = map[string]*TimeAllocInfo{
 	"1_2":  {"Type A", 0, 2, 12},
 	"1_3":  {"Type A", 0, 3, 11},
 	"2_2":  {"Type A", 0, 2, 10},
@@ -1164,7 +1154,7 @@ var PdschTimeAllocDefANormCp = map[string]TimeAllocInfo{
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
-var PdschTimeAllocDefAExtCp = map[string]TimeAllocInfo{
+var PdschTimeAllocDefAExtCp = map[string]*TimeAllocInfo{
 	"1_2":  {"Type A", 0, 2, 6},
 	"1_3":  {"Type A", 0, 3, 5},
 	"2_2":  {"Type A", 0, 2, 10},
@@ -1201,7 +1191,7 @@ var PdschTimeAllocDefAExtCp = map[string]TimeAllocInfo{
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
-var PdschTimeAllocDefB = map[string]TimeAllocInfo{
+var PdschTimeAllocDefB = map[string]*TimeAllocInfo{
 	"1_2":  {"Type B", 0, 2, 2},
 	"2_2":  {"Type B", 0, 4, 2},
 	"3_2":  {"Type B", 0, 6, 2},
@@ -1241,7 +1231,7 @@ var PdschTimeAllocDefBNote1Set = []int{12, 13, 14}
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
-var PdschTimeAllocDefC = map[string]TimeAllocInfo{
+var PdschTimeAllocDefC = map[string]*TimeAllocInfo{
 	"1_2":  {"Type B", 0, 2, 2},
 	"2_2":  {"Type B", 0, 4, 2},
 	"3_2":  {"Type B", 0, 6, 2},
@@ -1279,7 +1269,7 @@ var PdschTimeAllocDefCNote1Set = []int{1, 13, 14, 15, 16}
 
 // refer to 3GPP 38.214 vf30
 //  Table 6.1.2.1.1-2: Default PUSCH time domain resource allocation A for normal CP
-var PuschTimeAllocDefANormCp = map[int]TimeAllocInfo{
+var PuschTimeAllocDefANormCp = map[int]*TimeAllocInfo{
 	1:  {"Type A", 0, 0, 14},
 	2:  {"Type A", 0, 0, 12},
 	3:  {"Type A", 0, 0, 10},
@@ -1300,7 +1290,7 @@ var PuschTimeAllocDefANormCp = map[int]TimeAllocInfo{
 
 // refer to 3GPP 38.214 vf30
 //  Table 6.1.2.1.1-3: Default PUSCH time domain resource allocation A for extended CP
-var PuschTimeAllocDefAExtCp = map[int]TimeAllocInfo{
+var PuschTimeAllocDefAExtCp = map[int]*TimeAllocInfo{
 	1:  {"Type A", 0, 0, 8},
 	2:  {"Type A", 0, 0, 12},
 	3:  {"Type A", 0, 0, 10},
@@ -1345,7 +1335,7 @@ type McsInfo struct {
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.3.1-1: MCS index table 1 for PDSCH
-var PdschMcsTabQam64 = map[int]McsInfo{
+var PdschMcsTabQam64 = map[int]*McsInfo{
 	0:  {2, 120},
 	1:  {2, 157},
 	2:  {2, 193},
@@ -1382,7 +1372,7 @@ var PdschMcsTabQam64 = map[int]McsInfo{
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.3.1-2: MCS index table 2 for PDSCH
-var PdschMcsTabQam256 = map[int]McsInfo{
+var PdschMcsTabQam256 = map[int]*McsInfo{
 	0:  {2, 120},
 	1:  {2, 193},
 	2:  {2, 308},
@@ -1419,7 +1409,7 @@ var PdschMcsTabQam256 = map[int]McsInfo{
 
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.3.1-3: MCS index table 3 for PDSCH
-var PdschMcsTabQam64LowSE = map[int]McsInfo{
+var PdschMcsTabQam64LowSE = map[int]*McsInfo{
 	0:  {2, 30},
 	1:  {2, 40},
 	2:  {2, 50},
@@ -1464,7 +1454,7 @@ var TbsTabLessThan3824 = []float64{24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 
 
 // refer to 3GPP 38.214 vf30
 //  Table 6.1.4.1-1: MCS index table for PUSCH with transform precoding and 64QAM
-var PuschTpMcsTabQam64 = map[int]McsInfo{
+var PuschTpMcsTabQam64 = map[int]*McsInfo{
 	0:  {2, 120},
 	1:  {2, 157},
 	2:  {2, 193},
@@ -1501,7 +1491,7 @@ var PuschTpMcsTabQam64 = map[int]McsInfo{
 
 // refer to 3GPP 38.214 vf30
 // Table 6.1.4.1-2: MCS index table 2 for PUSCH with transform precoding and 64QAM
-var PuschTpMcsTabQam64LowSE = map[int]McsInfo{
+var PuschTpMcsTabQam64LowSE = map[int]*McsInfo{
 	0:  {2, 120},
 	1:  {2, 157},
 	2:  {2, 193},
@@ -1545,7 +1535,7 @@ type AntPortsInfo struct {
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-1: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=1
-var Dci11AntPortsDmrsType1MaxLen1OneCw = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType1MaxLen1OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
 	1:  {1, []int{1}, 1},
 	2:  {1, []int{0, 1}, 1},
@@ -1569,7 +1559,7 @@ var Dci11AntPortsDmrsType1MaxLen1OneCwValid = "0-11"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-2: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=2
-var Dci11AntPortsDmrsType1MaxLen2OneCw = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType1MaxLen2OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
 	1:  {1, []int{1}, 1},
 	2:  {1, []int{0, 1}, 1},
@@ -1609,7 +1599,7 @@ var Dci11AntPortsDmrsType1MaxLen2OneCwValid = "0-30"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-2: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=2
-var Dci11AntPortsDmrsType1MaxLen2TwoCws = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType1MaxLen2TwoCws = map[int]*AntPortsInfo{
 	0:  {2, []int{0, 1, 2, 3, 4}, 2},
 	1:  {2, []int{0, 1, 2, 3, 4, 6}, 2},
 	2:  {2, []int{0, 1, 2, 3, 4, 5, 6}, 2},
@@ -1649,7 +1639,7 @@ var Dci11AntPortsDmrsType1MaxLen2TwoCwsValid = "0-3"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-3: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=1
-var Dci11AntPortsDmrsType2MaxLen1OneCw = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType2MaxLen1OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
 	1:  {1, []int{1}, 1},
 	2:  {1, []int{0, 1}, 1},
@@ -1689,7 +1679,7 @@ var Dci11AntPortsDmrsType2MaxLen1OneCwValid = "0-23"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-3: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=1
-var Dci11AntPortsDmrsType2MaxLen1TwoCws = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType2MaxLen1TwoCws = map[int]*AntPortsInfo{
 	0:  {3, []int{0, 1, 2, 3, 4}, 1},
 	1:  {3, []int{0, 1, 2, 3, 4, 5}, 1},
 	2:  nil,
@@ -1729,7 +1719,7 @@ var Dci11AntPortsDmrsType2MaxLen1TwoCwsValid = "0-1"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-4: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=2
-var Dci11AntPortsDmrsType2MaxLen2OneCw = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType2MaxLen2OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
 	1:  {1, []int{1}, 1},
 	2:  {1, []int{0, 1}, 1},
@@ -1801,7 +1791,7 @@ var Dci11AntPortsDmrsType2MaxLen2OneCwValid = "0-57"
 
 // refer to 3GPP 38.212 vf30
 //  Table 7.3.1.2.2-4: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=2
-var Dci11AntPortsDmrsType2MaxLen2TwoCws = map[int]AntPortsInfo{
+var Dci11AntPortsDmrsType2MaxLen2TwoCws = map[int]*AntPortsInfo{
 	0:  {3, []int{0, 1, 2, 3, 4}, 1},
 	1:  {3, []int{0, 1, 2, 3, 4, 5}, 1},
 	2:  {2, []int{0, 1, 2, 3, 6}, 2},
@@ -1890,7 +1880,7 @@ var Dci11AntPortsDmrsType2MaxLen2TwoCwsValid = "0-5"
 //  Table 7.3.1.1.2-21: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=2
 //  Table 7.3.1.1.2-22: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=3
 //  Table 7.3.1.1.2-23: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=4
-var Dci01AntPorts = map[string]AntPortsInfo{
+var Dci01AntPorts = map[string]*AntPortsInfo{
 	// Table 7.3.1.1.2-6: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=1
 	// Table 7.3.1.1.2-7: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=2
 	"1_1_1_1_0": {2, []int{0}, 1},
