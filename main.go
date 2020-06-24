@@ -6,14 +6,13 @@ import (
 	"time"
 	"github.com/therecipe/qt/widgets"
 	"github.com/zhenggao2/ngapp/utils"
-	"github.com/zhenggao2/ngapp/ui"
 )
 
 func main() {
 	logger := utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
 
 	app := widgets.NewQApplication(len(os.Args), os.Args)
-	ngapp := ui.NewNgApp(logger)
+	ngapp := NewNgApp(logger)
 	ngapp.MainWin.Show()
 
 	/*
