@@ -106,6 +106,57 @@ type GridSettings struct{
 	ScsSpecificCarrier *ScsSpecificCarrier
 }
 
+type TddUlDlPatternUi struct{
+	PeriodLabel *widgets.QLabel
+	Period *widgets.QComboBox
+	NumDlSlotsLabel *widgets.QLabel
+	NumDlSlots *widgets.QLineEdit
+	NumDlSymbsLabel *widgets.QLabel
+	NumDlSymbs *widgets.QLineEdit
+	NumUlSymbsLabel *widgets.QLabel
+	NumUlSymbs *widgets.QLineEdit
+	NumUlSlotsLabel *widgets.QLabel
+	NumUlSlots *widgets.QLineEdit
+	widget *widgets.QWidget
+}
+
+type TddUlDlPattern struct{
+	Period string
+	NumDlSlots int
+	NumDlSymbs int
+	NumUlSymbs int
+	NumUlSlots int
+}
+
+type TddUlDlConfigUi struct{
+	RefScsLabel *widgets.QLabel
+	RefScs *widgets.QComboBox
+	Pattern1 *TddUlDlPatternUi
+	Pattern2 *TddUlDlPatternUi
+	widget *widgets.QGroupBox
+}
+
+type TddUlDlConfig struct{
+	RefScs string
+	Pattern1 *TddUlDlPattern
+	Pattern2 *TddUlDlPattern
+}
+
+type CommonSettingsUi struct{
+	PciLabel *widgets.QLabel
+	Pci *widgets.QLineEdit
+	UeAntPortsLabel *widgets.QLabel
+	UeAntPorts *widgets.QComboBox
+	TddUlDlConfigUi *TddUlDlConfigUi
+	widget *widgets.QWidget
+}
+
+type CommonSettings struct{
+	Pci int
+	UeAntPorts string
+	TddUlDlConfig *TddUlDlConfig
+}
+
 type NrGridUi struct{
 	Debug bool
 	Logger *zap.Logger
@@ -113,6 +164,7 @@ type NrGridUi struct{
 	Args map[string]interface{}
 
 	gridSettingsUi *GridSettingsUi
+	commonSettingsUi *CommonSettingsUi
 	okBtn *widgets.QPushButton
 	cancelBtn *widgets.QPushButton
 	widget *widgets.QDialog
@@ -131,9 +183,11 @@ func (p *NrGridUi) InitUi() {
 	p.cancelBtn = widgets.NewQPushButton2("Cancel", nil)
 
 	p.gridSettingsUi = p.initGridSettingsUi()
+	p.commonSettingsUi = p.initCommonSettingsUi()
 
 	tabWidget := widgets.NewQTabWidget(nil)
 	tabWidget.AddTab(p.gridSettingsUi.widget, "Grid Settings")
+	tabWidget.AddTab(p.commonSettingsUi.widget, "Common Settings")
 
 	hboxLayout := widgets.NewQHBoxLayout()
 	hboxLayout.AddStretch(0)
@@ -323,6 +377,103 @@ func (p *NrGridUi) initScsSpecificCarrierUi() *ScsSpecificCarrierUi{
 	return ui
 }
 
+func (p *NrGridUi) initCommonSettingsUi() *CommonSettingsUi {
+	ui := new(CommonSettingsUi)
+
+	ui.PciLabel = widgets.NewQLabel2("PCI[0-1007]:", nil, core.Qt__Widget)
+	ui.Pci = widgets.NewQLineEdit2("0", nil)
+	ui.UeAntPortsLabel = widgets.NewQLabel2("UE antenna ports:", nil, core.Qt__Widget)
+	ui.UeAntPorts = widgets.NewQComboBox(nil)
+	ui.UeAntPorts.AddItems([]string{"1TX", "2TX", "4TX"})
+	ui.UeAntPorts.SetCurrentText("2TX")
+	ui.TddUlDlConfigUi = p.initTddUlDlConfigUi()
+
+	gridLayout := widgets.NewQGridLayout(nil)
+	gridLayout.AddWidget2(ui.PciLabel, 0, 0, 0)
+	gridLayout.AddWidget2(ui.Pci, 0, 1, 0)
+	gridLayout.AddWidget2(ui.UeAntPortsLabel, 1, 0, 0)
+	gridLayout.AddWidget2(ui.UeAntPorts, 1, 1, 0)
+
+	vboxLayout := widgets.NewQVBoxLayout()
+	vboxLayout.AddLayout(gridLayout, 0)
+	vboxLayout.AddWidget(ui.TddUlDlConfigUi.widget, 0, 0)
+	vboxLayout.AddStretch(0)
+
+	ui.widget = widgets.NewQWidget(nil, core.Qt__Widget)
+	ui.widget.SetLayout(vboxLayout)
+
+	return ui
+}
+
+func (p *NrGridUi) initTddUlDlPatternUi() *TddUlDlPatternUi {
+	ui := new(TddUlDlPatternUi)
+
+	ui.PeriodLabel = widgets.NewQLabel2("dl-UL-TransmissionPeriodicity:", nil, core.Qt__Widget)
+	ui.Period = widgets.NewQComboBox(nil)
+	ui.Period.AddItems([]string{"not used", "0.5ms", "0.625ms", "1ms", "1.25ms", "2ms", "2.5ms", "3ms", "4ms", "5ms", "10ms"})
+	ui.NumDlSlotsLabel = widgets.NewQLabel2("nrofDownlinkSlots[0-80]:", nil, core.Qt__Widget)
+	ui.NumDlSlots = widgets.NewQLineEdit(nil)
+	ui.NumDlSymbsLabel = widgets.NewQLabel2("nrofDownlinkSymbols[0-13]:", nil, core.Qt__Widget)
+	ui.NumDlSymbs = widgets.NewQLineEdit(nil)
+	ui.NumUlSymbsLabel = widgets.NewQLabel2("nrofUplinkSymbols[0-13]:", nil, core.Qt__Widget)
+	ui.NumUlSymbs = widgets.NewQLineEdit(nil)
+	ui.NumUlSlotsLabel = widgets.NewQLabel2("nrofUplinkSlots[0-80]:", nil, core.Qt__Widget)
+	ui.NumUlSlots = widgets.NewQLineEdit(nil)
+
+	gridLayout := widgets.NewQGridLayout(nil)
+	gridLayout.AddWidget2(ui.PeriodLabel, 0, 0, 0)
+	gridLayout.AddWidget2(ui.Period, 0, 1, 0)
+	gridLayout.AddWidget2(ui.NumDlSlotsLabel, 1, 0, 0)
+	gridLayout.AddWidget2(ui.NumDlSlots, 1, 1, 0)
+	gridLayout.AddWidget2(ui.NumDlSymbsLabel, 2, 0, 0)
+	gridLayout.AddWidget2(ui.NumDlSymbs, 2, 1, 0)
+	gridLayout.AddWidget2(ui.NumUlSymbsLabel, 3, 0, 0)
+	gridLayout.AddWidget2(ui.NumUlSymbs, 3, 1, 0)
+	gridLayout.AddWidget2(ui.NumUlSlotsLabel, 4, 0, 0)
+	gridLayout.AddWidget2(ui.NumUlSlots, 4, 1, 0)
+
+	ui.widget = widgets.NewQWidget(nil, core.Qt__Widget)
+	ui.widget.SetLayout(gridLayout)
+
+	return ui
+}
+
+func (p *NrGridUi) initTddUlDlConfigUi() *TddUlDlConfigUi {
+	ui := new(TddUlDlConfigUi)
+
+	ui.RefScsLabel = widgets.NewQLabel2("referenceSubcarrierSpacing:", nil, core.Qt__Widget)
+	ui.RefScs = widgets.NewQComboBox(nil)
+	ui.RefScs.AddItems([]string{"15KHz", "30KHz", "60KHz", "120KHz"})
+	ui.RefScs.SetEnabled(false)
+	ui.Pattern1 = p.initTddUlDlPatternUi()
+	ui.Pattern2 = p.initTddUlDlPatternUi()
+	ui.Pattern1.Period.SetCurrentText("5ms")
+	ui.Pattern1.NumDlSlots.SetText("7")
+	ui.Pattern1.NumDlSymbs.SetText("6")
+	ui.Pattern1.NumUlSymbs.SetText("4")
+	ui.Pattern1.NumUlSlots.SetText("2")
+	ui.Pattern2.Period.SetCurrentText("not used")
+
+	tabWidget := widgets.NewQTabWidget(nil)
+	tabWidget.AddTab(ui.Pattern1.widget, "Pattern 1")
+	tabWidget.AddTab(ui.Pattern2.widget, "Pattern 2")
+
+	hboxLayout := widgets.NewQHBoxLayout()
+	hboxLayout.AddWidget(ui.RefScsLabel, 0, 0)
+	hboxLayout.AddWidget(ui.RefScs, 0, 0)
+	hboxLayout.AddStretch(0)
+
+	vboxLayout := widgets.NewQVBoxLayout()
+	vboxLayout.AddLayout(hboxLayout, 0)
+	vboxLayout.AddWidget(tabWidget, 0, 0)
+	vboxLayout.AddStretch(0)
+
+	ui.widget = widgets.NewQGroupBox2("TDD-UL-DL-ConfigCommon", nil)
+	ui.widget.SetLayout(vboxLayout)
+
+	return ui
+}
+
 func (p *NrGridUi) initSlots() {
 	p.okBtn.ConnectClicked(p.onOkBtnClicked)
 	p.cancelBtn.ConnectClicked(p.onCancelBtnClicked)
@@ -337,6 +488,3 @@ func (p *NrGridUi) onOkBtnClicked(checked bool) {
 func (p *NrGridUi) onCancelBtnClicked(checked bool) {
 	p.widget.Reject()
 }
-
-
-
