@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"github.com/zhenggao2/ngapp/nrgrid"
+	"github.com/zhenggao2/ngapp/ttitrace"
 )
 
 // NgApp contains the UI implementation.
@@ -25,6 +26,7 @@ type NgApp struct {
 	// actions
 	exitAction        *widgets.QAction
 	nrGridAction *widgets.QAction
+	ttiTraceAction *widgets.QAction
 	enableDebugAction *widgets.QAction
 	aboutAction       *widgets.QAction
 	aboutQtAction     *widgets.QAction
@@ -44,6 +46,9 @@ func (app *NgApp) createActions() {
 
 	app.nrGridAction = widgets.NewQAction2("NR Resource Grid", app.MainWin)
 	app.nrGridAction.ConnectTriggered(app.onExecNgGrid)
+
+	app.ttiTraceAction = widgets.NewQAction2("TTI Trace Tool", app.MainWin)
+	app.ttiTraceAction.ConnectTriggered(app.onExecTtiTrace)
 
 	app.enableDebugAction = widgets.NewQAction2("Enable Debug", app.MainWin)
 	app.enableDebugAction.SetCheckable(true)
@@ -69,6 +74,7 @@ func (app *NgApp) createMenus() {
 
 	app.nrMenu = app.MainWin.MenuBar().AddMenu2("NR")
 	app.nrMenu.QWidget_PTR().AddAction(app.nrGridAction)
+	app.nrMenu.QWidget_PTR().AddAction(app.ttiTraceAction)
 
 	app.miscMenu = app.MainWin.MenuBar().AddMenu2("Misc")
 
@@ -82,6 +88,15 @@ func (app *NgApp) createMenus() {
 
 func (app *NgApp) onExecNgGrid(checked bool) {
 	ui := new(nrgrid.NrGridUi)
+	ui.Debug = app.debug
+	ui.Logger = app.logger
+	ui.LogEdit = app.logEdit
+	ui.Args = nil
+	ui.InitUi()
+}
+
+func (app *NgApp) onExecTtiTrace(checked bool) {
+	ui := new(ttitrace.TtiTraceUi)
 	ui.Debug = app.debug
 	ui.Logger = app.logger
 	ui.LogEdit = app.logEdit
