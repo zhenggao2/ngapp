@@ -1,26 +1,31 @@
 package ttitrace
 
 import (
-	"path"
+	"bufio"
+	"fmt"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 	"go.uber.org/zap"
+	"os"
+	"path"
+	"strings"
+	"strconv"
 )
 
-type TtiTraceUi struct{
-	Debug bool
-	Logger *zap.Logger
+type TtiTraceUi struct {
+	Debug   bool
+	Logger  *zap.Logger
 	LogEdit *widgets.QTextEdit
-	Args map[string]interface{}
+	Args    map[string]interface{}
 
-	ratComb *widgets.QComboBox
+	ratComb   *widgets.QComboBox
 	chooseBtn *widgets.QPushButton
-	okBtn *widgets.QPushButton
+	okBtn     *widgets.QPushButton
 	cancelBtn *widgets.QPushButton
-	widget *widgets.QDialog
+	widget    *widgets.QDialog
 
 	ttiFiles []string
-	prevDir string
+	prevDir  string
 }
 
 func (p *TtiTraceUi) InitUi() {
@@ -97,6 +102,105 @@ func (p *TtiTraceUi) onChooseBtnClicked(checked bool) {
 }
 
 func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
+	// recreate dir for parsed ttis
+	outPath := path.Join(p.prevDir, "parsed_ttis")
+	os.RemoveAll(outPath)
+	if err := os.MkdirAll(outPath, 0775); err != nil {
+		panic(fmt.Sprintf("Fail to create directory: %v", err))
+	}
+
+	mapFieldName := make(map[string][]string)
+	for _, fn := range p.ttiFiles {
+		p.LogEdit.Append(fmt.Sprintf("\nParsing tti file: %s", fn))
+
+		fin, err := os.Open(fn)
+		defer fin.Close()
+		if err != nil {
+			p.LogEdit.Append(err.Error())
+			continue
+		}
+
+		reader := bufio.NewReader(fin)
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				break
+			}
+
+			// remove leading and tailing spaces
+			line = strings.TrimSpace(line)
+
+			if len(line) > 0 {
+				tokens := strings.Split(line, ":")
+				if len(tokens) == 2 {
+					eventName, eventRecord := tokens[0], tokens[1]
+
+					tokens = strings.Split(eventRecord, ",")
+					if len(tokens) > 0 {
+						// special handing of tokens[0]
+						tokens[0] = strings.TrimSpace(tokens[0])
+
+						// differentiate field names and field values, also keep track of PCI and RNTI
+						posPci, posRnti, valStart := -1, -1, -1
+						for pos, item := range tokens {
+							if strings.ToLower(item) == "rnti" && posRnti < 0 {
+								posRnti = pos
+							}
+
+							if strings.ToLower(item) == "physcellid" && posPci < 0 {
+								posPci = pos
+							}
+
+							_, err := strconv.Atoi(item)
+							if err == nil {
+								valStart = pos
+								break
+							}
+						}
+
+						var key string
+						if posPci >= 0 && posRnti >= 0 {
+							key = fmt.Sprintf("%s_pci%s_rnti%s", eventName, tokens[valStart+posPci], tokens[valStart+posRnti])
+						} else {
+							key = eventName
+						}
+
+						outFn := path.Join(outPath, fmt.Sprintf("%s.csv", key))
+						_, exist := mapFieldName[key]
+						if !exist {
+							mapFieldName[key] = make([]string, valStart)
+							copy(mapFieldName[key], tokens[:valStart])
+
+							// write event header only once
+							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+							defer fout.Close()
+							if err != nil {
+								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+								break
+							}
+
+							row := strings.Join(mapFieldName[key], ",")
+							fout.WriteString(fmt.Sprintf("%s\n", row))
+						}
+
+						// write event record
+						fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+						defer fout.Close()
+						if err != nil {
+							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+							break
+						}
+						row := strings.Join(tokens[valStart:], ",")
+						fout.WriteString(fmt.Sprintf("%s\n", row))
+					} else {
+						p.LogEdit.Append(fmt.Sprintf("Invalid event record detected: %s", line))
+					}
+				} else {
+					p.LogEdit.Append(fmt.Sprintf("Invalid event data detected: %s", line))
+				}
+			}
+		}
+	}
 	p.widget.Accept()
 }
 
