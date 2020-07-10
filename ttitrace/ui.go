@@ -28,6 +28,11 @@ type TtiTraceUi struct {
 	prevDir  string
 }
 
+type SfnInfo struct {
+	lastSfn int
+	hsfn int
+}
+
 func (p *TtiTraceUi) InitUi() {
 	// notes on Qt::Alignment:
 	// void QGridLayout::addWidget(QWidget *widget, int fromRow, int fromColumn, int rowSpan, int columnSpan, Qt::Alignment alignment = Qt::Alignment())
@@ -95,10 +100,12 @@ func (p *TtiTraceUi) onChooseBtnClicked(checked bool) {
 		p.prevDir = path.Dir(p.ttiFiles[0])
 	}
 
+	/*
 	p.LogEdit.Append("List of TTI files:")
 	for _, fn := range p.ttiFiles {
 		p.LogEdit.Append(fn)
 	}
+	*/
 }
 
 func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
@@ -110,8 +117,24 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	}
 
 	mapFieldName := make(map[string][]string)
+	mapSfnInfo := make(map[string]SfnInfo)
 	for _, fn := range p.ttiFiles {
-		p.LogEdit.Append(fmt.Sprintf("\nParsing tti file: %s", fn))
+		p.LogEdit.Append(fmt.Sprintf("Parsing tti file: %s", fn))
+		/*
+		//QEventLoop::ProcessEventsFlag
+		type QEventLoop__ProcessEventsFlag int64
+
+		const (
+			QEventLoop__AllEvents              QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x00)
+			QEventLoop__ExcludeUserInputEvents QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x01)
+			QEventLoop__ExcludeSocketNotifiers QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x02)
+			QEventLoop__WaitForMoreEvents      QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x04)
+			QEventLoop__X11ExcludeTimers       QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x08)
+			QEventLoop__EventLoopExec          QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x20)
+			QEventLoop__DialogExec             QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x40)
+		)
+		*/
+		core.QCoreApplication_Instance().ProcessEvents(0)
 
 		fin, err := os.Open(fn)
 		defer fin.Close()
@@ -141,8 +164,12 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						tokens[0] = strings.TrimSpace(tokens[0])
 
 						// differentiate field names and field values, also keep track of PCI and RNTI
-						posPci, posRnti, valStart := -1, -1, -1
+						posSfn, posPci, posRnti, valStart := -1, -1, -1, -1
 						for pos, item := range tokens {
+							if strings.ToLower(item) == "sfn" && posSfn < 0 {
+								posSfn = pos
+							}
+
 							if strings.ToLower(item) == "rnti" && posRnti < 0 {
 								posRnti = pos
 							}
@@ -171,6 +198,9 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							mapFieldName[key] = make([]string, valStart)
 							copy(mapFieldName[key], tokens[:valStart])
 
+							sfn, _ := strconv.Atoi(tokens[valStart+posSfn])
+							mapSfnInfo[key] = SfnInfo{sfn, 0}
+
 							// write event header only once
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 							defer fout.Close()
@@ -179,8 +209,18 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								break
 							}
 
+							// write HSFN header field
+							fout.WriteString("hsfn,")
+
 							row := strings.Join(mapFieldName[key], ",")
 							fout.WriteString(fmt.Sprintf("%s\n", row))
+						} else {
+							curSfn, _ := strconv.Atoi(tokens[valStart+posSfn])
+							if mapSfnInfo[key].lastSfn > curSfn {
+								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn+1}
+							} else {
+								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn}
+							}
 						}
 
 						// write event record
@@ -190,6 +230,10 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 							break
 						}
+
+						// write hsfn
+						fout.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
+
 						row := strings.Join(tokens[valStart:], ",")
 						fout.WriteString(fmt.Sprintf("%s\n", row))
 					} else {
