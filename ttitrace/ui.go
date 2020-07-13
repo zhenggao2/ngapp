@@ -19,11 +19,13 @@ type TtiTraceUi struct {
 	Args    map[string]interface{}
 
 	ratComb   *widgets.QComboBox
+	scsComb *widgets.QComboBox
 	chooseBtn *widgets.QPushButton
 	okBtn     *widgets.QPushButton
 	cancelBtn *widgets.QPushButton
 	widget    *widgets.QDialog
 
+	slotsPerRf int
 	ttiFiles []string
 	prevDir  string
 }
@@ -46,6 +48,11 @@ func (p *TtiTraceUi) InitUi() {
 	p.ratComb = widgets.NewQComboBox(nil)
 	p.ratComb.AddItems([]string{"5G"})
 
+	scsLabel := widgets.NewQLabel2("NRCELLGRP-scs:", nil, core.Qt__Widget)
+	p.scsComb = widgets.NewQComboBox(nil)
+	p.scsComb.AddItems([]string{"15KHz(FDD)", "30KHz(TDD-FR1)", "120KHz(TDD-FR2)"})
+	p.scsComb.SetCurrentIndex(1)
+
 	chooseLabel := widgets.NewQLabel2("Select TTI files:", nil, core.Qt__Widget)
 	p.chooseBtn = widgets.NewQPushButton2("...", nil)
 
@@ -60,7 +67,9 @@ func (p *TtiTraceUi) InitUi() {
 	gridLayout := widgets.NewQGridLayout(nil)
 	gridLayout.AddWidget2(ratLabel, 0, 0, 0)
 	gridLayout.AddWidget2(p.ratComb, 0, 1, 0)
-	gridLayout.AddLayout2(hboxLayout1, 1, 0, 1, 2, 0)
+	gridLayout.AddWidget2(scsLabel, 1, 0, 0)
+	gridLayout.AddWidget2(p.scsComb, 1, 1, 0)
+	gridLayout.AddLayout2(hboxLayout1, 2, 0, 1, 2, 0)
 
 	hboxLayout2 := widgets.NewQHBoxLayout()
 	hboxLayout2.AddStretch(0)
@@ -109,6 +118,9 @@ func (p *TtiTraceUi) onChooseBtnClicked(checked bool) {
 }
 
 func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
+	scs2nslots := map[string]int{"15KHz(FDD)":10, "30KHz(TDD-FR1)":20, "120KHz(TDD-FR2)":80}
+	p.slotsPerRf = scs2nslots[p.scsComb.CurrentText()]
+
 	// recreate dir for parsed ttis
 	outPath := path.Join(p.prevDir, "parsed_ttis")
 	os.RemoveAll(outPath)
