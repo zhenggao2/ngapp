@@ -263,3 +263,22 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 func (p *TtiTraceUi) onCancelBtnClicked(checked bool) {
 	p.widget.Reject()
 }
+
+func (p *TtiTraceUi) makeTimeStamp(hsfn, sfn, slot int) int {
+	return 1024 * p.slotsPerRf * hsfn + p.slotsPerRf * sfn + slot
+}
+
+func (p *TtiTraceUi) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
+	slot += n
+	if slot >= p.slotsPerRf {
+		slot %= p.slotsPerRf
+		sfn += 1
+	}
+
+	if sfn >= 1024 {
+		sfn %= 1024
+		hsfn += 1
+	}
+
+	return hsfn, sfn, slot
+}
