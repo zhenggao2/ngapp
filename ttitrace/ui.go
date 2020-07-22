@@ -214,7 +214,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							mapSfnInfo[key] = SfnInfo{sfn, 0}
 
 							// write event header only once
-							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY, 0664)
 							defer fout.Close()
 							if err != nil {
 								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
