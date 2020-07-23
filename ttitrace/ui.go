@@ -128,8 +128,18 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
 
+	// key=EventName_PCI_RNTI or EventName for both mapFieldName and mapSfnInfo
 	mapFieldName := make(map[string][]string)
 	mapSfnInfo := make(map[string]SfnInfo)
+
+	// Interested fields per event
+	var posDlBeam TtiDlBeamDataPos
+	var posDlPreSched TtiDlPreSchedDataPos
+	var posDlTdSched TtiDlTdSchedSubcellDataPos
+	var posDlFdSched TtiDlFdSchedDataPos
+	var posDlHarq TtiDlHarqRxDataPos
+	var posDlLaAvgCqi TtiDlLaAverageCqiPos
+
 	for _, fn := range p.ttiFiles {
 		p.LogEdit.Append(fmt.Sprintf("Parsing tti file: %s", fn))
 		/*
@@ -175,6 +185,27 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						// special handing of tokens[0]
 						tokens[0] = strings.TrimSpace(tokens[0])
 
+						if eventName == "dlBeamData" && posDlBeam.Ready == false {
+							posDlBeam = FindTtiDlBeamDataPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlBeam=%v", posDlBeam))
+						} else if eventName == "dlPreSchedData" && posDlPreSched.Ready == false {
+							posDlPreSched = FindTtiDlPreSchedDataPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
+						} else if eventName == "dlTdSchedSubcellData" && posDlTdSched.Ready == false {
+							posDlTdSched = FindTtiDlTdSchedSubcellDataPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
+						} else if eventName == "dlFdSchedData" && posDlFdSched.Ready == false {
+							posDlFdSched = FindTtiDlFdSchedDataPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
+						} else if eventName == "dlHarqRxData" && posDlHarq.Ready == false {
+							// TODO: there is also an event named: dlHarqRxDataArray
+							posDlHarq = FindTtiDlHarqRxDataPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
+						} else if eventName == "dlLaAverageCqi" && posDlLaAvgCqi.Ready == false {
+							posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
+							p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+						}
+
 						// differentiate field names and field values, also keep track of PCI and RNTI
 						posSfn, posPci, posRnti, valStart := -1, -1, -1, -1
 						for pos, item := range tokens {
@@ -214,8 +245,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							mapSfnInfo[key] = SfnInfo{sfn, 0}
 
 							// write event header only once
-							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY, 0664)
-							defer fout.Close()
+							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+							// defer fout.Close()
 							if err != nil {
 								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 								break
@@ -226,6 +257,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 							row := strings.Join(mapFieldName[key], ",")
 							fout.WriteString(fmt.Sprintf("%s\n", row))
+							fout.Close()
 						} else {
 							curSfn, _ := strconv.Atoi(tokens[valStart+posSfn])
 							if mapSfnInfo[key].lastSfn > curSfn {
@@ -237,7 +269,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 						// write event record
 						fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-						defer fout.Close()
+						// defer fout.Close()
 						if err != nil {
 							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 							break
@@ -248,6 +280,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 						row := strings.Join(tokens[valStart:], ",")
 						fout.WriteString(fmt.Sprintf("%s\n", row))
+						fout.Close()
 					} else {
 						p.LogEdit.Append(fmt.Sprintf("Invalid event record detected: %s", line))
 					}

@@ -1,5 +1,9 @@
 package ttitrace
 
+import (
+	"strings"
+)
+
 type TtiEventHeader struct {
 	Hsfn int
 	Sfn  int
@@ -16,6 +20,47 @@ type TtiEventHeaderPos struct {
 	PosPhysCellId int
 }
 
+func FindTtiEventHeaderPos(tokens []string) TtiEventHeaderPos {
+	n := 5
+	p := TtiEventHeaderPos{
+		PosHsfn: -1,
+		PosSfn: -1,
+		PosSlot: -1,
+		PosRnti: -1,
+		PosPhysCellId: -1,
+	}
+
+	// Field hsfn is user-defined!
+	i := 1
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "sfn" && p.PosSfn < 0 {
+			p.PosSfn = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "slot" && p.PosSlot < 0 {
+			p.PosSlot = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "rnti" && p.PosRnti < 0 {
+			p.PosRnti = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "physcellid" && p.PosPhysCellId < 0 {
+			p.PosPhysCellId = pos
+			i += 1
+		}
+
+		if i >= n {
+			break
+		}
+	}
+
+	return p
+}
+
 type TtiDlBeamData struct {
 	TtiEventHeader
 	SubcellId          int
@@ -27,12 +72,61 @@ type TtiDlBeamData struct {
 
 type TtiDlBeamDataPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosSubcellId          int
 	PosCurrentBestBeamId  int
 	PosCurrent2ndBeamId   int
 	PosSelectedBestBeamId int
 	PosSelected2ndBeamId  int
+}
+
+
+func FindTtiDlBeamDataPos(tokens []string) TtiDlBeamDataPos {
+	n := 5
+	p := TtiDlBeamDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosSubcellId: -1,
+		PosCurrentBestBeamId: -1,
+		PosCurrent2ndBeamId: -1,
+		PosSelectedBestBeamId: -1,
+		PosSelected2ndBeamId: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "currentbestbeamid" && p.PosCurrentBestBeamId < 0 {
+			p.PosCurrentBestBeamId = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "current2ndbeamid" && p.PosCurrent2ndBeamId < 0 {
+			p.PosCurrent2ndBeamId = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "selectedbestbeamid" && p.PosSelectedBestBeamId < 0 {
+			p.PosSelectedBestBeamId = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "selected2ndbeamid" && p.PosSelected2ndBeamId < 0 {
+			p.PosSelected2ndBeamId = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
 }
 
 type TtiDlPreSchedData struct {
@@ -43,9 +137,39 @@ type TtiDlPreSchedData struct {
 
 type TtiDlPreSchedDataPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosCsListEvent int
 	PosHighestClassPriority int
+}
+
+func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
+	n := 2
+	p := TtiDlPreSchedDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCsListEvent: -1,
+		PosHighestClassPriority: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "cslistevent" && p.PosCsListEvent < 0 {
+			p.PosCsListEvent = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
+			p.PosHighestClassPriority = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
 }
 
 type TtiDlTdSchedSubcellData struct {
@@ -56,9 +180,31 @@ type TtiDlTdSchedSubcellData struct {
 
 type TtiDlTdSchedSubcellDataPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosSubcellId int
-	PosRecordSequenceNumber int
+	PosRecordSequenceNumber []int
+}
+
+func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos {
+	p := TtiDlTdSchedSubcellDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosSubcellId: -1,
+		PosRecordSequenceNumber: make([]int, 0),
+	}
+
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
+		}
+
+		if strings.ToLower(item) == "recordsequencenumber" {
+			p.PosRecordSequenceNumber = append(p.PosRecordSequenceNumber, pos)
+		}
+	}
+
+	p.Ready = true
+	return p
 }
 
 type TtiDlFdSchedData struct {
@@ -72,11 +218,53 @@ type TtiDlFdSchedData struct {
 
 type TtiDlFdSchedDataPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosCellDbIndex int
 	PosTxNumber int
 	PosDlHarqProcessIndex int
 	PosK1 int
+}
+
+func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
+	n := 4
+	p := TtiDlFdSchedDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosTxNumber: -1,
+		PosDlHarqProcessIndex: -1,
+		PosK1: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
+			p.PosTxNumber = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
+			p.PosDlHarqProcessIndex = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "k1" && p.PosK1 < 0 {
+			p.PosK1 = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
 }
 
 type TtiDlHarqRxData struct {
@@ -88,10 +276,46 @@ type TtiDlHarqRxData struct {
 
 type TtiDlHarqRxDataPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosHarqSubcellId int
 	PosAckNack int
 	PosDlHarqProcessIndex int
+}
+
+func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
+	n := 3
+	p := TtiDlHarqRxDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosHarqSubcellId: -1,
+		PosAckNack: -1,
+		PosDlHarqProcessIndex: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "harqsubcellid" && p.PosHarqSubcellId < 0 {
+			p.PosHarqSubcellId = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "acknack" && p.PosAckNack < 0 {
+			p.PosAckNack = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
+			p.PosDlHarqProcessIndex = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
 }
 
 type TtiDlLaAverageCqi struct {
@@ -103,10 +327,44 @@ type TtiDlLaAverageCqi struct {
 
 type TtiDlLaAverageCqiPos struct {
 	Ready bool
-	TtiEventHeaderPos
+	PosEventHeader TtiEventHeaderPos
 	PosCellDbIndex int
 	PosRrmAvgCqi int
 	PosRrmDeltaCqi int
 }
 
+func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
+	n := 3
+	p := TtiDlLaAverageCqiPos{
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:      -1,
+		PosRrmAvgCqi:            -1,
+		PosRrmDeltaCqi: -1,
+	}
 
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "rrmavgcqi" && p.PosRrmAvgCqi < 0 {
+			p.PosRrmAvgCqi = pos
+			i += 1
+		}
+
+		if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
+			p.PosRrmDeltaCqi = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
