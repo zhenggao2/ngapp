@@ -277,23 +277,24 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								p.LogEdit.Append(fmt.Sprintf("posDlBeam=%v", posDlBeam))
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[posDlBeam.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[posDlBeam.PosEventHeader.PosSlot]))
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSlot]))
 							v := TtiDlBeamData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
-									Sfn:        tokens[posDlBeam.PosEventHeader.PosSfn],
-									Slot:       tokens[posDlBeam.PosEventHeader.PosSlot],
-									Rnti:       tokens[posDlBeam.PosEventHeader.PosRnti],
-									PhysCellId: tokens[posDlBeam.PosEventHeader.PosPhysCellId],
+									Sfn:        tokens[valStart+posDlBeam.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlBeam.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlBeam.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlBeam.PosEventHeader.PosPhysCellId],
 								},
 
-								SubcellId: tokens[posDlBeam.PosSubcellId],
-								CurrentBestBeamId: tokens[posDlBeam.PosCurrentBestBeamId],
-								Current2ndBeamId: tokens[posDlBeam.PosCurrent2ndBeamId],
-								SelectedBestBeamId: tokens[posDlBeam.PosSelectedBestBeamId],
-								Selected2ndBeamId: tokens[posDlBeam.PosSelected2ndBeamId],
+								SubcellId: tokens[valStart+posDlBeam.PosSubcellId],
+								CurrentBestBeamId: tokens[valStart+posDlBeam.PosCurrentBestBeamId],
+								Current2ndBeamId: tokens[valStart+posDlBeam.PosCurrent2ndBeamId],
+								SelectedBestBeamId: tokens[valStart+posDlBeam.PosSelectedBestBeamId],
+								Selected2ndBeamId: tokens[valStart+posDlBeam.PosSelected2ndBeamId],
 							}
+
 							mapEventRecord[eventName].Add(k, v)
 						} else if eventName == "dlPreSchedData" {
 							if posDlPreSched.Ready == false {
@@ -301,20 +302,21 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								p.LogEdit.Append(fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[posDlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[posDlPreSched.PosEventHeader.PosSlot]))
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSlot]))
 							v := TtiDlPreSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
-									Sfn:        tokens[posDlPreSched.PosEventHeader.PosSfn],
-									Slot:       tokens[posDlPreSched.PosEventHeader.PosSlot],
-									Rnti:       tokens[posDlPreSched.PosEventHeader.PosRnti],
-									PhysCellId: tokens[posDlPreSched.PosEventHeader.PosPhysCellId],
+									Sfn:        tokens[valStart+posDlPreSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlPreSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlPreSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlPreSched.PosEventHeader.PosPhysCellId],
 								},
 
-								CsListEvent: tokens[posDlPreSched.PosCsListEvent],
-								HighestClassPriority: tokens[posDlPreSched.PosHighestClassPriority],
+								CsListEvent: tokens[valStart+posDlPreSched.PosCsListEvent],
+								HighestClassPriority: tokens[valStart+posDlPreSched.PosHighestClassPriority],
 							}
+
 							mapEventRecord[eventName].Add(k, v)
 						} else if eventName == "dlTdSchedSubcellData" {
 							if posDlTdSched.Ready == false {
@@ -322,25 +324,29 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								p.LogEdit.Append(fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[posDlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[posDlTdSched.PosEventHeader.PosSlot]))
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSlot]))
 							v := TtiDlTdSchedSubcellData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
-									Sfn:        tokens[posDlTdSched.PosEventHeader.PosSfn],
-									Slot:       tokens[posDlTdSched.PosEventHeader.PosSlot],
-									Rnti:       tokens[posDlTdSched.PosEventHeader.PosRnti],
-									PhysCellId: tokens[posDlTdSched.PosEventHeader.PosPhysCellId],
+									Sfn:        tokens[valStart+posDlTdSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlTdSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlTdSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlTdSched.PosEventHeader.PosPhysCellId],
 								},
 
-								SubcellId: tokens[posDlTdSched.PosSubcellId],
+								SubcellId: tokens[valStart+posDlTdSched.PosSubcellId],
 								Cs2List: make([]string, 0),
 							}
 
 							for _, rsn := range posDlTdSched.PosRecordSequenceNumber {
 								n := 10	// Per UE in CS2 is statitically defined for 10UEs
 								for k := 0; k < n; k += 1 {
-									v.Cs2List = append(v.Cs2List, tokens[rsn+1+3*k])
+									posRnti := valStart+rsn+1+3*k
+									if posRnti > len(tokens) || len(tokens[posRnti]) == 0 {
+										break
+									}
+									v.Cs2List = append(v.Cs2List, tokens[posRnti])
 								}
 							}
 
@@ -351,33 +357,73 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								p.LogEdit.Append(fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[posDlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[posDlFdSched.PosEventHeader.PosSlot]))
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSlot]))
 							v := TtiDlFdSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
-									Sfn:        tokens[posDlFdSched.PosEventHeader.PosSfn],
-									Slot:       tokens[posDlFdSched.PosEventHeader.PosSlot],
-									Rnti:       tokens[posDlFdSched.PosEventHeader.PosRnti],
-									PhysCellId: tokens[posDlFdSched.PosEventHeader.PosPhysCellId],
+									Sfn:        tokens[valStart+posDlFdSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlFdSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlFdSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlFdSched.PosEventHeader.PosPhysCellId],
 								},
 
-								CellDbIndex: tokens[posDlFdSched.PosCellDbIndex],
-								TxNumber: tokens[posDlFdSched.PosTxNumber],
-								DlHarqProcessIndex: tokens[posDlFdSched.PosDlHarqProcessIndex],
-								K1: tokens[posDlFdSched.PosK1],
-								AllFields: make([]string, 0),
+								CellDbIndex: tokens[valStart+posDlFdSched.PosCellDbIndex],
+								TxNumber: tokens[valStart+posDlFdSched.PosTxNumber],
+								DlHarqProcessIndex: tokens[valStart+posDlFdSched.PosDlHarqProcessIndex],
+								K1: tokens[valStart+posDlFdSched.PosK1],
+								AllFields: make([]string, len(tokens)-valStart),
 							}
 							copy(v.AllFields, tokens[valStart:])
 
 							mapEventRecord[eventName].Add(k, v)
-						} else if eventName == "dlHarqRxData" && posDlHarq.Ready == false {
-							// TODO: there is also an event named: dlHarqRxDataArray
-							posDlHarq = FindTtiDlHarqRxDataPos(tokens)
-							p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
-						} else if eventName == "dlLaAverageCqi" && posDlLaAvgCqi.Ready == false {
-							posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
-							p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+						} else if eventName == "dlHarqRxData" {
+							if posDlHarq.Ready == false {
+								// TODO: there is also an event named: dlHarqRxDataArray
+								posDlHarq = FindTtiDlHarqRxDataPos(tokens)
+								p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
+							v := TtiDlHarqRxData {
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlHarq.PosEventHeader.PosPhysCellId],
+								},
+
+								HarqSubcellId: tokens[valStart+posDlHarq.PosHarqSubcellId],
+								AckNack: tokens[valStart+posDlHarq.PosAckNack],
+								DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
+							}
+
+							mapEventRecord[eventName].Add(k, v)
+						} else if eventName == "dlLaAverageCqi" {
+							if posDlLaAvgCqi.Ready == false {
+								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
+								p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSlot]))
+							v := TtiDlLaAverageCqi {
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosPhysCellId],
+								},
+
+								CellDbIndex: tokens[valStart+posDlLaAvgCqi.PosCellDbIndex],
+								RrmAvgCqi: tokens[valStart+posDlLaAvgCqi.PosRrmAvgCqi],
+								RrmDeltaCqi: tokens[valStart+posDlLaAvgCqi.PosRrmDeltaCqi],
+							}
+
+							mapEventRecord[eventName].Add(k, v)
 						}
 					} else {
 						p.LogEdit.Append(fmt.Sprintf("Invalid event record detected: %s", line))
@@ -388,6 +434,11 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 			}
 		}
 	}
+
+	for k, v := range mapEventRecord {
+		p.LogEdit.Append(fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
+	}
+
 	p.widget.Accept()
 }
 
