@@ -5,11 +5,11 @@ import (
 )
 
 type TtiEventHeader struct {
-	Hsfn int
-	Sfn  int
-	Slot int
-	Rnti int
-	PhysCellId int
+	Hsfn string
+	Sfn string
+	Slot string
+	Rnti string
+	PhysCellId string
 }
 
 type TtiEventHeaderPos struct {
@@ -63,11 +63,11 @@ func FindTtiEventHeaderPos(tokens []string) TtiEventHeaderPos {
 
 type TtiDlBeamData struct {
 	TtiEventHeader
-	SubcellId          int
-	CurrentBestBeamId  int
-	Current2ndBeamId   int
-	SelectedBestBeamId int
-	Selected2ndBeamId  int
+	SubcellId          string
+	CurrentBestBeamId  string
+	Current2ndBeamId   string
+	SelectedBestBeamId string
+	Selected2ndBeamId  string
 }
 
 type TtiDlBeamDataPos struct {
@@ -174,8 +174,8 @@ func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 
 type TtiDlTdSchedSubcellData struct {
 	TtiEventHeader
-	SubcellId int
-	Cs2List []int
+	SubcellId string
+	Cs2List []string
 }
 
 type TtiDlTdSchedSubcellDataPos struct {
@@ -209,10 +209,10 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 
 type TtiDlFdSchedData struct {
 	TtiEventHeader
-	CellDbIndex int
-	TxNumber int
-	DlHarqProcessIndex int
-	K1 int
+	CellDbIndex string
+	TxNumber string
+	DlHarqProcessIndex string
+	K1 string
 	AllFields []string
 }
 
@@ -269,9 +269,9 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 
 type TtiDlHarqRxData struct {
 	TtiEventHeader
-	HarqSubcellId int
+	HarqSubcellId string
 	AckNack string
-	DlHarqProcessIndex int
+	DlHarqProcessIndex string
 }
 
 type TtiDlHarqRxDataPos struct {
@@ -320,9 +320,9 @@ func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 
 type TtiDlLaAverageCqi struct {
 	TtiEventHeader
-	CellDbIndex int
-	RrmAvgCqi float64
-	RrmDeltaCqi float64
+	CellDbIndex string
+	RrmAvgCqi string
+	RrmDeltaCqi string
 }
 
 type TtiDlLaAverageCqiPos struct {
