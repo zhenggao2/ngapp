@@ -295,7 +295,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								Selected2ndBeamId: tokens[valStart+posDlBeam.PosSelected2ndBeamId],
 							}
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlPreSchedData" {
 							if posDlPreSched.Ready == false {
 								posDlPreSched = FindTtiDlPreSchedDataPos(tokens)
@@ -314,10 +314,10 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								},
 
 								CsListEvent: tokens[valStart+posDlPreSched.PosCsListEvent],
-								HighestClassPriority: tokens[valStart+posDlPreSched.PosHighestClassPriority],
+								HighestClassPriority: p.ttiDlPreSchedClassPriority(tokens[valStart+posDlPreSched.PosHighestClassPriority]),
 							}
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlTdSchedSubcellData" {
 							if posDlTdSched.Ready == false {
 								posDlTdSched = FindTtiDlTdSchedSubcellDataPos(tokens)
@@ -350,7 +350,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								}
 							}
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlFdSchedData" {
 							if posDlFdSched.Ready == false {
 								posDlFdSched = FindTtiDlFdSchedDataPos(tokens)
@@ -376,7 +376,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							}
 							copy(v.AllFields, tokens[valStart:])
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlHarqRxData" {
 							if posDlHarq.Ready == false {
 								// TODO: there is also an event named: dlHarqRxDataArray
@@ -400,7 +400,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
 							}
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
 						} else if eventName == "dlLaAverageCqi" {
 							if posDlLaAvgCqi.Ready == false {
 								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
@@ -423,7 +423,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								RrmDeltaCqi: tokens[valStart+posDlLaAvgCqi.PosRrmDeltaCqi],
 							}
 
-							mapEventRecord[eventName].Add(k, v)
+							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
 						p.LogEdit.Append(fmt.Sprintf("Invalid event record detected: %s", line))
@@ -433,6 +433,67 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 				}
 			}
 		}
+	}
+
+	for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
+		k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
+		v1 := mapEventRecord["dlFdSchedData"].Val(k1).(*TtiDlFdSchedData)
+
+		// aggregate dlBeamData
+		p2 := p.findDlBeam(mapEventRecord["dlFdSchedData"], mapEventRecord["dlBeamData"], p1)
+		if p2 >= 0 {
+			k2 := mapEventRecord["dlBeamData"].Keys()[p2].(int)
+			v2 := mapEventRecord["dlBeamData"].Val(k2).(*TtiDlBeamData)
+
+			v1.AllFields = append(v1.AllFields, []string{v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
+		} else {
+			v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
+		}
+
+		// aggregate dlPreSchedData
+		p3 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
+		if p3 >= 0 {
+			k3 := mapEventRecord["dlPreSchedData"].Keys()[p3].(int)
+			v3 := mapEventRecord["dlPreSchedData"].Val(k3).(*TtiDlPreSchedData)
+
+			v1.AllFields = append(v1.AllFields, []string{v3.CsListEvent, v3.HighestClassPriority}...)
+		} else {
+			v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
+		}
+
+		// aggregate dlTdSchedSubcellData
+		p4 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
+		if p4 >= 0 {
+			k4 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p4].(int)
+			v4 := mapEventRecord["dlTdSchedSubcellData"].Val(k4).(*TtiDlTdSchedSubcellData)
+
+			v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ",")))
+		} else {
+			v1.AllFields = append(v1.AllFields, "-")
+		}
+
+		// aggregate dlHarqRxData
+		p5 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
+		if p5 >= 0 {
+			k5 := mapEventRecord["dlHarqRxData"].Keys()[p5].(string)
+			v5 := mapEventRecord["dlHarqRxData"].Val(k5).(*TtiDlHarqRxData)
+
+			v1.AllFields = append(v1.AllFields, v5.AckNack)
+		} else {
+			v1.AllFields = append(v1.AllFields, "-")
+		}
+
+		// aggregate dlLaAverageCqi
+		p6 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
+		if p6 >= 0 {
+			k6 := mapEventRecord["dlLaAverageCqi"].Keys()[p6].(int)
+			v6 := mapEventRecord["dlLaAverageCqi"].Val(k6).(*TtiDlLaAverageCqi)
+
+			v1.AllFields = append(v1.AllFields, []string{v6.RrmAvgCqi, v6.RrmDeltaCqi}...)
+		} else {
+			v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
+		}
+
 	}
 
 	for k, v := range mapEventRecord {
@@ -453,6 +514,130 @@ func (p *TtiTraceUi) makeTimeStamp(hsfn, sfn, slot int) int {
 func (p *TtiTraceUi) unsafeAtoi(s string) int {
 	v, _ := strconv.Atoi(s)
 	return v
+}
+
+func (p *TtiTraceUi) ttiDlPreSchedClassPriority(cp string) string {
+	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "drbTraffic", "lastUnUsed"}
+
+	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
+}
+
+func (p *TtiTraceUi) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlBeamData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiTraceUi) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlPreSchedData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiTraceUi) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.CellDbIndex == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiTraceUi) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+	hsfn, sfn, slot := p.incSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
+	harq := p.makeTimeStamp(hsfn, sfn, slot)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		// key = "Timestamp_HarqProcessIndex"
+		k2 := m2.Keys()[i].(string)
+		k2ts := p.unsafeAtoi(strings.Split(k2, "_")[0])
+		v2 := m2.Val(k2).(*TtiDlHarqRxData)
+
+		if k2ts == harq {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId && v1.DlHarqProcessIndex == v2.DlHarqProcessIndex {
+				p2 = i
+				return p2
+			}
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiTraceUi) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlLaAverageCqi)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiTraceUi) contains(a []string, b string) bool {
+	for _, s := range a {
+		if s == b {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *TtiTraceUi) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
