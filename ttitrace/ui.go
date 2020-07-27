@@ -119,7 +119,7 @@ func (p *TtiTraceUi) onChooseBtnClicked(checked bool) {
 }
 
 func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
-	scs2nslots := map[string]int{"15KHz(FDD)":10, "30KHz(TDD-FR1)":20, "120KHz(TDD-FR2)":80}
+	scs2nslots := map[string]int{"15KHz(FDD)": 10, "30KHz(TDD-FR1)": 20, "120KHz(TDD-FR2)": 80}
 	p.slotsPerRf = scs2nslots[p.scsComb.CurrentText()]
 
 	// recreate dir for parsed ttis
@@ -140,30 +140,31 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	var posDlFdSched TtiDlFdSchedDataPos
 	var posDlHarq TtiDlHarqRxDataPos
 	var posDlLaAvgCqi TtiDlLaAverageCqiPos
-	var mapEventRecord = map[string]*utils.OrderedMap {
-		"dlBeamData": utils.NewOrderedMap(),
-		"dlPreSchedData": utils.NewOrderedMap(),
+	var mapEventRecord = map[string]*utils.OrderedMap{
+		"dlBeamData":           utils.NewOrderedMap(),
+		"dlPreSchedData":       utils.NewOrderedMap(),
 		"dlTdSchedSubcellData": utils.NewOrderedMap(),
-		"dlFdSchedData": utils.NewOrderedMap(),
-		"dlHarqRxData": utils.NewOrderedMap(),
-		"dlLaAverageCqi": utils.NewOrderedMap(),
+		"dlFdSchedData":        utils.NewOrderedMap(),
+		"dlHarqRxData":         utils.NewOrderedMap(),
+		"dlLaAverageCqi":       utils.NewOrderedMap(),
 	}
+	var dlSchedAggFields string
 
 	for _, fn := range p.ttiFiles {
 		p.LogEdit.Append(fmt.Sprintf("Parsing tti file: %s", fn))
 		/*
-		//QEventLoop::ProcessEventsFlag
-		type QEventLoop__ProcessEventsFlag int64
+			//QEventLoop::ProcessEventsFlag
+			type QEventLoop__ProcessEventsFlag int64
 
-		const (
-			QEventLoop__AllEvents              QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x00)
-			QEventLoop__ExcludeUserInputEvents QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x01)
-			QEventLoop__ExcludeSocketNotifiers QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x02)
-			QEventLoop__WaitForMoreEvents      QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x04)
-			QEventLoop__X11ExcludeTimers       QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x08)
-			QEventLoop__EventLoopExec          QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x20)
-			QEventLoop__DialogExec             QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x40)
-		)
+			const (
+				QEventLoop__AllEvents              QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x00)
+				QEventLoop__ExcludeUserInputEvents QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x01)
+				QEventLoop__ExcludeSocketNotifiers QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x02)
+				QEventLoop__WaitForMoreEvents      QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x04)
+				QEventLoop__X11ExcludeTimers       QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x08)
+				QEventLoop__EventLoopExec          QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x20)
+				QEventLoop__DialogExec             QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x40)
+			)
 		*/
 		core.QCoreApplication_Instance().ProcessEvents(0)
 
@@ -233,7 +234,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 							// Step-1: write event header only once
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-							// defer fout.Close()
+							defer fout.Close()
 							if err != nil {
 								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 								break
@@ -244,37 +245,43 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 							row := strings.Join(mapFieldName[key], ",")
 							fout.WriteString(fmt.Sprintf("%s\n", row))
-							fout.Close()
+							//fout.Close()
+
+							// update dlSchedAggFields
+							if len(dlSchedAggFields) == 0 && eventName == "dlFdSchedData" {
+								dlSchedAggFields = "hsfn," + row
+							}
 						} else {
 							curSfn, _ := strconv.Atoi(tokens[valStart+posSfn])
 							if mapSfnInfo[key].lastSfn > curSfn {
-								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn+1}
+								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn + 1}
 							} else {
 								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn}
 							}
 						}
 
 						// Step-2: write event record
-						fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-						// defer fout.Close()
+						fout2, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+						defer fout2.Close()
 						if err != nil {
 							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 							break
 						}
 
 						// Step-2.1: write hsfn
-						fout.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
+						fout2.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
 
 						row := strings.Join(tokens[valStart:], ",")
-						fout.WriteString(fmt.Sprintf("%s\n", row))
-						fout.Close()
-
+						fout2.WriteString(fmt.Sprintf("%s\n", row))
+						//fout2.Close()
 
 						// Step-3: aggregate events
 						if eventName == "dlBeamData" {
 							if posDlBeam.Ready == false {
 								posDlBeam = FindTtiDlBeamDataPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlBeam=%v", posDlBeam))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlBeam=%v", posDlBeam))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSlot]))
@@ -288,18 +295,20 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 									PhysCellId: tokens[valStart+posDlBeam.PosEventHeader.PosPhysCellId],
 								},
 
-								SubcellId: tokens[valStart+posDlBeam.PosSubcellId],
-								CurrentBestBeamId: tokens[valStart+posDlBeam.PosCurrentBestBeamId],
-								Current2ndBeamId: tokens[valStart+posDlBeam.PosCurrent2ndBeamId],
+								SubcellId:          tokens[valStart+posDlBeam.PosSubcellId],
+								CurrentBestBeamId:  tokens[valStart+posDlBeam.PosCurrentBestBeamId],
+								Current2ndBeamId:   tokens[valStart+posDlBeam.PosCurrent2ndBeamId],
 								SelectedBestBeamId: tokens[valStart+posDlBeam.PosSelectedBestBeamId],
-								Selected2ndBeamId: tokens[valStart+posDlBeam.PosSelected2ndBeamId],
+								Selected2ndBeamId:  tokens[valStart+posDlBeam.PosSelected2ndBeamId],
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlPreSchedData" {
 							if posDlPreSched.Ready == false {
 								posDlPreSched = FindTtiDlPreSchedDataPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSlot]))
@@ -313,7 +322,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 									PhysCellId: tokens[valStart+posDlPreSched.PosEventHeader.PosPhysCellId],
 								},
 
-								CsListEvent: tokens[valStart+posDlPreSched.PosCsListEvent],
+								CsListEvent:          tokens[valStart+posDlPreSched.PosCsListEvent],
 								HighestClassPriority: p.ttiDlPreSchedClassPriority(tokens[valStart+posDlPreSched.PosHighestClassPriority]),
 							}
 
@@ -321,7 +330,9 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlTdSchedSubcellData" {
 							if posDlTdSched.Ready == false {
 								posDlTdSched = FindTtiDlTdSchedSubcellDataPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSlot]))
@@ -336,13 +347,13 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								},
 
 								SubcellId: tokens[valStart+posDlTdSched.PosSubcellId],
-								Cs2List: make([]string, 0),
+								Cs2List:   make([]string, 0),
 							}
 
 							for _, rsn := range posDlTdSched.PosRecordSequenceNumber {
-								n := 10	// Per UE in CS2 is statitically defined for 10UEs
+								n := 10 // Per UE in CS2 is statitically defined for 10UEs
 								for k := 0; k < n; k += 1 {
-									posRnti := valStart+rsn+1+3*k
+									posRnti := valStart + rsn + 1 + 3*k
 									if posRnti > len(tokens) || len(tokens[posRnti]) == 0 {
 										break
 									}
@@ -354,7 +365,9 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlFdSchedData" {
 							if posDlFdSched.Ready == false {
 								posDlFdSched = FindTtiDlFdSchedDataPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSlot]))
@@ -368,11 +381,11 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 									PhysCellId: tokens[valStart+posDlFdSched.PosEventHeader.PosPhysCellId],
 								},
 
-								CellDbIndex: tokens[valStart+posDlFdSched.PosCellDbIndex],
-								TxNumber: tokens[valStart+posDlFdSched.PosTxNumber],
+								CellDbIndex:        tokens[valStart+posDlFdSched.PosCellDbIndex],
+								TxNumber:           tokens[valStart+posDlFdSched.PosTxNumber],
 								DlHarqProcessIndex: tokens[valStart+posDlFdSched.PosDlHarqProcessIndex],
-								K1: tokens[valStart+posDlFdSched.PosK1],
-								AllFields: make([]string, len(tokens)-valStart),
+								K1:                 tokens[valStart+posDlFdSched.PosK1],
+								AllFields:          make([]string, len(tokens)-valStart),
 							}
 							copy(v.AllFields, tokens[valStart:])
 
@@ -381,11 +394,13 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							if posDlHarq.Ready == false {
 								// TODO: there is also an event named: dlHarqRxDataArray
 								posDlHarq = FindTtiDlHarqRxDataPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
-							v := TtiDlHarqRxData {
+							v := TtiDlHarqRxData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
@@ -395,8 +410,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 									PhysCellId: tokens[valStart+posDlHarq.PosEventHeader.PosPhysCellId],
 								},
 
-								HarqSubcellId: tokens[valStart+posDlHarq.PosHarqSubcellId],
-								AckNack: tokens[valStart+posDlHarq.PosAckNack],
+								HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId],
+								AckNack:            tokens[valStart+posDlHarq.PosAckNack],
 								DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
 							}
 
@@ -404,11 +419,13 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlLaAverageCqi" {
 							if posDlLaAvgCqi.Ready == false {
 								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
-								p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+								if p.Debug {
+									p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+								}
 							}
 
 							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSlot]))
-							v := TtiDlLaAverageCqi {
+							v := TtiDlLaAverageCqi{
 								// event header
 								TtiEventHeader: TtiEventHeader{
 									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
@@ -419,7 +436,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								},
 
 								CellDbIndex: tokens[valStart+posDlLaAvgCqi.PosCellDbIndex],
-								RrmAvgCqi: tokens[valStart+posDlLaAvgCqi.PosRrmAvgCqi],
+								RrmAvgCqi:   tokens[valStart+posDlLaAvgCqi.PosRrmAvgCqi],
 								RrmDeltaCqi: tokens[valStart+posDlLaAvgCqi.PosRrmDeltaCqi],
 							}
 
@@ -434,6 +451,39 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 			}
 		}
 	}
+
+	// update dlSchedAggFields
+	p.LogEdit.Append("updating fields for dlSchedAgg...")
+	core.QCoreApplication_Instance().ProcessEvents(0)
+
+	if mapEventRecord["dlBeamData"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"currentBestBeamId", "current2ndBeamId", "selectedBestBeamId", "selected2ndBeamid"}, ",")
+	}
+
+	if mapEventRecord["dlPreSchedData"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"csListEvent", "highestClassPriority"}, ",")
+	}
+
+	if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
+		dlSchedAggFields += ",cs2List"
+	}
+
+	if mapEventRecord["dlHarqRxData"].Len() > 0 {
+		dlSchedAggFields += ",AckNack"
+	}
+
+	if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"rrmAvgCqi", "rrmDeltaCqi"}, ",")
+	}
+
+	dlSchedAggFields += "\n"
+
+	// perform event aggregation
+	p.LogEdit.Append("performing event aggregation for dlSchedAgg...")
+	core.QCoreApplication_Instance().ProcessEvents(0)
 
 	for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
 		k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
@@ -467,7 +517,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 			k4 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p4].(int)
 			v4 := mapEventRecord["dlTdSchedSubcellData"].Val(k4).(*TtiDlTdSchedSubcellData)
 
-			v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ",")))
+			v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ";")))
 		} else {
 			v1.AllFields = append(v1.AllFields, "-")
 		}
@@ -496,8 +546,35 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 	}
 
-	for k, v := range mapEventRecord {
-		p.LogEdit.Append(fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
+	if p.Debug {
+		for k, v := range mapEventRecord {
+			p.LogEdit.Append(fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
+		}
+	}
+
+	// output aggregated event: dlSchedAgg
+	p.LogEdit.Append("outputing aggregated dlSchedAgg...")
+	core.QCoreApplication_Instance().ProcessEvents(0)
+
+	headerWritten := make(map[string]bool)
+	for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
+		data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
+
+		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_%s_%s.csv", data.PhysCellId, data.Rnti))
+		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		defer fout.Close()
+		if err != nil {
+			p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+			break
+		}
+
+		if _, exist := headerWritten[outFn]; !exist {
+			fout.WriteString(dlSchedAggFields)
+			headerWritten[outFn] = true
+		}
+
+		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+		//fout.Close()
 	}
 
 	p.widget.Accept()
