@@ -36,19 +36,13 @@ func FindTtiEventHeaderPos(tokens []string) TtiEventHeaderPos {
 		if strings.ToLower(item) == "sfn" && p.PosSfn < 0 {
 			p.PosSfn = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "slot" && p.PosSlot < 0 {
+		} else if strings.ToLower(item) == "slot" && p.PosSlot < 0 {
 			p.PosSlot = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "rnti" && p.PosRnti < 0 {
+		} else if strings.ToLower(item) == "rnti" && p.PosRnti < 0 {
 			p.PosRnti = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "physcellid" && p.PosPhysCellId < 0 {
+		} else if strings.ToLower(item) == "physcellid" && p.PosPhysCellId < 0 {
 			p.PosPhysCellId = pos
 			i += 1
 		}
@@ -98,24 +92,16 @@ func FindTtiDlBeamDataPos(tokens []string) TtiDlBeamDataPos {
 		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
 			p.PosSubcellId = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "currentbestbeamid" && p.PosCurrentBestBeamId < 0 {
+		} else if strings.ToLower(item) == "currentbestbeamid" && p.PosCurrentBestBeamId < 0 {
 			p.PosCurrentBestBeamId = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "current2ndbeamid" && p.PosCurrent2ndBeamId < 0 {
+		} else if strings.ToLower(item) == "current2ndbeamid" && p.PosCurrent2ndBeamId < 0 {
 			p.PosCurrent2ndBeamId = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "selectedbestbeamid" && p.PosSelectedBestBeamId < 0 {
+		} else if strings.ToLower(item) == "selectedbestbeamid" && p.PosSelectedBestBeamId < 0 {
 			p.PosSelectedBestBeamId = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "selected2ndbeamid" && p.PosSelected2ndBeamId < 0 {
+		} else if strings.ToLower(item) == "selected2ndbeamid" && p.PosSelected2ndBeamId < 0 {
 			p.PosSelected2ndBeamId = pos
 			i += 1
 		}
@@ -156,9 +142,7 @@ func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 		if strings.ToLower(item) == "cslistevent" && p.PosCsListEvent < 0 {
 			p.PosCsListEvent = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
+		} else if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
 			p.PosHighestClassPriority = pos
 			i += 1
 		}
@@ -196,9 +180,7 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 	for pos, item := range tokens {
 		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
 			p.PosSubcellId = pos
-		}
-
-		if strings.ToLower(item) == "recordsequencenumber" {
+		} else if strings.ToLower(item) == "recordsequencenumber" {
 			p.PosRecordSequenceNumber = append(p.PosRecordSequenceNumber, pos)
 		}
 	}
@@ -223,10 +205,17 @@ type TtiDlFdSchedDataPos struct {
 	PosTxNumber int
 	PosDlHarqProcessIndex int
 	PosK1 int
+
+	// additional position for RIV/SLIV/AntPort/per-Bearer post-processing
+	PosNumOfPrb int
+	PosStartPrb int
+	PosSliv int
+	PosAntPort int
+	PosLcId int
 }
 
 func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
-	n := 4
+	n := 9
 	p := TtiDlFdSchedDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
@@ -234,6 +223,11 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 		PosTxNumber: -1,
 		PosDlHarqProcessIndex: -1,
 		PosK1: -1,
+		PosNumOfPrb: -1,
+		PosStartPrb: -1,
+		PosSliv: -1,
+		PosAntPort: -1,
+		PosLcId: -1,
 	}
 
 	i := 0
@@ -241,20 +235,29 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
 			p.PosCellDbIndex = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
+		} else if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
 			p.PosTxNumber = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
+		} else if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
 			p.PosDlHarqProcessIndex = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "k1" && p.PosK1 < 0 {
+		} else if strings.ToLower(item) == "k1" && p.PosK1 < 0 {
 			p.PosK1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "numofprb" && p.PosNumOfPrb < 0 {
+			p.PosNumOfPrb= pos
+			i += 1
+		} else if strings.ToLower(item) == "startprb" && p.PosStartPrb < 0 {
+			p.PosStartPrb = pos
+			i += 1
+		} else if strings.ToLower(item) == "sliv" && p.PosSliv < 0 {
+			p.PosSliv = pos
+			i += 1
+		} else if strings.ToLower(item) == "antport" && p.PosAntPort < 0 {
+			p.PosAntPort = pos
+			i += 1
+		} else if strings.ToLower(item) == "lcid" && p.PosLcId < 0 {
+			p.PosLcId = pos
 			i += 1
 		}
 
@@ -297,14 +300,10 @@ func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 		if strings.ToLower(item) == "harqsubcellid" && p.PosHarqSubcellId < 0 {
 			p.PosHarqSubcellId = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "acknack" && p.PosAckNack < 0 {
+		} else if strings.ToLower(item) == "acknack" && p.PosAckNack < 0 {
 			p.PosAckNack = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
+		} else if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
 			p.PosDlHarqProcessIndex = pos
 			i += 1
 		}
@@ -348,14 +347,10 @@ func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
 		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
 			p.PosCellDbIndex = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "rrmavgcqi" && p.PosRrmAvgCqi < 0 {
+		} else if strings.ToLower(item) == "rrmavgcqi" && p.PosRrmAvgCqi < 0 {
 			p.PosRrmAvgCqi = pos
 			i += 1
-		}
-
-		if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
+		} else if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
 			p.PosRrmDeltaCqi = pos
 			i += 1
 		}
