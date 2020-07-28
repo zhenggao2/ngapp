@@ -11,6 +11,8 @@ import (
 	"path"
 	"strings"
 	"strconv"
+	"errors"
+	"math"
 )
 
 type TtiTraceUi struct {
@@ -149,6 +151,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 		"dlLaAverageCqi":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
+	var dlPerBearerProcessed bool
+	var mapPdschSliv map[string][]int = p.initPdschSliv()
 
 	for _, fn := range p.ttiFiles {
 		p.LogEdit.Append(fmt.Sprintf("Parsing tti file: %s", fn))
@@ -388,6 +392,99 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 								AllFields:          make([]string, len(tokens)-valStart),
 							}
 							copy(v.AllFields, tokens[valStart:])
+
+							// update SLIV field
+							slivStr := "("
+							// PDSCH mapping type A and normal CP
+							sliv := fmt.Sprintf("00_%s", tokens[valStart+posDlFdSched.PosSliv])
+							if SL, exist := mapPdschSliv[sliv]; exist {
+								slivStr += fmt.Sprintf("TypeA[S=%d;L=%d]", SL[0], SL[1])
+							}
+							// PDSCH mapping type B and normal CP
+							sliv = fmt.Sprintf("10_%s", tokens[valStart+posDlFdSched.PosSliv])
+							if SL, exist := mapPdschSliv[sliv]; exist {
+								slivStr += fmt.Sprintf(";TypeB[S=%d;L=%d]", SL[0], SL[1])
+							}
+							slivStr += ")"
+
+							v.AllFields[posDlFdSched.PosSliv] += slivStr
+
+							// update RIV field
+							rivStr := "(RIV="
+							numPrb := p.unsafeAtoi(tokens[valStart+posDlFdSched.PosNumOfPrb])
+							startPrb := p.unsafeAtoi(tokens[valStart+posDlFdSched.PosStartPrb])
+							// refer to:
+							//  12	Bandwidth part operation of 3GPP 38.213
+							//  5.1.2.2.2	Downlink resource allocation type 1 of 3GPP 38.214
+							bwpSize := 275
+							riv, err := p.makeRiv(numPrb, startPrb, bwpSize)
+							if err == nil {
+								rivStr += strconv.Itoa(riv)
+							} else {
+								rivStr += "-1"
+							}
+							rivStr += ")"
+
+							v.AllFields[posDlFdSched.PosStartPrb] += rivStr
+
+							// update AntPort field
+							mapPdschDmrsType1AntPort := map[int]string {
+								32768: "0",
+								16384: "1",
+								8192: "2",
+								4096: "3",
+								49152: "0;1",
+								12288: "2;3",
+								57344: "0;1;2",
+								61440: "0;1;2;3",
+								40960: "0;2",
+								2048: "4",
+								1024: "5",
+								512: "6",
+								256: "7",
+								3072: "4;5",
+								768: "6;7",
+								34816: "0;4",
+								8704: "2;6",
+								51200: "0;1;4",
+								12800: "2;3;6",
+								52224: "0;1;4;5",
+								13056: "2;3;6;7",
+								43520: "0;2;4;6",
+							}
+							antPortStr := "("
+							if ports, exist := mapPdschDmrsType1AntPort[p.unsafeAtoi(tokens[valStart+posDlFdSched.PosAntPort])]; exist {
+								antPortStr += ports
+							}
+							antPortStr += ")"
+
+							v.AllFields[posDlFdSched.PosAntPort] += antPortStr
+
+							// update per beaer info [lcId, scheduledBytesPerBearer, remainingBytesPerBearerInFdEoBuffer]
+							// there are max 18 bearers
+							maxNumBearerPerUe := 18
+							lcId := make([]string, 0)
+							schedBytes := make([]string, 0)
+							remainBytes := make([]string, 0)
+							for ib := 0; ib < maxNumBearerPerUe; ib += 1 {
+								if p.unsafeAtoi(tokens[valStart+posDlFdSched.PosLcId+3*ib]) == 255 {
+									break
+								} else {
+									lcId = append(lcId, tokens[valStart+posDlFdSched.PosLcId+3*ib])
+									schedBytes = append(schedBytes, tokens[valStart+posDlFdSched.PosLcId+3*ib+1])
+									remainBytes = append(remainBytes, tokens[valStart+posDlFdSched.PosLcId+3*ib+2])
+								}
+							}
+
+							perBearerInfo := []string{fmt.Sprintf("[%s]", strings.Join(lcId, ";")), fmt.Sprintf("[%s]", strings.Join(schedBytes, ";")), fmt.Sprintf("[%s]", strings.Join(remainBytes, ";"))}
+							v.AllFields = append(append(v.AllFields[:posDlFdSched.PosLcId], perBearerInfo...), v.AllFields[posDlFdSched.PosLcId+3*maxNumBearerPerUe:]...)
+
+							// update dlSchedAggFields accordingly only once
+							if !dlPerBearerProcessed {
+								dlSchedAggFieldsTokens := strings.Split(dlSchedAggFields, ",")
+								dlSchedAggFields = strings.Join(append(dlSchedAggFieldsTokens[:1+posDlFdSched.PosLcId+3], dlSchedAggFieldsTokens[1+posDlFdSched.PosLcId+3*maxNumBearerPerUe:]...), ",")
+								dlPerBearerProcessed = true
+							}
 
 							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlHarqRxData" {
@@ -730,4 +827,72 @@ func (p *TtiTraceUi) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	}
 
 	return hsfn, sfn, slot
+}
+
+func (p *TtiTraceUi) initPdschSliv() map[string][]int {
+	// prefix
+	// "00": mapping type A + normal cp
+	// "10": mapping type B + normal cp
+	pdschFromSliv := make(map[string][]int)
+	var prefix string
+
+	// case #1: prefix="00"
+	prefix = "00"
+	for _, S := range utils.PyRange(0, 4, 1) {
+		for _, L := range utils.PyRange(3, 15, 1) {
+			if S+L >= 3 && S+L < 15 {
+				sliv, err := p.makeSliv(S, L)
+				if err == nil {
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #3: prefix="10"
+	prefix = "10"
+	for _, S := range utils.PyRange(0, 13, 1) {
+		for _, L := range []int{2, 4, 7} {
+			if S+L >= 2 && S+L < 15 {
+				sliv, err := p.makeSliv(S, L)
+				if err == nil {
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					pdschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	return pdschFromSliv
+}
+
+func (p *TtiTraceUi) makeSliv(S, L int) (int, error) {
+	if L <= 0 || L > 14-S {
+		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
+	}
+
+	sliv := 0
+	if (L - 1) <= 7 {
+		sliv = 14 * (L-1) + S
+	} else {
+		sliv = 14 * (14-L+1) + (14-1-S)
+	}
+
+	return sliv, nil
+}
+
+func (p *TtiTraceUi) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
+	if numPrb < 1 || numPrb > (bwpSize-startPrb) {
+		return -1, errors.New(fmt.Sprintf("Invalid numPrb/startPrb combination: numPrb=%d, startPrb=%d", numPrb, startPrb))
+	}
+
+	riv := 0
+	if (numPrb-1) <=  int(math.Floor(float64(bwpSize)/2)) {
+		riv = bwpSize * (numPrb-1) + startPrb
+	} else {
+		riv = bwpSize * (bwpSize-numPrb+1) + (bwpSize-1-startPrb)
+	}
+
+	return riv, nil
 }
