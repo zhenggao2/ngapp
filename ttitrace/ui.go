@@ -489,7 +489,6 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "dlHarqRxData" || eventName == "dlHarqRxDataArray" {
 							if posDlHarq.Ready == false {
-								// TODO: there is also an event named: dlHarqRxDataArray
 								posDlHarq = FindTtiDlHarqRxDataPos(tokens)
 
 								if eventName == "dlHarqRxDataArray" {
@@ -691,7 +690,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
 		data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
 
-		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_%s_%s.csv", data.PhysCellId, data.Rnti))
+		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
 		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		defer fout.Close()
 		if err != nil {
