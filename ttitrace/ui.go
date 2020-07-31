@@ -487,32 +487,66 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlHarqRxData" {
+						} else if eventName == "dlHarqRxData" || eventName == "dlHarqRxDataArray" {
 							if posDlHarq.Ready == false {
 								// TODO: there is also an event named: dlHarqRxDataArray
 								posDlHarq = FindTtiDlHarqRxDataPos(tokens)
+
+								if eventName == "dlHarqRxDataArray" {
+									posDlHarq.PosEventHeader.PosRnti += 2
+									posDlHarq.PosEventHeader.PosPhysCellId += 2
+								}
+
 								if p.Debug {
 									p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
-							v := TtiDlHarqRxData{
-								// event header
-								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
-									Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
-									Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
-									Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti],
-									PhysCellId: tokens[valStart+posDlHarq.PosEventHeader.PosPhysCellId],
-								},
+							if eventName == "dlHarqRxData" {
+								k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
+								v := TtiDlHarqRxData{
+									// event header
+									TtiEventHeader: TtiEventHeader{
+										Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+										Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
+										Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
+										Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti],
+										PhysCellId: tokens[valStart+posDlHarq.PosEventHeader.PosPhysCellId],
+									},
 
-								HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId],
-								AckNack:            tokens[valStart+posDlHarq.PosAckNack],
-								DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
+									HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId],
+									AckNack:            tokens[valStart+posDlHarq.PosAckNack],
+									DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
+								}
+
+								mapEventRecord[eventName].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
+							} else {
+								maxNumHarq := 32	// max 32 HARQ feedbacks per dlHarqRxDataArray
+								for ih := 0; ih < maxNumHarq; ih += 1 {
+									posRnti := valStart+posDlHarq.PosEventHeader.PosRnti+ih*9
+									if posRnti >= len(tokens) || len(tokens[posRnti]) == 0 {
+										break
+									}
+
+									k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
+									v := TtiDlHarqRxData{
+										// event header
+										TtiEventHeader: TtiEventHeader{
+											Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+											Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
+											Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
+											Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti+ih*9],
+											PhysCellId: tokens[valStart+posDlHarq.PosEventHeader.PosPhysCellId+ih*9],
+										},
+
+										HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId+ih*9],
+										AckNack:            tokens[valStart+posDlHarq.PosAckNack+ih*9],
+										DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex+ih*9],
+									}
+
+									mapEventRecord["dlHarqRxData"].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
+								}
 							}
-
-							mapEventRecord[eventName].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
 						} else if eventName == "dlLaAverageCqi" {
 							if posDlLaAvgCqi.Ready == false {
 								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
