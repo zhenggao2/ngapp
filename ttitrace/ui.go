@@ -238,7 +238,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 							// Step-1: write event header only once
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-							defer fout.Close()
+							//defer fout.Close()
 							if err != nil {
 								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 								break
@@ -249,7 +249,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 							row := strings.Join(mapFieldName[key], ",")
 							fout.WriteString(fmt.Sprintf("%s\n", row))
-							//fout.Close()
+							fout.Close()
 
 							// update dlSchedAggFields
 							if len(dlSchedAggFields) == 0 && eventName == "dlFdSchedData" {
@@ -266,7 +266,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 						// Step-2: write event record
 						fout2, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-						defer fout2.Close()
+						//defer fout2.Close()
 						if err != nil {
 							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 							break
@@ -277,7 +277,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 
 						row := strings.Join(tokens[valStart:], ",")
 						fout2.WriteString(fmt.Sprintf("%s\n", row))
-						//fout2.Close()
+						fout2.Close()
 
 						// Step-3: aggregate events
 						if eventName == "dlBeamData" {
@@ -691,20 +691,20 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 		data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
 
 		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
-		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-		defer fout.Close()
+		fout3, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		//defer fout3.Close()
 		if err != nil {
 			p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
 			break
 		}
 
 		if _, exist := headerWritten[outFn]; !exist {
-			fout.WriteString(dlSchedAggFields)
+			fout3.WriteString(dlSchedAggFields)
 			headerWritten[outFn] = true
 		}
 
-		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
-		//fout.Close()
+		fout3.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+		fout3.Close()
 	}
 
 	p.widget.Accept()
