@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"errors"
 	"math"
+	"sync"
 )
 
 type TtiTraceUi struct {
@@ -615,66 +616,72 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	p.LogEdit.Append("performing event aggregation for dlSchedAgg...")
 	core.QCoreApplication_Instance().ProcessEvents(0)
 
+	wg := &sync.WaitGroup{}
 	for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
-		k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
-		v1 := mapEventRecord["dlFdSchedData"].Val(k1).(*TtiDlFdSchedData)
+		wg.Add(1)
+		go func(p1 int) {
+			defer wg.Done()
 
-		// aggregate dlBeamData
-		p2 := p.findDlBeam(mapEventRecord["dlFdSchedData"], mapEventRecord["dlBeamData"], p1)
-		if p2 >= 0 {
-			k2 := mapEventRecord["dlBeamData"].Keys()[p2].(int)
-			v2 := mapEventRecord["dlBeamData"].Val(k2).(*TtiDlBeamData)
+			k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
+			v1 := mapEventRecord["dlFdSchedData"].Val(k1).(*TtiDlFdSchedData)
 
-			v1.AllFields = append(v1.AllFields, []string{v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
-		} else {
-			v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
-		}
+			// aggregate dlBeamData
+			p2 := p.findDlBeam(mapEventRecord["dlFdSchedData"], mapEventRecord["dlBeamData"], p1)
+			if p2 >= 0 {
+				k2 := mapEventRecord["dlBeamData"].Keys()[p2].(int)
+				v2 := mapEventRecord["dlBeamData"].Val(k2).(*TtiDlBeamData)
 
-		// aggregate dlPreSchedData
-		p3 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
-		if p3 >= 0 {
-			k3 := mapEventRecord["dlPreSchedData"].Keys()[p3].(int)
-			v3 := mapEventRecord["dlPreSchedData"].Val(k3).(*TtiDlPreSchedData)
+				v1.AllFields = append(v1.AllFields, []string{v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
+			} else {
+				v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
+			}
 
-			v1.AllFields = append(v1.AllFields, []string{v3.CsListEvent, v3.HighestClassPriority}...)
-		} else {
-			v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
-		}
+			// aggregate dlPreSchedData
+			p3 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
+			if p3 >= 0 {
+				k3 := mapEventRecord["dlPreSchedData"].Keys()[p3].(int)
+				v3 := mapEventRecord["dlPreSchedData"].Val(k3).(*TtiDlPreSchedData)
 
-		// aggregate dlTdSchedSubcellData
-		p4 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
-		if p4 >= 0 {
-			k4 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p4].(int)
-			v4 := mapEventRecord["dlTdSchedSubcellData"].Val(k4).(*TtiDlTdSchedSubcellData)
+				v1.AllFields = append(v1.AllFields, []string{v3.CsListEvent, v3.HighestClassPriority}...)
+			} else {
+				v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
+			}
 
-			v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ";")))
-		} else {
-			v1.AllFields = append(v1.AllFields, "-")
-		}
+			// aggregate dlTdSchedSubcellData
+			p4 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
+			if p4 >= 0 {
+				k4 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p4].(int)
+				v4 := mapEventRecord["dlTdSchedSubcellData"].Val(k4).(*TtiDlTdSchedSubcellData)
 
-		// aggregate dlHarqRxData
-		p5 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
-		if p5 >= 0 {
-			k5 := mapEventRecord["dlHarqRxData"].Keys()[p5].(string)
-			v5 := mapEventRecord["dlHarqRxData"].Val(k5).(*TtiDlHarqRxData)
+				v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ";")))
+			} else {
+				v1.AllFields = append(v1.AllFields, "-")
+			}
 
-			v1.AllFields = append(v1.AllFields, v5.AckNack)
-		} else {
-			v1.AllFields = append(v1.AllFields, "-")
-		}
+			// aggregate dlHarqRxData
+			p5 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
+			if p5 >= 0 {
+				k5 := mapEventRecord["dlHarqRxData"].Keys()[p5].(string)
+				v5 := mapEventRecord["dlHarqRxData"].Val(k5).(*TtiDlHarqRxData)
 
-		// aggregate dlLaAverageCqi
-		p6 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
-		if p6 >= 0 {
-			k6 := mapEventRecord["dlLaAverageCqi"].Keys()[p6].(int)
-			v6 := mapEventRecord["dlLaAverageCqi"].Val(k6).(*TtiDlLaAverageCqi)
+				v1.AllFields = append(v1.AllFields, v5.AckNack)
+			} else {
+				v1.AllFields = append(v1.AllFields, "-")
+			}
 
-			v1.AllFields = append(v1.AllFields, []string{v6.RrmAvgCqi, v6.RrmDeltaCqi}...)
-		} else {
-			v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
-		}
+			// aggregate dlLaAverageCqi
+			p6 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
+			if p6 >= 0 {
+				k6 := mapEventRecord["dlLaAverageCqi"].Keys()[p6].(int)
+				v6 := mapEventRecord["dlLaAverageCqi"].Val(k6).(*TtiDlLaAverageCqi)
 
+				v1.AllFields = append(v1.AllFields, []string{v6.RrmAvgCqi, v6.RrmDeltaCqi}...)
+			} else {
+				v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
+			}
+		} (p1)
 	}
+	wg.Wait()
 
 	if p.Debug {
 		for k, v := range mapEventRecord {
@@ -808,7 +815,7 @@ func (p *TtiTraceUi) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		if k2ts == harq {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId && v1.DlHarqProcessIndex == v2.DlHarqProcessIndex {
 				p2 = i
-				return p2
+				break
 			}
 		}
 	}
