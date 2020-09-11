@@ -23,6 +23,5 @@ import (
 )
 
 func main() {
-	// Logger := utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
 	cmd.Execute()
 }
