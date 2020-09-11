@@ -1,4 +1,4 @@
-package main
+package unused
 
 import (
 	"fmt"
@@ -96,7 +96,7 @@ func (app *NgApp) onExecNgGrid(checked bool) {
 }
 
 func (app *NgApp) onExecTtiTrace(checked bool) {
-	ui := new(ttitrace.TtiTraceUi)
+	ui := new(ttitrace.TtiParser)
 	ui.Debug = app.debug
 	ui.Logger = app.logger
 	ui.LogEdit = app.logEdit
