@@ -38,13 +38,13 @@ var ttiCmd = &cobra.Command{
 		//fmt.Printf("tti called with flags: -d=%v, -p=%v\n", ttiDir, ttiPattern)
 	    //dir, _ := cmd.Flags().GetString("dir")
 	    if len(dir) == 0 {
-			cmd.Flags().Set("dir", viper.GetString("tti_dir"))
+			cmd.Flags().Set("dir", viper.GetString("tti.dir"))
 		} else {
 		    viper.WriteConfig()
 		}
 
-		//fmt.Println(dir)
-		//fmt.Println(pattern)
+		// fmt.Println(dir)
+		// fmt.Println(pattern)
 		// fmt.Println(viper.Get("tti_dir"))
 
 		tti := new(ttitrace.TtiParser)
@@ -64,12 +64,12 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	//ttiCmd.Flags().StringVarP(&ttiDir, "dir", "d", "", "directory containing tti files")
-	//ttiCmd.Flags().StringVarP(&ttiPattern, "pattern", "p", "*.csv", "pattern of tti files")
+	//ttiCmd.Flags().StringP("dir", "d", "", "directory containing tti files")
+	//ttiCmd.Flags().StringP("pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVarP(&dir, "dir", "d", "", "directory containing tti files")
 	ttiCmd.Flags().StringVarP(&pattern, "pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of MAC TTI traces[nr]")
 	ttiCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz|30khz|120khz]")
 	ttiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
-	viper.BindPFlag("tti_dir", ttiCmd.Flags().Lookup("dir"))
+	viper.BindPFlag("tti.dir", ttiCmd.Flags().Lookup("dir"))
 }

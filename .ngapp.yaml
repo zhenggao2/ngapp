@@ -1,1 +1,36 @@
-tti_dir: D:\work\email\year2020\202006\jiaziteng_tput\gNB_10.163.78.186_20200624_133635_TTI\fsp-1-1a_ttiTrace\ul_dl\
+nrrg:
+  carriergrid:
+    bw: 100MHz
+    carriernumrbs: 273
+    carrierscs: 30KHz
+    offsettocarrier: 0
+  freqband:
+    duplexmode: TDD
+    freqrange: FR1
+    maxdlfreq: 2690
+    opband: n41
+  mib:
+    commonscs: 30KHz
+    coreset0multiplexingpat: 1
+    coreset0numrbs: 48
+    coreset0numsymbs: 1
+    coreset0offset: 16
+    coreset0offsetlist:
+    - 16
+    dmrstypeapos: pos2
+    hrf: 0
+    rmsicoreset0: 12
+    rmsicss0: 0
+    sfn: 0
+  ssbburst:
+    grouppresence: ""
+    inonegroup: "11111111"
+    maxl: 8
+    ssbperiod: 20ms
+  ssbgrid:
+    kssb: 0
+    ncrbssb: 32
+    ssbpattern: Case C
+    ssbscs: 30KHz
+tti:
+  dir: D:\work\email\year2020\202006\jiaziteng_tput\gNB_10.163.78.186_20200624_133635_TTI\fsp-1-1a_ttiTrace\ul_dl\
