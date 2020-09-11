@@ -1,28 +1,28 @@
+/*
+Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 package main
 
 import (
-	"fmt"
-	"os"
-	"time"
-	"github.com/therecipe/qt/widgets"
-	"github.com/zhenggao2/ngapp/utils"
+    // "fmt"
+	// "time"
+	"github.com/zhenggao2/ngapp/cmd"
+	// "github.com/zhenggao2/ngapp/utils"
 )
 
 func main() {
-	logger := utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
-
-	app := widgets.NewQApplication(len(os.Args), os.Args)
-	ngapp := NewNgApp(logger)
-	ngapp.MainWin.Show()
-
-	/*
-	// defer for recover when panic happens
-	defer func() {
-		if err := recover(); err != nil {
-			ngapp.logEdit.Append(fmt.Sprintf("<font color=red><b>[Panic recover]</b></font>: %v.", err))
-			app.Exec()
-		}
-	}()
-	 */
-	app.Exec()
+	// Logger := utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
+	cmd.Execute()
 }
