@@ -1,5 +1,8 @@
 .git/
+.idea/
 deploy/
 linux/
+windows/
 logs/
 bin/
+*.exe
