@@ -2,36 +2,30 @@ package ttitrace
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"github.com/therecipe/qt/core"
-	"github.com/therecipe/qt/widgets"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"io/ioutil"
+	"math"
 	"os"
 	"path"
-	"strings"
 	"strconv"
-	"errors"
-	"math"
+	"strings"
 	"sync"
 )
 
-type TtiTraceUi struct {
-	Debug   bool
-	Logger  *zap.Logger
-	LogEdit *widgets.QTextEdit
-	Args    map[string]interface{}
-
-	ratComb   *widgets.QComboBox
-	scsComb *widgets.QComboBox
-	chooseBtn *widgets.QPushButton
-	okBtn     *widgets.QPushButton
-	cancelBtn *widgets.QPushButton
-	widget    *widgets.QDialog
+type TtiParser struct {
+	log *zap.Logger
+	ttiDir string
+	ttiPattern string
+	ttiRat string
+	ttiScs string
+	debug bool
 
 	slotsPerRf int
 	ttiFiles []string
-	prevDir  string
 }
 
 type SfnInfo struct {
@@ -39,94 +33,36 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *TtiTraceUi) InitUi() {
-	// notes on Qt::Alignment:
-	// void QGridLayout::addWidget(QWidget *widget, int fromRow, int fromColumn, int rowSpan, int columnSpan, Qt::Alignment alignment = Qt::Alignment())
-	// The alignment is specified by alignment. The default alignment is 0, which means that the widget fills the entire cell.
+func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs string, debug bool) {
+	p.log = log
+	p.ttiDir = dir
+	p.ttiPattern = pattern
+	p.ttiRat = rat
+	p.ttiScs = scs
+	p.debug = debug
 
-	// notes on Qt::WindowsFlags:
-	// QLabel::QLabel(const QString &text, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags())
-	// Qt::Widget	0x00000000	This is the default type for QWidget. Widgets of this type are child widgets if they have a parent, and independent windows if they have no parent. See also Qt::Window and Qt::SubWindow.
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("initializing tti parser...(working dir: %v)", p.ttiDir))
 
-	ratLabel := widgets.NewQLabel2("Select RAT:", nil, core.Qt__Widget)
-	p.ratComb = widgets.NewQComboBox(nil)
-	p.ratComb.AddItems([]string{"5G"})
-
-	scsLabel := widgets.NewQLabel2("NRCELLGRP-scs:", nil, core.Qt__Widget)
-	p.scsComb = widgets.NewQComboBox(nil)
-	p.scsComb.AddItems([]string{"15KHz(FDD)", "30KHz(TDD-FR1)", "120KHz(TDD-FR2)"})
-	p.scsComb.SetCurrentIndex(1)
-
-	chooseLabel := widgets.NewQLabel2("Select TTI files:", nil, core.Qt__Widget)
-	p.chooseBtn = widgets.NewQPushButton2("...", nil)
-
-	p.okBtn = widgets.NewQPushButton2("OK", nil)
-	p.cancelBtn = widgets.NewQPushButton2("Cancel", nil)
-
-	hboxLayout1 := widgets.NewQHBoxLayout()
-	hboxLayout1.AddWidget(chooseLabel, 0, 0)
-	hboxLayout1.AddWidget(p.chooseBtn, 0, 0)
-	hboxLayout1.AddStretch(0)
-
-	gridLayout := widgets.NewQGridLayout(nil)
-	gridLayout.AddWidget2(ratLabel, 0, 0, 0)
-	gridLayout.AddWidget2(p.ratComb, 0, 1, 0)
-	gridLayout.AddWidget2(scsLabel, 1, 0, 0)
-	gridLayout.AddWidget2(p.scsComb, 1, 1, 0)
-	gridLayout.AddLayout2(hboxLayout1, 2, 0, 1, 2, 0)
-
-	hboxLayout2 := widgets.NewQHBoxLayout()
-	hboxLayout2.AddStretch(0)
-	hboxLayout2.AddWidget(p.okBtn, 0, 0)
-	hboxLayout2.AddWidget(p.cancelBtn, 0, 0)
-
-	layout := widgets.NewQVBoxLayout()
-	layout.AddLayout(gridLayout, 0)
-	layout.AddStretch(0)
-	layout.AddLayout(hboxLayout2, 0)
-
-	p.widget = widgets.NewQDialog(nil, core.Qt__Widget)
-	p.widget.SetLayout(layout)
-	p.widget.SetWindowTitle("TTI Trace Tool")
-
-	p.initSlots()
-
-	p.widget.Exec()
-}
-
-func (p *TtiTraceUi) initSlots() {
-	p.chooseBtn.ConnectClicked(p.onChooseBtnClicked)
-	p.okBtn.ConnectClicked(p.onOkBtnClicked)
-	p.cancelBtn.ConnectClicked(p.onCancelBtnClicked)
-}
-
-func (p *TtiTraceUi) onChooseBtnClicked(checked bool) {
-	var curDir string
-	if len(p.prevDir) == 0 {
-		curDir = "."
-	} else {
-		curDir = p.prevDir
+	fileInfo, err := ioutil.ReadDir(p.ttiDir)
+	if err != nil {
+		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", dir))
+		return
 	}
 
-	p.ttiFiles = widgets.QFileDialog_GetOpenFileNames(p.widget, "Choose TTI Files", curDir, "Data files (*.dat);;CSV files (*.csv);;All files (*.*)", "All files (*.*)", widgets.QFileDialog__DontResolveSymlinks)
-	if len(p.ttiFiles) > 0 {
-		p.prevDir = path.Dir(p.ttiFiles[0])
+	for _, file := range fileInfo {
+	    if !file.IsDir() && path.Ext(file.Name()) == p.ttiPattern {
+			p.ttiFiles = append(p.ttiFiles, path.Join(p.ttiDir, file.Name()))
+		}
 	}
-
-	/*
-	p.LogEdit.Append("List of TTI files:")
-	for _, fn := range p.ttiFiles {
-		p.LogEdit.Append(fn)
-	}
-	*/
 }
 
-func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
-	scs2nslots := map[string]int{"15KHz(FDD)": 10, "30KHz(TDD-FR1)": 20, "120KHz(TDD-FR2)": 80}
-	p.slotsPerRf = scs2nslots[p.scsComb.CurrentText()]
+// func (p *TtiParser) onOkBtnClicked(checked bool) {
+func (p *TtiParser) Exec() {
+	scs2nslots := map[string]int{"15khz": 10, "30khz": 20, "120khz": 80}
+	p.slotsPerRf = scs2nslots[strings.ToLower(p.ttiScs)]
 
 	// recreate dir for parsed ttis
-	outPath := path.Join(p.prevDir, "parsed_ttis")
+	outPath := path.Join(p.ttiDir, "parsed_ttis")
 	os.RemoveAll(outPath)
 	if err := os.MkdirAll(outPath, 0775); err != nil {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
@@ -155,28 +91,14 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	var dlPerBearerProcessed bool
 	var mapPdschSliv map[string][]int = p.initPdschSliv()
 
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing tti files...(%d in total)", len(p.ttiFiles)))
 	for _, fn := range p.ttiFiles {
-		p.LogEdit.Append(fmt.Sprintf("Parsing tti file: %s", fn))
-		/*
-			//QEventLoop::ProcessEventsFlag
-			type QEventLoop__ProcessEventsFlag int64
-
-			const (
-				QEventLoop__AllEvents              QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x00)
-				QEventLoop__ExcludeUserInputEvents QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x01)
-				QEventLoop__ExcludeSocketNotifiers QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x02)
-				QEventLoop__WaitForMoreEvents      QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x04)
-				QEventLoop__X11ExcludeTimers       QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x08)
-				QEventLoop__EventLoopExec          QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x20)
-				QEventLoop__DialogExec             QEventLoop__ProcessEventsFlag = QEventLoop__ProcessEventsFlag(0x40)
-			)
-		*/
-		core.QCoreApplication_Instance().ProcessEvents(0)
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("parsing: %s", fn))
 
 		fin, err := os.Open(fn)
-		defer fin.Close()
+		// defer fin.Close()
 		if err != nil {
-			p.LogEdit.Append(err.Error())
+			p.writeLog(zapcore.ErrorLevel, err.Error())
 			continue
 		}
 
@@ -241,7 +163,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 							//defer fout.Close()
 							if err != nil {
-								p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+								p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
 								break
 							}
 
@@ -269,7 +191,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						fout2, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 						//defer fout2.Close()
 						if err != nil {
-							p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+							p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
 							break
 						}
 
@@ -284,8 +206,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						if eventName == "dlBeamData" {
 							if posDlBeam.Ready == false {
 								posDlBeam = FindTtiDlBeamDataPos(tokens)
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlBeam=%v", posDlBeam))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlBeam=%v", posDlBeam))
 								}
 							}
 
@@ -311,8 +233,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlPreSchedData" {
 							if posDlPreSched.Ready == false {
 								posDlPreSched = FindTtiDlPreSchedDataPos(tokens)
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlPreSched=%v", posDlPreSched))
 								}
 							}
 
@@ -335,8 +257,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlTdSchedSubcellData" {
 							if posDlTdSched.Ready == false {
 								posDlTdSched = FindTtiDlTdSchedSubcellDataPos(tokens)
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlTdSched=%v", posDlTdSched))
 								}
 							}
 
@@ -370,8 +292,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlFdSchedData" {
 							if posDlFdSched.Ready == false {
 								posDlFdSched = FindTtiDlFdSchedDataPos(tokens)
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlFdSched=%v", posDlFdSched))
 								}
 							}
 
@@ -497,8 +419,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 									posDlHarq.PosEventHeader.PosPhysCellId += 2
 								}
 
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlHarq=%v", posDlHarq))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlHarq=%v", posDlHarq))
 								}
 							}
 
@@ -550,8 +472,8 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 						} else if eventName == "dlLaAverageCqi" {
 							if posDlLaAvgCqi.Ready == false {
 								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
-								if p.Debug {
-									p.LogEdit.Append(fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlLaAvgCqi=%v", posDlLaAvgCqi))
 								}
 							}
 
@@ -574,19 +496,19 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
-						p.LogEdit.Append(fmt.Sprintf("Invalid event record detected: %s", line))
+						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
 					}
 				} else {
-					p.LogEdit.Append(fmt.Sprintf("Invalid event data detected: %s", line))
+					p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event data detected: %s", line))
 				}
 			}
 		}
+
+		fin.Close()
 	}
 
 	// update dlSchedAggFields
-	p.LogEdit.Append("updating fields for dlSchedAgg...")
-	core.QCoreApplication_Instance().ProcessEvents(0)
-
+	p.writeLog(zapcore.InfoLevel, "updating fields for dlSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
 	if mapEventRecord["dlBeamData"].Len() > 0 {
 		dlSchedAggFields += ","
 		dlSchedAggFields += strings.Join([]string{"currentBestBeamId", "current2ndBeamId", "selectedBestBeamId", "selected2ndBeamid"}, ",")
@@ -613,8 +535,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	dlSchedAggFields += "\n"
 
 	// perform event aggregation
-	p.LogEdit.Append("performing event aggregation for dlSchedAgg...")
-	core.QCoreApplication_Instance().ProcessEvents(0)
+	p.writeLog(zapcore.InfoLevel, "performing event aggregation for dlSchedAgg...")
 
 	wg := &sync.WaitGroup{}
 	for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
@@ -683,15 +604,16 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 	}
 	wg.Wait()
 
-	if p.Debug {
+	/*
+	if p.debug {
 		for k, v := range mapEventRecord {
-			p.LogEdit.Append(fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
 		}
 	}
+	*/
 
 	// output aggregated event: dlSchedAgg
-	p.LogEdit.Append("outputing aggregated dlSchedAgg...")
-	core.QCoreApplication_Instance().ProcessEvents(0)
+	p.writeLog(zapcore.InfoLevel, "outputing aggregated dlSchedAgg...")
 
 	headerWritten := make(map[string]bool)
 	for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
@@ -701,7 +623,7 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 		fout3, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		//defer fout3.Close()
 		if err != nil {
-			p.LogEdit.Append(fmt.Sprintf("Fail to open file: %s", outFn))
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
 			break
 		}
 
@@ -714,29 +636,25 @@ func (p *TtiTraceUi) onOkBtnClicked(checked bool) {
 		fout3.Close()
 	}
 
-	p.widget.Accept()
+	// p.widget.Accept()
 }
 
-func (p *TtiTraceUi) onCancelBtnClicked(checked bool) {
-	p.widget.Reject()
-}
-
-func (p *TtiTraceUi) makeTimeStamp(hsfn, sfn, slot int) int {
+func (p *TtiParser) makeTimeStamp(hsfn, sfn, slot int) int {
 	return 1024 * p.slotsPerRf * hsfn + p.slotsPerRf * sfn + slot
 }
 
-func (p *TtiTraceUi) unsafeAtoi(s string) int {
+func (p *TtiParser) unsafeAtoi(s string) int {
 	v, _ := strconv.Atoi(s)
 	return v
 }
 
-func (p *TtiTraceUi) ttiDlPreSchedClassPriority(cp string) string {
+func (p *TtiParser) ttiDlPreSchedClassPriority(cp string) string {
 	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "drbTraffic", "lastUnUsed"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
-func (p *TtiTraceUi) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -757,7 +675,7 @@ func (p *TtiTraceUi) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiTraceUi) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -778,7 +696,7 @@ func (p *TtiTraceUi) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiTraceUi) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -799,7 +717,7 @@ func (p *TtiTraceUi) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiTraceUi) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 	hsfn, sfn, slot := p.incSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
@@ -823,7 +741,7 @@ func (p *TtiTraceUi) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiTraceUi) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -844,7 +762,7 @@ func (p *TtiTraceUi) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiTraceUi) contains(a []string, b string) bool {
+func (p *TtiParser) contains(a []string, b string) bool {
 	for _, s := range a {
 		if s == b {
 			return true
@@ -854,7 +772,7 @@ func (p *TtiTraceUi) contains(a []string, b string) bool {
 	return false
 }
 
-func (p *TtiTraceUi) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
+func (p *TtiParser) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	slot += n
 	if slot >= p.slotsPerRf {
 		slot %= p.slotsPerRf
@@ -869,7 +787,7 @@ func (p *TtiTraceUi) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	return hsfn, sfn, slot
 }
 
-func (p *TtiTraceUi) initPdschSliv() map[string][]int {
+func (p *TtiParser) initPdschSliv() map[string][]int {
 	// prefix
 	// "00": mapping type A + normal cp
 	// "10": mapping type B + normal cp
@@ -907,7 +825,7 @@ func (p *TtiTraceUi) initPdschSliv() map[string][]int {
 	return pdschFromSliv
 }
 
-func (p *TtiTraceUi) makeSliv(S, L int) (int, error) {
+func (p *TtiParser) makeSliv(S, L int) (int, error) {
 	if L <= 0 || L > 14-S {
 		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
 	}
@@ -922,7 +840,7 @@ func (p *TtiTraceUi) makeSliv(S, L int) (int, error) {
 	return sliv, nil
 }
 
-func (p *TtiTraceUi) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
+func (p *TtiParser) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
 	if numPrb < 1 || numPrb > (bwpSize-startPrb) {
 		return -1, errors.New(fmt.Sprintf("Invalid numPrb/startPrb combination: numPrb=%d, startPrb=%d", numPrb, startPrb))
 	}
@@ -935,4 +853,26 @@ func (p *TtiTraceUi) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
 	}
 
 	return riv, nil
+}
+
+func (p *TtiParser) writeLog(level zapcore.Level, s string) {
+	switch level {
+	case zapcore.DebugLevel:
+		p.log.Debug(s)
+	case zapcore.InfoLevel:
+		p.log.Info(s)
+	case zapcore.WarnLevel:
+		p.log.Warn(s)
+	case zapcore.ErrorLevel:
+		p.log.Error(s)
+	case zapcore.FatalLevel:
+		p.log.Fatal(s)
+	case zapcore.PanicLevel:
+		p.log.Panic(s)
+	default:
+	}
+
+	if level != zapcore.DebugLevel {
+		fmt.Println(s)
+	}
 }
