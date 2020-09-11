@@ -19,17 +19,21 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+	"github.com/zhenggao2/ngapp/utils"
 )
 
 var cfgFile string
+var Logger = utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
+
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ngapp",
-	Short: "Ngapp is set of useful NPO tools.",
+	Short: "",
 	Long: `Ngapp is a collection of useful applets for 4G and 5G NPO(Network Planning & Optimization).
 Author: zhengwei.gao@yahoo.com
 Blog: http://blog.csdn.net/jeffyko`,
