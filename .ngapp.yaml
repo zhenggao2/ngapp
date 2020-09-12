@@ -4,6 +4,20 @@ nrrg:
     carriernumrbs: 273
     carrierscs: 30KHz
     offsettocarrier: 0
+  commonsetting:
+    numueap: 2Tx
+    patnumdlslots:
+    - 7
+    patnumdlsymbs:
+    - 6
+    patnumulslots:
+    - 2
+    patnumulsymbs:
+    - 4
+    patperiod:
+    - 5ms
+    pci: 0
+    refscs: 30KHz
   freqband:
     duplexmode: TDD
     freqrange: FR1
