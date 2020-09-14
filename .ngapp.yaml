@@ -5,7 +5,7 @@ nrrg:
     carrierscs: 30KHz
     offsettocarrier: 0
   commonsetting:
-    numueap: 2Tx
+    numueap: 2T
     patnumdlslots:
     - 7
     patnumdlsymbs:
@@ -18,6 +18,9 @@ nrrg:
     - 5ms
     pci: 0
     refscs: 30KHz
+  css0:
+    css0agglevel: 4
+    css0numcandidates: n4
   freqband:
     duplexmode: TDD
     freqrange: FR1
