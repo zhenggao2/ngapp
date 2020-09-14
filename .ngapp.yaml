@@ -18,9 +18,88 @@ nrrg:
     - 5ms
     pci: 0
     refscs: 30KHz
+  coreset1:
+    coreset1cceregmap: interleaved
+    coreset1duration: 1
+    coreset1freqres: "111111111111111111111111111111111111111111111"
+    coreset1interleaversize: n2
+    coreset1regbundlesize: n2
+    coreset1shiftind: 0
   css0:
     css0agglevel: 4
     css0numcandidates: n4
+  dci10:
+    dci10fdnumrbs:
+    - 48
+    - 48
+    - 48
+    dci10fdstartrb:
+    - 0
+    - 0
+    - 0
+    dci10fdvrbprbmappingtype:
+    - interleaved
+    - interleaved
+    - interleaved
+    dci10mcscw0:
+    - 2
+    - 2
+    - 2
+    dci10msg2tbscaling: 0
+    dci10msg4deltapri: 1
+    dci10msg4tdk1: 6
+    dci10tdra:
+    - 10
+    - 10
+    - 10
+    fdbundlesize:
+    - n2
+    - n2
+    - n2
+    fdra:
+    - "00001011111"
+    - "00001011111"
+    - "00001011111"
+    fdratype:
+    - RA Type1
+    - RA Type1
+    - RA Type1
+    mupdcch:
+    - 1
+    - 1
+    - 1
+    mupdsch:
+    - 1
+    - 1
+    - 1
+    rnti:
+    - SI-RNTI
+    - RA-RNTI
+    - TC-RNTI
+    tbs:
+    - 408
+    - 408
+    - 408
+    tdk0:
+    - 0
+    - 0
+    - 0
+    tdmappingtype:
+    - Type B
+    - Type B
+    - Type B
+    tdnumsymbs:
+    - 2
+    - 2
+    - 2
+    tdsliv:
+    - 26
+    - 26
+    - 26
+    tdstartsymb:
+    - 12
+    - 12
+    - 12
   freqband:
     duplexmode: TDD
     freqrange: FR1
@@ -49,5 +128,12 @@ nrrg:
     ncrbssb: 32
     ssbpattern: Case C
     ssbscs: 30KHz
+  uss:
+    ussagglevel: 4
+    ussduration: 1
+    ussfirstsymbs: "10101010101010"
+    ussnumcandidates: n1
+    ussoffset: 0
+    ussperiod: sl1
 tti:
   dir: D:\work\email\year2020\202006\jiaziteng_tput\gNB_10.163.78.186_20200624_133635_TTI\fsp-1-1a_ttiTrace\ul_dl\

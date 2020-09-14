@@ -63,6 +63,7 @@ var (
 
 	// CORESET1
 	coreset1FreqRes string
+	// TODO: rename coreset1NumSymbs to coreset1Duration
 	coreset1NumSymbs int
 	coreset1CceRegMap string
 	coreset1RegBundleSize string
@@ -141,7 +142,6 @@ var nrrgCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg generates NR(new radio) resource grid according to network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("nrrg called")
 		viper.WriteConfig()
 	},
 }
@@ -335,7 +335,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confCss0Cmd)
 	nrrgConfCmd.AddCommand(confCoreset1Cmd)
 	nrrgConfCmd.AddCommand(confUssCmd)
-	nrrgConfCmd.AddCommand(confDci01Cmd)
+	nrrgConfCmd.AddCommand(confDci10Cmd)
 	nrrgConfCmd.AddCommand(confDci11Cmd)
 	nrrgConfCmd.AddCommand(confMsg3Cmd)
 	nrrgConfCmd.AddCommand(confDci01Cmd)
@@ -355,6 +355,7 @@ func init() {
 	confFreqBandCmd.Flags().String("duplexMode", "TDD", "Duplex mode")
 	confFreqBandCmd.Flags().Int("maxDlFreq", 2690, "Maximum DL frequency(MHz)")
 	confFreqBandCmd.Flags().String("freqRange", "FR1", "Frequency range(FR1/FR2)")
+	confFreqBandCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.freqBand.opBand", confFreqBandCmd.Flags().Lookup("opBand"))
 	viper.BindPFlag("nrrg.freqBand.duplexMode", confFreqBandCmd.Flags().Lookup("duplexMode"))
 	viper.BindPFlag("nrrg.freqBand.maxDlFreq", confFreqBandCmd.Flags().Lookup("maxDlFreq"))
@@ -367,6 +368,7 @@ func init() {
 	confSsbGridCmd.Flags().String("ssbPattern", "Case C", "SSB pattern")
 	confSsbGridCmd.Flags().IntVar(&kSsb, "kSsb", 0, "k_SSB[0..23]")
 	confSsbGridCmd.Flags().Int("nCrbSsb", 32, "n_CRB_SSB")
+	confSsbGridCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.ssbGrid.ssbScs", confSsbGridCmd.Flags().Lookup("ssbScs"))
 	viper.BindPFlag("nrrg.ssbGrid.ssbPattern", confSsbGridCmd.Flags().Lookup("ssbPattern"))
 	viper.BindPFlag("nrrg.ssbGrid.kSsb", confSsbGridCmd.Flags().Lookup("kSsb"))
@@ -378,6 +380,7 @@ func init() {
 	confSsbBurstCmd.Flags().StringVar(&inOneGrp, "inOneGroup", "11111111", "inOneGroup of ssb-PositionsInBurst")
 	confSsbBurstCmd.Flags().StringVar(&grpPresence, "groupPresence", "", "groupPresence of ssb-PositionsInBurst")
 	confSsbBurstCmd.Flags().StringVar(&ssbPeriod, "ssbPeriod", "20ms", "ssb-PeriodicityServingCell[5ms,10ms,20ms,40ms,80ms,160ms]")
+	confSsbBurstCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.ssbBurst.maxL", confSsbBurstCmd.Flags().Lookup("maxL"))
 	viper.BindPFlag("nrrg.ssbBurst.inOneGroup", confSsbBurstCmd.Flags().Lookup("inOneGroup"))
 	viper.BindPFlag("nrrg.ssbBurst.groupPresence", confSsbBurstCmd.Flags().Lookup("groupPresence"))
@@ -395,6 +398,7 @@ func init() {
 	confMibCmd.Flags().Int("coreset0NumSymbs", 1, "Number of OFDM symbols of CORESET0")
 	confMibCmd.Flags().IntSlice("coreset0OffsetList", []int{16}, "List of offset of CORESET0")
 	confMibCmd.Flags().Int("coreset0Offset", 16, "Offset of CORESET0")
+	confMibCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.mib.sfn", confMibCmd.Flags().Lookup("sfn"))
 	viper.BindPFlag("nrrg.mib.hrf", confMibCmd.Flags().Lookup("hrf"))
 	viper.BindPFlag("nrrg.mib.dmrsTypeAPos", confMibCmd.Flags().Lookup("dmrsTypeAPos"))
@@ -416,6 +420,7 @@ func init() {
 	confCarrierGridCmd.Flags().StringVar(&bw, "bw", "100MHz", "Transmission bandwidth(MHz)")
 	confCarrierGridCmd.Flags().Int("carrierNumRbs", 273, "carrierBandwidth(N_RB) of SCS-SpecificCarrier")
 	confCarrierGridCmd.Flags().Int("offsetToCarrier", 0, "offsetToCarrier of SCS-SpecificCarrier")
+	confCarrierGridCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.carrierGrid.carrierScs", confCarrierGridCmd.Flags().Lookup("carrierScs"))
 	viper.BindPFlag("nrrg.carrierGrid.bw", confCarrierGridCmd.Flags().Lookup("bw"))
 	viper.BindPFlag("nrrg.carrierGrid.carrierNumRbs", confCarrierGridCmd.Flags().Lookup("carrierNumRbs"))
@@ -431,6 +436,7 @@ func init() {
 	confCommonSettingCmd.Flags().IntSliceVar(&patNumDlSymbs, "patNumDlSymbs",  []int{6}, "nrofDownlinkSymbols of TDD-UL-DL-ConfigCommon[0..13]")
 	confCommonSettingCmd.Flags().IntSliceVar(&patNumUlSymbs, "patNumUlSymbs",  []int{4}, "nrofUplinkSymbols of TDD-UL-DL-ConfigCommon[0..13]")
 	confCommonSettingCmd.Flags().IntSliceVar(&patNumUlSlots, "patNumUlSlots",  []int{2}, "nrofUplinkSlots of TDD-UL-DL-ConfigCommon[0..80]")
+	confCommonSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.commonsetting.pci", confCommonSettingCmd.Flags().Lookup("pci"))
 	viper.BindPFlag("nrrg.commonsetting.numUeAp", confCommonSettingCmd.Flags().Lookup("numUeAp"))
 	viper.BindPFlag("nrrg.commonsetting.refScs", confCommonSettingCmd.Flags().Lookup("refScs"))
@@ -443,6 +449,89 @@ func init() {
 
 	confCss0Cmd.Flags().IntVar(&css0AggLevel, "css0AggLevel", 4, "CCE aggregation level of CSS0[4,8,16]")
 	confCss0Cmd.Flags().StringVar(&css0NumCandidates, "css0NumCandidates", "n4", "Number of PDCCH candidates of CSS0[n1,n2,n4]")
+	confCss0Cmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.css0.css0AggLevel", confCss0Cmd.Flags().Lookup("css0AggLevel"))
 	viper.BindPFlag("nrrg.css0.css0NumCandidates", confCss0Cmd.Flags().Lookup("css0NumCandidates"))
+
+	confCoreset1Cmd.Flags().StringVar(&coreset1FreqRes, "coreset1FreqRes", "111111111111111111111111111111111111111111111", "frequencyDomainResources of ControlResourceSet")
+	confCoreset1Cmd.Flags().IntVar(&coreset1NumSymbs, "coreset1Duration", 1, "duration of ControlResourceSet[1..3]")
+	confCoreset1Cmd.Flags().StringVar(&coreset1CceRegMap, "coreset1CceRegMap", "interleaved", "cce-REG-MappingType of ControlResourceSet[1..3]")
+	confCoreset1Cmd.Flags().StringVar(&coreset1RegBundleSize, "coreset1RegBundleSize", "n2", "reg-BundleSize of ControlResourceSet[n2,n6]")
+	confCoreset1Cmd.Flags().StringVar(&coreset1InterleaverSize, "coreset1InterleaverSize", "n2", "interleaverSize of ControlResourceSet[n2,n3,n6]")
+	confCoreset1Cmd.Flags().IntVar(&coreset1ShiftInd, "coreset1ShiftInd", 0, "shiftIndex of ControlResourceSet[0..274]")
+	confCoreset1Cmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.coreset1.coreset1FreqRes", confCoreset1Cmd.Flags().Lookup("coreset1FreqRes"))
+	viper.BindPFlag("nrrg.coreset1.coreset1Duration", confCoreset1Cmd.Flags().Lookup("coreset1Duration"))
+	viper.BindPFlag("nrrg.coreset1.coreset1CceRegMap", confCoreset1Cmd.Flags().Lookup("coreset1CceRegMap"))
+	viper.BindPFlag("nrrg.coreset1.coreset1RegBundleSize", confCoreset1Cmd.Flags().Lookup("coreset1RegBundleSize"))
+	viper.BindPFlag("nrrg.coreset1.coreset1InterleaverSize", confCoreset1Cmd.Flags().Lookup("coreset1InterleaverSize"))
+	viper.BindPFlag("nrrg.coreset1.coreset1ShiftInd", confCoreset1Cmd.Flags().Lookup("coreset1ShiftInd"))
+
+	confUssCmd.Flags().StringVar(&ussPeriod, "ussPeriod", "sl1", "monitoringSlotPeriodicity of SearchSpace[sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl40,sl80,sl160,sl320,sl640,sl1280,sl2560]")
+	confUssCmd.Flags().IntVar(&ussOffset, "ussOffset", 0, "monitoringSlotOffset of SearchSpace[0..ussPeriod-1]")
+	confUssCmd.Flags().IntVar(&ussDuration, "ussDuration", 1, "duration of SearchSpace[1 or 2..ussPeriod-1]")
+	confUssCmd.Flags().StringVar(&ussFirstSymbs, "ussFirstSymbs", "10101010101010", "monitoringSymbolsWithinSlot of SearchSpace")
+	confUssCmd.Flags().IntVar(&ussAggLevel, "ussAggLevel", 4, "aggregationLevel of SearchSpace[1,2,4,8,16]")
+	confUssCmd.Flags().StringVar(&ussNumCandidates, "ussNumCandidates", "n1", "nrofCandidates of SearchSpace[n1,n2,n3,n4,n5,n6,n8]")
+	confUssCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.uss.ussPeriod", confUssCmd.Flags().Lookup("ussPeriod"))
+	viper.BindPFlag("nrrg.uss.ussOffset", confUssCmd.Flags().Lookup("ussOffset"))
+	viper.BindPFlag("nrrg.uss.ussDuration", confUssCmd.Flags().Lookup("ussDuration"))
+	viper.BindPFlag("nrrg.uss.ussFirstSymbs", confUssCmd.Flags().Lookup("ussFirstSymbs"))
+	viper.BindPFlag("nrrg.uss.ussAggLevel", confUssCmd.Flags().Lookup("ussAggLevel"))
+	viper.BindPFlag("nrrg.uss.ussNumCandidates", confUssCmd.Flags().Lookup("ussNumCandidates"))
+
+	confDci10Cmd.Flags().StringSlice("rnti", []string{"SI-RNTI", "RA-RNTI", "TC-RNTI"}, "RNTI for DCI 1_0")
+	confDci10Cmd.Flags().IntSlice("muPdcch", []int{1, 1, 1}, "Subcarrier spacing of PDCCH[0..3]")
+	confDci10Cmd.Flags().IntSlice("muPdsch", []int{1, 1, 1}, "Subcarrier spacing of PDSCH[0..3]")
+	confDci10Cmd.Flags().IntSliceVar(&dci10TdRa, "dci10TdRa", []int{10, 10, 10}, "Time-domain-resource-assignment field of DCI 1_0[0..15]")
+	confDci10Cmd.Flags().StringSlice("tdMappingType", []string{"Type B", "Type B", "Type B"}, "Mapping type for PDSCH time-domain allocation")
+	confDci10Cmd.Flags().IntSlice("tdK0", []int{0, 0, 0}, "Slot offset K0 for PDSCH time-domain allocation")
+	confDci10Cmd.Flags().IntSlice("tdSliv", []int{26, 26, 26}, "SLIV for PDSCH time-domain allocation")
+	confDci10Cmd.Flags().IntSlice("tdStartSymb", []int{12, 12, 12}, "Starting symbol S for PDSCH time-domain allocation")
+	confDci10Cmd.Flags().IntSlice("tdNumSymbs", []int{2, 2, 2}, "Number of OFDM symbols L for PDSCH time-domain allocation")
+	confDci10Cmd.Flags().StringSlice("fdRaType", []string{"RA Type1", "RA Type1", "RA Type1"}, "resourceAllocation for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().StringSlice("fdRa", []string{"00001011111", "00001011111", "00001011111"}, "Frequency-domain-resource-assignment field of DCI 1_0")
+	confDci10Cmd.Flags().IntSliceVar(&dci10FdStartRb, "dci10FdStartRb", []int{0, 0, 0}, "RB_start of RIV for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().IntSliceVar(&dci10FdNumRbs, "dci10FdNumRbs", []int{48, 48, 48}, "L_RBs of RIV for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().StringSliceVar(&dci10FdVrbPrbMappingType, "dci10FdVrbPrbMappingType", []string{"interleaved", "interleaved", "interleaved"}, "VRB-to-PRB-mapping field of DCI 1_0")
+	confDci10Cmd.Flags().StringSlice("fdBundleSize", []string{"n2", "n2", "n2"}, "L(vrb-ToPRB-Interleaver) for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().IntSliceVar(&dci10McsCw0, "dci10McsCw0", []int{2, 2, 2}, "Modulation-and-coding-scheme field of DCI 1_0[0..9]")
+	confDci10Cmd.Flags().IntSlice("tbs", []int{408, 408, 408}, "Transport block size(bits) for PDSCH")
+	confDci10Cmd.Flags().IntVar(&dci10Msg2TbScaling, "dci10Msg2TbScaling", 0, "TB-scaling field of DCI 1_0 scheduling Msg2[0..2]")
+	confDci10Cmd.Flags().IntVar(&dci10Msg4DeltaPri, "dci10Msg4DeltaPri", 1, "PUCCH-resource-indicator field of DCI 1_0 scheduling Msg4[0..7]")
+	confDci10Cmd.Flags().IntVar(&dci10Msg4TdK1, "dci10Msg4TdK1", 6, "PDSCH-to-HARQ_feedback-timing-indicator(K1) field of DCI 1_0 scheduling Msg4[0..7]")
+	confDci10Cmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.dci10.rnti", confDci10Cmd.Flags().Lookup("rnti"))
+	viper.BindPFlag("nrrg.dci10.muPdcch", confDci10Cmd.Flags().Lookup("muPdcch"))
+	viper.BindPFlag("nrrg.dci10.muPdsch", confDci10Cmd.Flags().Lookup("muPdsch"))
+	viper.BindPFlag("nrrg.dci10.dci10TdRa", confDci10Cmd.Flags().Lookup("dci10TdRa"))
+	viper.BindPFlag("nrrg.dci10.tdMappingType", confDci10Cmd.Flags().Lookup("tdMappingType"))
+	viper.BindPFlag("nrrg.dci10.tdK0", confDci10Cmd.Flags().Lookup("tdK0"))
+	viper.BindPFlag("nrrg.dci10.tdSliv", confDci10Cmd.Flags().Lookup("tdSliv"))
+	viper.BindPFlag("nrrg.dci10.tdStartSymb", confDci10Cmd.Flags().Lookup("tdStartSymb"))
+	viper.BindPFlag("nrrg.dci10.tdNumSymbs", confDci10Cmd.Flags().Lookup("tdNumSymbs"))
+	viper.BindPFlag("nrrg.dci10.fdRaType", confDci10Cmd.Flags().Lookup("fdRaType"))
+	viper.BindPFlag("nrrg.dci10.fdRa", confDci10Cmd.Flags().Lookup("fdRa"))
+	viper.BindPFlag("nrrg.dci10.dci10FdStartRb", confDci10Cmd.Flags().Lookup("dci10FdStartRb"))
+	viper.BindPFlag("nrrg.dci10.dci10FdNumRbs", confDci10Cmd.Flags().Lookup("dci10FdNumRbs"))
+	viper.BindPFlag("nrrg.dci10.dci10FdVrbPrbMappingType", confDci10Cmd.Flags().Lookup("dci10FdVrbPrbMappingType"))
+	viper.BindPFlag("nrrg.dci10.fdBundleSize", confDci10Cmd.Flags().Lookup("fdBundleSize"))
+	viper.BindPFlag("nrrg.dci10.dci10McsCw0", confDci10Cmd.Flags().Lookup("dci10McsCw0"))
+	viper.BindPFlag("nrrg.dci10.tbs", confDci10Cmd.Flags().Lookup("tbs"))
+	viper.BindPFlag("nrrg.dci10.dci10Msg2TbScaling", confDci10Cmd.Flags().Lookup("dci10Msg2TbScaling"))
+	viper.BindPFlag("nrrg.dci10.dci10Msg4DeltaPri", confDci10Cmd.Flags().Lookup("dci10Msg4DeltaPri"))
+	viper.BindPFlag("nrrg.dci10.dci10Msg4TdK1", confDci10Cmd.Flags().Lookup("dci10Msg4TdK1"))
+	confDci10Cmd.Flags().MarkHidden("rnti")
+	confDci10Cmd.Flags().MarkHidden("muPdcch")
+	confDci10Cmd.Flags().MarkHidden("muPdsch")
+	confDci10Cmd.Flags().MarkHidden("tdMappingType")
+	confDci10Cmd.Flags().MarkHidden("tdK0")
+	confDci10Cmd.Flags().MarkHidden("tdSliv")
+	confDci10Cmd.Flags().MarkHidden("tdStartSymb")
+	confDci10Cmd.Flags().MarkHidden("tdNumSymbs")
+	confDci10Cmd.Flags().MarkHidden("fdRaType")
+	confDci10Cmd.Flags().MarkHidden("fdRa")
+	confDci10Cmd.Flags().MarkHidden("fdBundleSize")
+	confDci10Cmd.Flags().MarkHidden("tbs")
 }
