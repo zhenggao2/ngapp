@@ -1,4 +1,40 @@
 nrrg:
+  bwp:
+    bwpcp:
+    - normal
+    - normal
+    - normal
+    - normal
+    bwpid:
+    - 0
+    - 1
+    - 0
+    - 1
+    bwplocandbw:
+    - 12925
+    - 1099
+    - 1099
+    - 1099
+    bwpnumrbs:
+    - 48
+    - 273
+    - 273
+    - 273
+    bwpscs:
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    bwpstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
+    bwptype:
+    - iniDlBwp
+    - dedDlBwp
+    - iniUlBwp
+    - dedUlBwp
   carriergrid:
     bw: 100MHz
     carriernumrbs: 273

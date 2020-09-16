@@ -133,6 +133,11 @@ var (
 	dci01Sri string
 	dci01AntPorts int
 	dci01PtrsDmrsMap int
+
+	// initial/dedicated UL/DL BWP
+	bwpLocAndBw []int
+	bwpStartRb []int
+	bwpNumRbs []int
 )
 
 // nrrgCmd represents the nrrg command
@@ -312,6 +317,18 @@ var confDci01Cmd = &cobra.Command{
 	},
 }
 
+// confBwpCmd represents the 'nrrg conf bwp' command
+var confBwpCmd = &cobra.Command{
+	Use:   "bwp [sub]",
+	Short: "",
+	Long: `'nrrg conf bwp' can be used to get/set generic BWP related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
 // nrrgSimCmd represents the 'nrrg sim' command
 var nrrgSimCmd = &cobra.Command{
 	Use:   "sim",
@@ -337,6 +354,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confDci11Cmd)
 	nrrgConfCmd.AddCommand(confMsg3Cmd)
 	nrrgConfCmd.AddCommand(confDci01Cmd)
+	nrrgConfCmd.AddCommand(confBwpCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -682,4 +700,24 @@ func init() {
 	confDci01Cmd.Flags().MarkHidden("actBwp")
 	confDci01Cmd.Flags().MarkHidden("indicatedBwp")
 	confDci01Cmd.Flags().MarkHidden("tbs")
+
+	confBwpCmd.Flags().StringSlice("bwpType", []string{"iniDlBwp", "dedDlBwp", "iniUlBwp", "dedUlBwp"}, "BWP type")
+	confBwpCmd.Flags().IntSlice("bwpId", []int{0, 1, 0, 1}, "bwp-Id of BWP-Uplink or BWP-Downlink IE")
+	confBwpCmd.Flags().StringSlice("bwpScs", []string{"30KHz", "30KHz", "30KHz", "30KHz"}, "subcarrierSpacing of BWP IE")
+	confBwpCmd.Flags().StringSlice("bwpCp", []string{"normal", "normal", "normal", "normal"}, "cyclicPrefix of BWP IE")
+	confBwpCmd.Flags().IntSliceVar(&bwpLocAndBw, "bwpLocAndBw", []int{12925, 1099, 1099, 1099}, "locationAndBandwidth of BWP IE")
+	confBwpCmd.Flags().IntSliceVar(&bwpStartRb, "bwpStartRb", []int{0, 0, 0, 0}, "RB_start of BWP")
+	confBwpCmd.Flags().IntSliceVar(&bwpNumRbs, "bwpNumRbs", []int{48, 273, 273, 273}, "L_RBs of BWP")
+	confBwpCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.bwp.bwpType", confBwpCmd.Flags().Lookup("bwpType"))
+	viper.BindPFlag("nrrg.bwp.bwpId", confBwpCmd.Flags().Lookup("bwpId"))
+	viper.BindPFlag("nrrg.bwp.bwpScs", confBwpCmd.Flags().Lookup("bwpScs"))
+	viper.BindPFlag("nrrg.bwp.bwpCp", confBwpCmd.Flags().Lookup("bwpCp"))
+	viper.BindPFlag("nrrg.bwp.bwpLocAndBw", confBwpCmd.Flags().Lookup("bwpLocAndBw"))
+	viper.BindPFlag("nrrg.bwp.bwpStartRb", confBwpCmd.Flags().Lookup("bwpStartRb"))
+	viper.BindPFlag("nrrg.bwp.bwpNumRbs", confBwpCmd.Flags().Lookup("bwpNumRbs"))
+	confBwpCmd.Flags().MarkHidden("bwpType")
+	confBwpCmd.Flags().MarkHidden("bwpId")
+	confBwpCmd.Flags().MarkHidden("bwpScs")
+	confBwpCmd.Flags().MarkHidden("bwpCp")
 }
