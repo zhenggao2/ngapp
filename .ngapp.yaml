@@ -183,6 +183,52 @@ nrrg:
     mupdsch: 1
     rnti: C-RNTI
     tbs: 1277992
+  dmrsra:
+    cdmgroupswodata:
+    - 1
+    - 1
+    - 1
+    - 2
+    dmrsaddpos:
+    - pos0
+    - pos0
+    - pos0
+    - pos1
+    dmrsports:
+    - 1000
+    - 1000
+    - 1000
+    - 0
+    dmrstype:
+    - type1
+    - type1
+    - type1
+    - type1
+    fdk:
+    - "101010101010"
+    - "101010101010"
+    - "101010101010"
+    - "111111111111"
+    maxlength:
+    - len1
+    - len1
+    - len1
+    - len1
+    numfrontloadsymbs:
+    - 1
+    - 1
+    - 1
+    - 1
+    schinfo:
+    - SIB1
+    - Msg2
+    - Msg4
+    - Msg3
+    tdl:
+    - "0"
+    - "0"
+    - "0"
+    - "0:0"
   freqband:
     duplexmode: TDD
     freqrange: FR1
@@ -218,6 +264,30 @@ nrrg:
     tdnumsymbs: 6
     tdsliv: 74
     tdstartsymb: 4
+  rach:
+    cbpreambsperssb: 64
+    contrestimer: sf64
+    msg1fdm: 1
+    msg1freqstart: 0
+    msg1scs: 30KHz
+    msg3tp: disabled
+    prachconfid: 148
+    raduration: 12
+    raformat: B4
+    rakbar: 2
+    ralen: 139
+    ranumoccasionsperslot: 1
+    ranumrbs: 12
+    ranumslotspersubffr1per60kslotfr2: 1
+    rarespwin: sl20
+    rastartingsymb: 0
+    rasubfnumfr1slotnumfr2:
+    - 9
+    rax: 2
+    ray:
+    - 1
+    ssbperrachoccasion: one
+    totnumpreambs: 64
   ssbburst:
     grouppresence: ""
     inonegroup: "11111111"
