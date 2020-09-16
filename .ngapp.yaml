@@ -28,6 +28,29 @@ nrrg:
   css0:
     css0agglevel: 4
     css0numcandidates: n4
+  dci01:
+    actbwp: 1
+    dci01antports: 0
+    dci01cbtpminumlayers: 2
+    dci01fdfreqhop: disabled
+    dci01fdnumrbs: 273
+    dci01fdra: "0000001000100001"
+    dci01fdratype: raType1
+    dci01fdstartrb: 0
+    dci01mcscw0: 28
+    dci01ptrsdmrsmap: 0
+    dci01sri: ""
+    dci01tdk2: 1
+    dci01tdmappingtype: typeA
+    dci01tdnumsymbs: 14
+    dci01tdra: 16
+    dci01tdsliv: 27
+    dci01tdstartsymb: 0
+    indicatedbwp: 1
+    mupdcch: 1
+    mupusch: 1
+    rnti: C-RNTI
+    tbs: 475584
   dci10:
     dci10fdnumrbs:
     - 48
@@ -61,9 +84,9 @@ nrrg:
     - "00001011111"
     - "00001011111"
     fdratype:
-    - RA Type1
-    - RA Type1
-    - RA Type1
+    - raType1
+    - raType1
+    - raType1
     mupdcch:
     - 1
     - 1
@@ -85,9 +108,9 @@ nrrg:
     - 0
     - 0
     tdmappingtype:
-    - Type B
-    - Type B
-    - Type B
+    - typeB
+    - typeB
+    - typeB
     tdnumsymbs:
     - 2
     - 2
@@ -100,6 +123,30 @@ nrrg:
     - 12
     - 12
     - 12
+  dci11:
+    actbwp: 1
+    dci11antports: 10
+    dci11deltapri: 1
+    dci11fdbundlesize: n2
+    dci11fdnumrbs: 273
+    dci11fdra: "0000001000100001"
+    dci11fdratype: raType1
+    dci11fdstartrb: 0
+    dci11fdvrbprbmappingtype: interleaved
+    dci11mcscw0: 27
+    dci11mcscw1: -1
+    dci11tdk0: 0
+    dci11tdk1: 2
+    dci11tdmappingtype: typeA
+    dci11tdnumsymbs: 14
+    dci11tdra: 16
+    dci11tdsliv: 27
+    dci11tdstartsymb: 0
+    indicatedbwp: 1
+    mupdcch: 1
+    mupdsch: 1
+    rnti: C-RNTI
+    tbs: 1277992
   freqband:
     duplexmode: TDD
     freqrange: FR1
@@ -118,6 +165,23 @@ nrrg:
     rmsicoreset0: 12
     rmsicss0: 0
     sfn: 0
+  msg3:
+    fdratype: raType1
+    fdsecondhopfreqoff: 68
+    msg3fdfreqhop: enabled
+    msg3fdnumrbs: 62
+    msg3fdra: "0100000100001101"
+    msg3fdstartrb: 0
+    msg3mcscw0: 2
+    msg3tdra: 6
+    mupusch: 1
+    tbs: 1544
+    tddelta: 3
+    tdk2: 1
+    tdmappingtype: typeB
+    tdnumsymbs: 6
+    tdsliv: 74
+    tdstartsymb: 4
   ssbburst:
     grouppresence: ""
     inonegroup: "11111111"
@@ -136,4 +200,4 @@ nrrg:
     ussoffset: 0
     ussperiod: sl1
 tti:
-  dir: D:\work\email\year2020\202006\jiaziteng_tput\gNB_10.163.78.186_20200624_133635_TTI\fsp-1-1a_ttiTrace\ul_dl\
+  dir: ""

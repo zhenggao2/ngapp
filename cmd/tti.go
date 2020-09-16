@@ -66,7 +66,7 @@ func init() {
 	// is called directly, e.g.:
 	//ttiCmd.Flags().StringP("dir", "d", "", "directory containing tti files")
 	//ttiCmd.Flags().StringP("pattern", "p", ".csv", "pattern of tti files")
-	ttiCmd.Flags().StringVarP(&dir, "dir", "d", "", "directory containing tti files")
+	ttiCmd.Flags().StringVarP(&dir, "dir", "d", "./data", "directory containing tti files")
 	ttiCmd.Flags().StringVarP(&pattern, "pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of MAC TTI traces[nr]")
 	ttiCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
