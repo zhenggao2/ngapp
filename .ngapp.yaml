@@ -1,15 +1,25 @@
 nrrg:
   bwp:
-    bwpcp:
+    _bwpcp:
     - normal
     - normal
     - normal
     - normal
-    bwpid:
+    _bwpid:
     - 0
     - 1
     - 0
     - 1
+    _bwpscs:
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    _bwptype:
+    - iniDlBwp
+    - dedDlBwp
+    - iniUlBwp
+    - dedUlBwp
     bwplocandbw:
     - 12925
     - 1099
@@ -20,27 +30,18 @@ nrrg:
     - 273
     - 273
     - 273
-    bwpscs:
-    - 30KHz
-    - 30KHz
-    - 30KHz
-    - 30KHz
     bwpstartrb:
     - 0
     - 0
     - 0
     - 0
-    bwptype:
-    - iniDlBwp
-    - dedDlBwp
-    - iniUlBwp
-    - dedUlBwp
   carriergrid:
+    _carriernumrbs: 273
+    _offsettocarrier: 0
     bw: 100MHz
-    carriernumrbs: 273
     carrierscs: 30KHz
-    offsettocarrier: 0
   commonsetting:
+    _refscs: 30KHz
     numueap: 2T
     patnumdlslots:
     - 7
@@ -53,7 +54,6 @@ nrrg:
     patperiod:
     - 5ms
     pci: 0
-    refscs: 30KHz
   coreset1:
     coreset1cceregmap: interleaved
     coreset1duration: 1
@@ -65,7 +65,12 @@ nrrg:
     css0agglevel: 4
     css0numcandidates: n4
   dci01:
-    actbwp: 1
+    _actbwp: 1
+    _indicatedbwp: 1
+    _mupdcch: 1
+    _mupusch: 1
+    _rnti: C-RNTI
+    _tbs: 475584
     dci01antports: 0
     dci01cbtpminumlayers: 2
     dci01fdfreqhop: disabled
@@ -82,12 +87,55 @@ nrrg:
     dci01tdra: 16
     dci01tdsliv: 27
     dci01tdstartsymb: 0
-    indicatedbwp: 1
-    mupdcch: 1
-    mupusch: 1
-    rnti: C-RNTI
-    tbs: 475584
   dci10:
+    _fdbundlesize:
+    - n2
+    - n2
+    - n2
+    _fdra:
+    - "00001011111"
+    - "00001011111"
+    - "00001011111"
+    _fdratype:
+    - raType1
+    - raType1
+    - raType1
+    _mupdcch:
+    - 1
+    - 1
+    - 1
+    _mupdsch:
+    - 1
+    - 1
+    - 1
+    _rnti:
+    - SI-RNTI
+    - RA-RNTI
+    - TC-RNTI
+    _tbs:
+    - 408
+    - 408
+    - 408
+    _tdk0:
+    - 0
+    - 0
+    - 0
+    _tdmappingtype:
+    - typeB
+    - typeB
+    - typeB
+    _tdnumsymbs:
+    - 2
+    - 2
+    - 2
+    _tdsliv:
+    - 26
+    - 26
+    - 26
+    _tdstartsymb:
+    - 12
+    - 12
+    - 12
     dci10fdnumrbs:
     - 48
     - 48
@@ -111,56 +159,13 @@ nrrg:
     - 10
     - 10
     - 10
-    fdbundlesize:
-    - n2
-    - n2
-    - n2
-    fdra:
-    - "00001011111"
-    - "00001011111"
-    - "00001011111"
-    fdratype:
-    - raType1
-    - raType1
-    - raType1
-    mupdcch:
-    - 1
-    - 1
-    - 1
-    mupdsch:
-    - 1
-    - 1
-    - 1
-    rnti:
-    - SI-RNTI
-    - RA-RNTI
-    - TC-RNTI
-    tbs:
-    - 408
-    - 408
-    - 408
-    tdk0:
-    - 0
-    - 0
-    - 0
-    tdmappingtype:
-    - typeB
-    - typeB
-    - typeB
-    tdnumsymbs:
-    - 2
-    - 2
-    - 2
-    tdsliv:
-    - 26
-    - 26
-    - 26
-    tdstartsymb:
-    - 12
-    - 12
-    - 12
   dci11:
-    actbwp: 1
+    _actbwp: 1
+    _indicatedbwp: 1
+    _mupdcch: 1
+    _mupdsch: 1
+    _rnti: C-RNTI
+    _tbs: 1277992
     dci11antports: 10
     dci11deltapri: 1
     dci11fdbundlesize: n2
@@ -178,128 +183,163 @@ nrrg:
     dci11tdra: 16
     dci11tdsliv: 27
     dci11tdstartsymb: 0
-    indicatedbwp: 1
-    mupdcch: 1
-    mupdsch: 1
-    rnti: C-RNTI
-    tbs: 1277992
   dmrscommon:
-    cdmgroupswodata:
+    _cdmgroupswodata:
     - 1
     - 1
     - 1
     - 2
-    dmrsaddpos:
+    _dmrsaddpos:
     - pos0
     - pos0
     - pos0
     - pos1
-    dmrsports:
+    _dmrsports:
     - 1000
     - 1000
     - 1000
     - 0
-    dmrstype:
+    _dmrstype:
     - type1
     - type1
     - type1
     - type1
-    fdk:
+    _fdk:
     - "101010101010"
     - "101010101010"
     - "101010101010"
     - "111111111111"
-    maxlength:
+    _maxlength:
     - len1
     - len1
     - len1
     - len1
-    numfrontloadsymbs:
+    _numfrontloadsymbs:
     - 1
     - 1
     - 1
     - 1
-    schinfo:
+    _schinfo:
     - SIB1
     - Msg2
     - Msg4
     - Msg3
-    tdl:
+    _tdl:
     - "0"
     - "0"
     - "0"
-    - "0:0"
+    - "0_0"
   dmrspdsch:
-    cdmgroupswodata: 2
-    dmrsports:
+    _cdmgroupswodata: 2
+    _dmrsports:
     - 1000
     - 1001
     - 1002
     - 1003
-    fdk: "111111111111"
-    numfrontloadsymbs: 1
+    _fdk: "111111111111"
+    _numfrontloadsymbs: 1
+    _tdl: "2"
     pdschdmrsaddpos: pos0
     pdschdmrstype: type1
     pdschmaxlength: len1
-    tdl: "2"
   dmrspusch:
-    cdmgroupswodata: 1
-    dmrsports:
+    _cdmgroupswodata: 1
+    _dmrsports:
     - 0
     - 1
-    fdk: "101010101010"
-    numfrontloadsymbs: 1
+    _fdk: "101010101010"
+    _numfrontloadsymbs: 1
+    _tdl: "2"
     puschdmrsaddpos: pos0
     puschdmrstype: type1
     puschmaxlength: len1
-    tdl: "2"
   freqband:
-    duplexmode: TDD
-    freqrange: FR1
-    maxdlfreq: 2690
+    _duplexmode: TDD
+    _freqrange: FR1
+    _maxdlfreq: 2690
     opband: n41
   mib:
-    commonscs: 30KHz
-    coreset0multiplexingpat: 1
-    coreset0numrbs: 48
-    coreset0numsymbs: 1
-    coreset0offset: 16
-    coreset0offsetlist:
+    _coreset0multiplexingpat: 1
+    _coreset0numrbs: 48
+    _coreset0numsymbs: 1
+    _coreset0offset: 16
+    _coreset0offsetlist:
     - 16
+    commonscs: 30KHz
     dmrstypeapos: pos2
     hrf: 0
     rmsicoreset0: 12
     rmsicss0: 0
     sfn: 0
   msg3:
-    fdratype: raType1
-    fdsecondhopfreqoff: 68
+    _fdratype: raType1
+    _fdsecondhopfreqoff: 68
+    _mupusch: 1
+    _tbs: 1544
+    _tddelta: 3
+    _tdk2: 1
+    _tdmappingtype: typeB
+    _tdnumsymbs: 6
+    _tdsliv: 74
+    _tdstartsymb: 4
     msg3fdfreqhop: enabled
     msg3fdnumrbs: 62
     msg3fdra: "0100000100001101"
     msg3fdstartrb: 0
     msg3mcscw0: 2
     msg3tdra: 6
-    mupusch: 1
-    tbs: 1544
-    tddelta: 3
-    tdk2: 1
-    tdmappingtype: typeB
-    tdnumsymbs: 6
-    tdsliv: 74
-    tdstartsymb: 4
+  nzpcsirs:
+    _cdmgrpindj:
+    - 0
+    - 1
+    _kap:
+    - 0
+    - 1
+    _kbarlbar:
+    - 0,0
+    - 2,0
+    _ki:
+    - 0
+    - 0
+    _lap:
+    - 0
+    _li:
+    - 0
+    - 0
+    _resid: 0
+    _ressetid: 0
+    _row: 4
+    _trsinfo: false
+    nzpcsirscdmtype: fd-CDM2
+    nzpcsirsdensity: one
+    nzpcsirsfirstsymb: 1
+    nzpcsirsfirstsymb2: -1
+    nzpcsirsfreqallocbits: "001"
+    nzpcsirsfreqallocrow: row4
+    nzpcsirsnumports: p4
+    nzpcsirsnumrbs: 276
+    nzpcsirsoffset: 10
+    nzpcsirsperiod: slots20
+    nzpcsirsstartrb: 0
+  pdsch:
+    _rbgsize: 16
+    pdschaggfactor: n1
+    pdschmcstable: qam256
+    pdschrbgcfg: config1
+    pdschxoh: xOh0
   ptrspdsch:
-    dmrsports:
+    _dmrsports:
     - 1000
     pdschptrsenabled: true
     pdschptrsfreqdensity: 2
     pdschptrsreoffset: offset00
     pdschptrstimedensity: 1
   ptrspusch:
-    dmrsports:
-    - 1000
-    dmrsportstp: []
-    numgrpstp: 2
+    _dmrsports:
+    - 0
+    _dmrsportstp: []
+    _numgrpstp: 2
+    _samplespergrptp: 2
     puschptrsenabled: true
     puschptrsfreqdensity: 2
     puschptrsgrppatterntp: p0
@@ -307,8 +347,31 @@ nrrg:
     puschptrsreoffset: offset00
     puschptrstimedensity: 1
     puschptrstimedensitytp: 1
-    samplespergrptp: 2
+  pusch:
+    _rbgsize: 16
+    puschaggfactor: n1
+    puschcbmaxranknoncbmaxlayers: 2
+    puschcbsubset: fullyAndPartialAndNonCoherent
+    puschfreqhopoffset: 0
+    puschmcstable: qam64
+    puschrbgcfg: config1
+    puschtp: disabled
+    puschtxcfg: codebook
+    puschxoh: xOh0
   rach:
+    _raduration: 12
+    _raformat: B4
+    _rakbar: 2
+    _ralen: 139
+    _ranumoccasionsperslot: 1
+    _ranumrbs: 12
+    _ranumslotspersubffr1per60kslotfr2: 1
+    _rastartingsymb: 0
+    _rasubfnumfr1slotnumfr2:
+    - 9
+    _rax: 2
+    _ray:
+    - 1
     cbpreambsperssb: 64
     contrestimer: sf64
     msg1fdm: 1
@@ -316,31 +379,18 @@ nrrg:
     msg1scs: 30KHz
     msg3tp: disabled
     prachconfid: 148
-    raduration: 12
-    raformat: B4
-    rakbar: 2
-    ralen: 139
-    ranumoccasionsperslot: 1
-    ranumrbs: 12
-    ranumslotspersubffr1per60kslotfr2: 1
     rarespwin: sl20
-    rastartingsymb: 0
-    rasubfnumfr1slotnumfr2:
-    - 9
-    rax: 2
-    ray:
-    - 1
     ssbperrachoccasion: one
     totnumpreambs: 64
   ssbburst:
+    _maxl: 8
     grouppresence: ""
     inonegroup: "11111111"
-    maxl: 8
     ssbperiod: 20ms
   ssbgrid:
+    _ncrbssb: 32
+    _ssbpattern: Case C
     kssb: 0
-    ncrbssb: 32
-    ssbpattern: Case C
     ssbscs: 30KHz
   uss:
     ussagglevel: 4
@@ -350,4 +400,4 @@ nrrg:
     ussoffset: 0
     ussperiod: sl1
 tti:
-  dir: ""
+  dir: ./data
