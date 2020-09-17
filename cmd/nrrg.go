@@ -151,11 +151,50 @@ var (
 	contResTimer string
 	msg3Tp string
 
+	// DMRS for PDSCH
+	pdschDmrsType string
+	pdschDmrsAddPos string
+	pdschMaxLength string
+	// pdschDmrsPorts []int
+	// pdschCdmGroupsWoData int
+	// pdschNumFrontLoadSymbs int
+	// pdschTdL string
+	// pdschFdK string
+
+	// PTRS for PDSCH
+	pdschPtrsEnabled bool
+	pdschPtrsTimeDensity int
+	pdschPtrsFreqDensity int
+	pdschPtrsReOffset string
+	// pdschPtrsDmrsPorts string
+
+	// DMRS for PUSCH
+	puschDmrsType string
+	puschDmrsAddPos string
+	puschMaxLength string
+	// puschDmrsPorts []int
+	// puschCdmGroupsWoData int
+	// puschNumFrontLoadSymbs int
+	// puschTdL string
+	// puschFdK string
+
+	// PTRS for PUSCH
+	puschPtrsEnabled bool
+	puschPtrsTimeDensity int
+	puschPtrsFreqDensity int
+	puschPtrsReOffset string
+	puschPtrsMaxNumPorts string
+	// puschPtrsDmrsPorts []int
+	puschPtrsTimeDensityTp int
+	puschPtrsGrpPatternTp string
+	// puschPtrsNumGrpsTp int
+	// puschPtrsSamplesPerGrpTp int
+	// puschPtrsDmrsPortsTp []int
 )
 
 // nrrgCmd represents the nrrg command
 var nrrgCmd = &cobra.Command{
-	Use:   "nrrg [sub]",
+	Use:   "nrrg",
 	Short: "",
 	Long: `nrrg generates NR(new radio) resource grid according to network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -165,7 +204,7 @@ var nrrgCmd = &cobra.Command{
 
 // nrrgConfCmd represents the 'nrrg conf' command
 var nrrgConfCmd = &cobra.Command{
-	Use:   "conf [sub]",
+	Use:   "conf",
 	Short: "",
 	Long: `'nrrg conf' can be used to get/set network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -176,7 +215,7 @@ var nrrgConfCmd = &cobra.Command{
 
 // confFreqBandCmd represents the 'nrrg conf freqband' command
 var confFreqBandCmd = &cobra.Command{
-	Use:   "freqband [sub]",
+	Use:   "freqband",
 	Short: "",
 	Long: `'nrrg conf freqband' can be used to get/set frequency-band related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -188,7 +227,7 @@ var confFreqBandCmd = &cobra.Command{
 
 // confSsbGridCmd represents the 'nrrg conf ssbgrid' command
 var confSsbGridCmd = &cobra.Command{
-	Use:   "ssbgrid [sub]",
+	Use:   "ssbgrid",
 	Short: "",
 	Long: `'nrrg conf ssbgrid' can be used to get/set SSB-grid related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -200,7 +239,7 @@ var confSsbGridCmd = &cobra.Command{
 
 // confSsbBurstCmd represents the 'nrrg conf ssbburst' command
 var confSsbBurstCmd = &cobra.Command{
-	Use:   "ssbburst [sub]",
+	Use:   "ssbburst",
 	Short: "",
 	Long: `'nrrg conf ssbburst' can be used to get/set SSB-burst related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -212,7 +251,7 @@ var confSsbBurstCmd = &cobra.Command{
 
 // confMibCmd represents the 'nrrg conf mib' command
 var confMibCmd = &cobra.Command{
-	Use:   "mib [sub]",
+	Use:   "mib",
 	Short: "",
 	Long: `'nrrg conf mib' can be used to get/set MIB related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -224,7 +263,7 @@ var confMibCmd = &cobra.Command{
 
 // confCarrierGridCmd represents the 'nrrg conf carriergrid' command
 var confCarrierGridCmd = &cobra.Command{
-	Use:   "carriergrid [sub]",
+	Use:   "carriergrid",
 	Short: "",
 	Long: `'nrrg conf carriergrid' can be used to get/set carrier-grid related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -236,7 +275,7 @@ var confCarrierGridCmd = &cobra.Command{
 
 // confCommonSettingCmd represents the 'nrrg conf commonsetting' command
 var confCommonSettingCmd = &cobra.Command{
-	Use:   "commonsetting [sub]",
+	Use:   "commonsetting",
 	Short: "",
 	Long: `'nrrg conf commonsetting' can be used to get/set common-setting related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -248,7 +287,7 @@ var confCommonSettingCmd = &cobra.Command{
 
 // confCss0Cmd represents the 'nrrg conf css0' command
 var confCss0Cmd = &cobra.Command{
-	Use:   "css0 [sub]",
+	Use:   "css0",
 	Short: "",
 	Long: `'nrrg conf css0' can be used to get/set Common search space(CSS0) related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -260,7 +299,7 @@ var confCss0Cmd = &cobra.Command{
 
 // confCoreset1Cmd represents the 'nrrg conf coreset1' command
 var confCoreset1Cmd = &cobra.Command{
-	Use:   "coreset1 [sub]",
+	Use:   "coreset1",
 	Short: "",
 	Long: `'nrrg conf coreset1' can be used to get/set CORESET1 related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -272,7 +311,7 @@ var confCoreset1Cmd = &cobra.Command{
 
 // confUssCmd represents the 'nrrg conf uss' command
 var confUssCmd = &cobra.Command{
-	Use:   "uss [sub]",
+	Use:   "uss",
 	Short: "",
 	Long: `'nrrg conf uss' can be used to get/set UE-specific search space related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -284,7 +323,7 @@ var confUssCmd = &cobra.Command{
 
 // confDci10Cmd represents the 'nrrg conf dci10' command
 var confDci10Cmd = &cobra.Command{
-	Use:   "dci10 [sub]",
+	Use:   "dci10",
 	Short: "",
 	Long: `'nrrg conf dci10' can be used to get/set DCI 1_0 (scheduling SIB1/Msg2/Msg4) related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -296,7 +335,7 @@ var confDci10Cmd = &cobra.Command{
 
 // confDci11Cmd represents the 'nrrg conf dci11' command
 var confDci11Cmd = &cobra.Command{
-	Use:   "dci11 [sub]",
+	Use:   "dci11",
 	Short: "",
 	Long: `'nrrg conf dci11' can be used to get/set DCI 1_1(scheduling PDSCH with C-RNTI) related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -308,7 +347,7 @@ var confDci11Cmd = &cobra.Command{
 
 // confMsg3Cmd represents the 'nrrg conf msg3' command
 var confMsg3Cmd = &cobra.Command{
-	Use:   "msg3 [sub]",
+	Use:   "msg3",
 	Short: "",
 	Long: `'nrrg conf msg3' can be used to get/set Msg3(scheduled by UL grant in RAR) related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -320,7 +359,7 @@ var confMsg3Cmd = &cobra.Command{
 
 // confDci01Cmd represents the 'nrrg conf dci01' command
 var confDci01Cmd = &cobra.Command{
-	Use:   "dci01 [sub]",
+	Use:   "dci01",
 	Short: "",
 	Long: `'nrrg conf dci01' can be used to get/set DCI 0_1(scheduling PUSCH with C-RNTI) related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -332,7 +371,7 @@ var confDci01Cmd = &cobra.Command{
 
 // confBwpCmd represents the 'nrrg conf bwp' command
 var confBwpCmd = &cobra.Command{
-	Use:   "bwp [sub]",
+	Use:   "bwp",
 	Short: "",
 	Long: `'nrrg conf bwp' can be used to get/set generic BWP related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -344,7 +383,7 @@ var confBwpCmd = &cobra.Command{
 
 // confRachCmd represents the 'nrrg conf rach' command
 var confRachCmd = &cobra.Command{
-	Use:   "rach [sub]",
+	Use:   "rach",
 	Short: "",
 	Long: `'nrrg conf rach' can be used to get/set random access related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -354,11 +393,11 @@ var confRachCmd = &cobra.Command{
 	},
 }
 
-// confDmrsRaCmd represents the 'nrrg conf dmrsra' command
-var confDmrsRaCmd = &cobra.Command{
-	Use:   "dmrsra [sub]",
+// confDmrsCommonCmd represents the 'nrrg conf dmrscommon' command
+var confDmrsCommonCmd = &cobra.Command{
+	Use:   "dmrscommon",
 	Short: "",
-	Long: `'nrrg conf dmrsra' can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
+	Long: `'nrrg conf dmrscommon' can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Flag | ActualValue | DefaultValue\n")
 		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
@@ -368,9 +407,21 @@ var confDmrsRaCmd = &cobra.Command{
 
 // confDmrsPdschCmd represents the 'nrrg conf dmrspdsch' command
 var confDmrsPdschCmd = &cobra.Command{
-	Use:   "dmrspdsch [sub]",
+	Use:   "dmrspdsch",
 	Short: "",
-	Long: `'nrrg conf dmrspdsch' can be used to get/set DMRS/PTRS of PDSCH related network configurations.`,
+	Long: `'nrrg conf dmrspdsch' can be used to get/set DMRS of PDSCH related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
+// confPtrsPdschCmd represents the 'nrrg conf ptrspdsch' command
+var confPtrsPdschCmd = &cobra.Command{
+	Use:   "ptrspdsch",
+	Short: "",
+	Long: `'nrrg conf ptrspdsch' can be used to get/set PTRS of PDSCH related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Flag | ActualValue | DefaultValue\n")
 		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
@@ -380,9 +431,21 @@ var confDmrsPdschCmd = &cobra.Command{
 
 // confDmrsPuschCmd represents the 'nrrg conf dmrspusch' command
 var confDmrsPuschCmd = &cobra.Command{
-	Use:   "dmrspusch [sub]",
+	Use:   "dmrspusch",
 	Short: "",
-	Long: `'nrrg conf dmrspusch' can be used to get/set DMRS/PTRS of PUSCH related network configurations.`,
+	Long: `'nrrg conf dmrspusch' can be used to get/set DMRS of PUSCH related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
+// confPtrsPuschCmd represents the 'nrrg conf ptrspusch' command
+var confPtrsPuschCmd = &cobra.Command{
+	Use:   "ptrspusch",
+	Short: "",
+	Long: `'nrrg conf ptrspusch' can be used to get/set PTRS of PUSCH related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Flag | ActualValue | DefaultValue\n")
 		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
@@ -420,9 +483,11 @@ func init() {
 	nrrgConfCmd.AddCommand(confDci01Cmd)
 	nrrgConfCmd.AddCommand(confBwpCmd)
 	nrrgConfCmd.AddCommand(confRachCmd)
-	nrrgConfCmd.AddCommand(confDmrsRaCmd)
+	nrrgConfCmd.AddCommand(confDmrsCommonCmd)
 	nrrgConfCmd.AddCommand(confDmrsPdschCmd)
+	nrrgConfCmd.AddCommand(confPtrsPdschCmd)
 	nrrgConfCmd.AddCommand(confDmrsPuschCmd)
+	nrrgConfCmd.AddCommand(confPtrsPuschCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -770,10 +835,10 @@ func init() {
 	confDci01Cmd.Flags().MarkHidden("tbs")
 
 	confBwpCmd.Flags().StringSlice("bwpType", []string{"iniDlBwp", "dedDlBwp", "iniUlBwp", "dedUlBwp"}, "BWP type")
-	confBwpCmd.Flags().IntSlice("bwpId", []int{0, 1, 0, 1}, "bwp-Id of BWP-Uplink or BWP-Downlink IE")
-	confBwpCmd.Flags().StringSlice("bwpScs", []string{"30KHz", "30KHz", "30KHz", "30KHz"}, "subcarrierSpacing of BWP IE")
-	confBwpCmd.Flags().StringSlice("bwpCp", []string{"normal", "normal", "normal", "normal"}, "cyclicPrefix of BWP IE")
-	confBwpCmd.Flags().IntSliceVar(&bwpLocAndBw, "bwpLocAndBw", []int{12925, 1099, 1099, 1099}, "locationAndBandwidth of BWP IE")
+	confBwpCmd.Flags().IntSlice("bwpId", []int{0, 1, 0, 1}, "bwp-Id of BWP-Uplink or BWP-Downlink")
+	confBwpCmd.Flags().StringSlice("bwpScs", []string{"30KHz", "30KHz", "30KHz", "30KHz"}, "subcarrierSpacing of BWP")
+	confBwpCmd.Flags().StringSlice("bwpCp", []string{"normal", "normal", "normal", "normal"}, "cyclicPrefix of BWP")
+	confBwpCmd.Flags().IntSliceVar(&bwpLocAndBw, "bwpLocAndBw", []int{12925, 1099, 1099, 1099}, "locationAndBandwidth of BWP")
 	confBwpCmd.Flags().IntSliceVar(&bwpStartRb, "bwpStartRb", []int{0, 0, 0, 0}, "RB_start of BWP")
 	confBwpCmd.Flags().IntSliceVar(&bwpNumRbs, "bwpNumRbs", []int{48, 273, 273, 273}, "L_RBs of BWP")
 	confBwpCmd.Flags().SortFlags = false
@@ -844,35 +909,126 @@ func init() {
 	confRachCmd.Flags().MarkHidden("raNumRbs")
 	confRachCmd.Flags().MarkHidden("raKBar")
 
-	confDmrsRaCmd.Flags().StringSlice("schInfo", []string{"SIB1", "Msg2", "Msg4", "Msg3"}, "Information of UL/DL-SCH")
-	confDmrsRaCmd.Flags().StringSlice("dmrsType", []string{"type1", "type1", "type1", "type1"}, "dmrs-Type as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
-	confDmrsRaCmd.Flags().StringSlice("dmrsAddPos", []string{"pos0", "pos0", "pos0", "pos1"}, "dmrs-AdditionalPosition as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
-	confDmrsRaCmd.Flags().StringSlice("maxLength", []string{"len1", "len1", "len1", "len1"}, "maxLength as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
-	confDmrsRaCmd.Flags().IntSlice("dmrsPorts", []int{1000, 1000, 1000, 0}, "DMRS antenna ports")
-	confDmrsRaCmd.Flags().IntSlice("cdmGroupsWoData", []int{1, 1, 1, 2}, "CDM group(s) without data")
-	confDmrsRaCmd.Flags().IntSlice("numFrontLoadSymbs", []int{1, 1, 1, 1}, "Number of front-load DMRS symbols")
+	confDmrsCommonCmd.Flags().StringSlice("schInfo", []string{"SIB1", "Msg2", "Msg4", "Msg3"}, "Information of UL/DL-SCH")
+	confDmrsCommonCmd.Flags().StringSlice("dmrsType", []string{"type1", "type1", "type1", "type1"}, "dmrs-Type as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
+	confDmrsCommonCmd.Flags().StringSlice("dmrsAddPos", []string{"pos0", "pos0", "pos0", "pos1"}, "dmrs-AdditionalPosition as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
+	confDmrsCommonCmd.Flags().StringSlice("maxLength", []string{"len1", "len1", "len1", "len1"}, "maxLength as in DMRS-UplinkConfig/DMRS-DownlinkConfig")
+	confDmrsCommonCmd.Flags().IntSlice("dmrsPorts", []int{1000, 1000, 1000, 0}, "DMRS antenna ports")
+	confDmrsCommonCmd.Flags().IntSlice("cdmGroupsWoData", []int{1, 1, 1, 2}, "CDM group(s) without data")
+	confDmrsCommonCmd.Flags().IntSlice("numFrontLoadSymbs", []int{1, 1, 1, 1}, "Number of front-load DMRS symbols")
 	// tdL for SIB1/Msg2/Msg4 is semicolon separated
 	// tdL for Msg3 is semicolon separated if msg3FreqHop is disabled, otherwise, tdL is colon separated for each hop
-	confDmrsRaCmd.Flags().StringSlice("tdL", []string{"0", "0", "0", "0:0"}, "Time-domain locations for DMRS")
+	confDmrsCommonCmd.Flags().StringSlice("tdL", []string{"0", "0", "0", "0:0"}, "Time-domain locations for DMRS")
 	// fdK indicates REs per PRB for DMRS
-	confDmrsRaCmd.Flags().StringSlice("fdK", []string{"101010101010", "101010101010", "101010101010", "111111111111"}, "Frequency-domain locations of DMRS")
-	confDmrsRaCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.dmrsra.schInfo", confDmrsRaCmd.Flags().Lookup("schInfo"))
-	viper.BindPFlag("nrrg.dmrsra.dmrsType", confDmrsRaCmd.Flags().Lookup("dmrsType"))
-	viper.BindPFlag("nrrg.dmrsra.dmrsAddPos", confDmrsRaCmd.Flags().Lookup("dmrsAddPos"))
-	viper.BindPFlag("nrrg.dmrsra.maxLength", confDmrsRaCmd.Flags().Lookup("maxLength"))
-	viper.BindPFlag("nrrg.dmrsra.dmrsPorts", confDmrsRaCmd.Flags().Lookup("dmrsPorts"))
-	viper.BindPFlag("nrrg.dmrsra.cdmGroupsWoData", confDmrsRaCmd.Flags().Lookup("cdmGroupsWoData"))
-	viper.BindPFlag("nrrg.dmrsra.numFrontLoadSymbs", confDmrsRaCmd.Flags().Lookup("numFrontLoadSymbs"))
-	viper.BindPFlag("nrrg.dmrsra.tdL", confDmrsRaCmd.Flags().Lookup("tdL"))
-	viper.BindPFlag("nrrg.dmrsra.fdK", confDmrsRaCmd.Flags().Lookup("fdK"))
-	confDmrsRaCmd.Flags().MarkHidden("schInfo")
-	confDmrsRaCmd.Flags().MarkHidden("dmrsType")
-	confDmrsRaCmd.Flags().MarkHidden("dmrsAddPos")
-	confDmrsRaCmd.Flags().MarkHidden("maxLength")
-	confDmrsRaCmd.Flags().MarkHidden("dmrsPorts")
-	confDmrsRaCmd.Flags().MarkHidden("cdmGroupsWoData")
-	confDmrsRaCmd.Flags().MarkHidden("numFrontLoadSymbs")
-	confDmrsRaCmd.Flags().MarkHidden("tdL")
-	confDmrsRaCmd.Flags().MarkHidden("fdK")
+	confDmrsCommonCmd.Flags().StringSlice("fdK", []string{"101010101010", "101010101010", "101010101010", "111111111111"}, "Frequency-domain locations of DMRS")
+	confDmrsCommonCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.dmrscommon.schInfo", confDmrsCommonCmd.Flags().Lookup("schInfo"))
+	viper.BindPFlag("nrrg.dmrscommon.dmrsType", confDmrsCommonCmd.Flags().Lookup("dmrsType"))
+	viper.BindPFlag("nrrg.dmrscommon.dmrsAddPos", confDmrsCommonCmd.Flags().Lookup("dmrsAddPos"))
+	viper.BindPFlag("nrrg.dmrscommon.maxLength", confDmrsCommonCmd.Flags().Lookup("maxLength"))
+	viper.BindPFlag("nrrg.dmrscommon.dmrsPorts", confDmrsCommonCmd.Flags().Lookup("dmrsPorts"))
+	viper.BindPFlag("nrrg.dmrscommon.cdmGroupsWoData", confDmrsCommonCmd.Flags().Lookup("cdmGroupsWoData"))
+	viper.BindPFlag("nrrg.dmrscommon.numFrontLoadSymbs", confDmrsCommonCmd.Flags().Lookup("numFrontLoadSymbs"))
+	viper.BindPFlag("nrrg.dmrscommon.tdL", confDmrsCommonCmd.Flags().Lookup("tdL"))
+	viper.BindPFlag("nrrg.dmrscommon.fdK", confDmrsCommonCmd.Flags().Lookup("fdK"))
+	confDmrsCommonCmd.Flags().MarkHidden("schInfo")
+	confDmrsCommonCmd.Flags().MarkHidden("dmrsType")
+	confDmrsCommonCmd.Flags().MarkHidden("dmrsAddPos")
+	confDmrsCommonCmd.Flags().MarkHidden("maxLength")
+	confDmrsCommonCmd.Flags().MarkHidden("dmrsPorts")
+	confDmrsCommonCmd.Flags().MarkHidden("cdmGroupsWoData")
+	confDmrsCommonCmd.Flags().MarkHidden("numFrontLoadSymbs")
+	confDmrsCommonCmd.Flags().MarkHidden("tdL")
+	confDmrsCommonCmd.Flags().MarkHidden("fdK")
+
+	confDmrsPdschCmd.Flags().StringVar(&pdschDmrsType, "pdschDmrsType", "type1", "dmrs-Type as in DMRS-DownlinkConfig[type1,type2]")
+	confDmrsPdschCmd.Flags().StringVar(&pdschDmrsAddPos, "pdschDmrsAddPos", "pos0", "dmrs-additionalPosition as in DMRS-DownlinkConfig[pos0,pos1,pos2,pos3]")
+	confDmrsPdschCmd.Flags().StringVar(&pdschMaxLength, "pdschMaxLength", "len1", "maxLength as in DMRS-DownlinkConfig[len1,len2]")
+	confDmrsPdschCmd.Flags().IntSlice("dmrsPorts", []int{1000, 1001, 1002, 1003}, "DMRS antenna ports")
+	confDmrsPdschCmd.Flags().Int("cdmGroupsWoData", 2, "CDM group(s) without data")
+	confDmrsPdschCmd.Flags().Int("numFrontLoadSymbs", 1, "Number of front-load DMRS symbols")
+	// tdL is semicolon separated
+	confDmrsPdschCmd.Flags().String("tdL", "2", "Time-domain locations for DMRS")
+	// fdK indicates REs per PRB for DMRS
+	confDmrsPdschCmd.Flags().String("fdK", "111111111111", "Frequency-domain locations of DMRS")
+	confDmrsPdschCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.dmrspdsch.pdschDmrsType", confDmrsPdschCmd.Flags().Lookup("pdschDmrsType"))
+	viper.BindPFlag("nrrg.dmrspdsch.pdschDmrsAddPos", confDmrsPdschCmd.Flags().Lookup("pdschDmrsAddPos"))
+	viper.BindPFlag("nrrg.dmrspdsch.pdschMaxLength", confDmrsPdschCmd.Flags().Lookup("pdschMaxLength"))
+	viper.BindPFlag("nrrg.dmrspdsch.dmrsPorts", confDmrsPdschCmd.Flags().Lookup("dmrsPorts"))
+	viper.BindPFlag("nrrg.dmrspdsch.cdmGroupsWoData", confDmrsPdschCmd.Flags().Lookup("cdmGroupsWoData"))
+	viper.BindPFlag("nrrg.dmrspdsch.numFrontLoadSymbs", confDmrsPdschCmd.Flags().Lookup("numFrontLoadSymbs"))
+	viper.BindPFlag("nrrg.dmrspdsch.tdL", confDmrsPdschCmd.Flags().Lookup("tdL"))
+	viper.BindPFlag("nrrg.dmrspdsch.fdK", confDmrsPdschCmd.Flags().Lookup("fdK"))
+	confDmrsPdschCmd.Flags().MarkHidden("dmrsPorts")
+	confDmrsPdschCmd.Flags().MarkHidden("cdmGroupsWoData")
+	confDmrsPdschCmd.Flags().MarkHidden("numFrontLoadSymbs")
+	confDmrsPdschCmd.Flags().MarkHidden("tdL")
+	confDmrsPdschCmd.Flags().MarkHidden("fdK")
+
+	confPtrsPdschCmd.Flags().BoolVar(&pdschPtrsEnabled, "pdschPtrsEnabled", true, "Enable PTRS of PDSCH[false,true]")
+	confPtrsPdschCmd.Flags().IntVar(&pdschPtrsTimeDensity, "pdschPtrsTimeDensity", 1, "The L_PTRS deduced from timeDensity of PTRS-DownlinkConfig[1,2,4]")
+	confPtrsPdschCmd.Flags().IntVar(&pdschPtrsFreqDensity, "pdschPtrsFreqDensity", 2, "The K_PTRS deduced from frequencyDensity of PTRS-DownlinkConfig[2,4]")
+	confPtrsPdschCmd.Flags().StringVar(&pdschPtrsReOffset, "pdschPtrsReOffset", "offset00", "resourceElementOffset of PTRS-DownlinkConfig[offset00,offset01,offset10,offset11]")
+	confPtrsPdschCmd.Flags().IntSlice("dmrsPorts", []int{1000}, "Associated DMRS antenna ports")
+	confPtrsPdschCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsEnabled", confPtrsPdschCmd.Flags().Lookup("pdschPtrsEnabled"))
+	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsTimeDensity", confPtrsPdschCmd.Flags().Lookup("pdschPtrsTimeDensity"))
+	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsFreqDensity", confPtrsPdschCmd.Flags().Lookup("pdschPtrsFreqDensity"))
+	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsReOffset", confPtrsPdschCmd.Flags().Lookup("pdschPtrsReOffset"))
+	viper.BindPFlag("nrrg.ptrspdsch.dmrsPorts", confPtrsPdschCmd.Flags().Lookup("dmrsPorts"))
+	confPtrsPdschCmd.Flags().MarkHidden("dmrsPorts")
+
+	confDmrsPuschCmd.Flags().StringVar(&puschDmrsType, "puschDmrsType", "type1", "dmrs-Type as in DMRS-UplinkConfig[type1,type2]")
+	confDmrsPuschCmd.Flags().StringVar(&puschDmrsAddPos, "puschDmrsAddPos", "pos0", "dmrs-additionalPosition as in DMRS-UplinkConfig[pos0,pos1,pos2,pos3]")
+	confDmrsPuschCmd.Flags().StringVar(&puschMaxLength, "puschMaxLength", "len1", "maxLength as in DMRS-UplinkConfig[len1,len2]")
+	confDmrsPuschCmd.Flags().IntSlice("dmrsPorts", []int{0, 1}, "DMRS antenna ports")
+	confDmrsPuschCmd.Flags().Int("cdmGroupsWoData", 1, "CDM group(s) without data")
+	confDmrsPuschCmd.Flags().Int("numFrontLoadSymbs", 1, "Number of front-load DMRS symbols")
+	// tdL is semicolon separated
+	confDmrsPuschCmd.Flags().String("tdL", "2", "Time-domain locations for DMRS")
+	// fdK indicates REs per PRB for DMRS
+	confDmrsPuschCmd.Flags().String("fdK", "101010101010", "Frequency-domain locations of DMRS")
+	confDmrsPuschCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.dmrspusch.puschDmrsType", confDmrsPuschCmd.Flags().Lookup("puschDmrsType"))
+	viper.BindPFlag("nrrg.dmrspusch.puschDmrsAddPos", confDmrsPuschCmd.Flags().Lookup("puschDmrsAddPos"))
+	viper.BindPFlag("nrrg.dmrspusch.puschMaxLength", confDmrsPuschCmd.Flags().Lookup("puschMaxLength"))
+	viper.BindPFlag("nrrg.dmrspusch.dmrsPorts", confDmrsPuschCmd.Flags().Lookup("dmrsPorts"))
+	viper.BindPFlag("nrrg.dmrspusch.cdmGroupsWoData", confDmrsPuschCmd.Flags().Lookup("cdmGroupsWoData"))
+	viper.BindPFlag("nrrg.dmrspusch.numFrontLoadSymbs", confDmrsPuschCmd.Flags().Lookup("numFrontLoadSymbs"))
+	viper.BindPFlag("nrrg.dmrspusch.tdL", confDmrsPuschCmd.Flags().Lookup("tdL"))
+	viper.BindPFlag("nrrg.dmrspusch.fdK", confDmrsPuschCmd.Flags().Lookup("fdK"))
+	confDmrsPuschCmd.Flags().MarkHidden("dmrsPorts")
+	confDmrsPuschCmd.Flags().MarkHidden("cdmGroupsWoData")
+	confDmrsPuschCmd.Flags().MarkHidden("numFrontLoadSymbs")
+	confDmrsPuschCmd.Flags().MarkHidden("tdL")
+	confDmrsPuschCmd.Flags().MarkHidden("fdK")
+
+	confPtrsPuschCmd.Flags().BoolVar(&puschPtrsEnabled, "puschPtrsEnabled", true, "Enable PTRS of PDSCH[false,true]")
+	confPtrsPuschCmd.Flags().IntVar(&puschPtrsTimeDensity, "puschPtrsTimeDensity", 1, "The L_PTRS deduced from timeDensity of PTRS-UplinkConfig for CP-OFDM[1,2,4]")
+	confPtrsPuschCmd.Flags().IntVar(&puschPtrsFreqDensity, "puschPtrsFreqDensity", 2, "The K_PTRS deduced from frequencyDensity of PTRS-UplinkConfig for CP-OFDM[2,4]")
+	confPtrsPuschCmd.Flags().StringVar(&puschPtrsReOffset, "puschPtrsReOffset", "offset00", "resourceElementOffset of PTRS-UplinkConfig for CP-OFDM[offset00,offset01,offset10,offset11]")
+	confPtrsPuschCmd.Flags().StringVar(&puschPtrsMaxNumPorts, "puschPtrsMaxNumPorts", "n1", "maxNrofPorts of PTRS-UplinkConfig for CP-OFDM[n1,n2]")
+	confPtrsPuschCmd.Flags().IntSlice("dmrsPorts", []int{0}, "Associated DMRS antenna ports for CP-OFDM")
+	confPtrsPuschCmd.Flags().IntVar(&puschPtrsTimeDensityTp, "puschPtrsTimeDensityTp", 1, "The L_PTRS deduced from timeDensityTransformPrecoding of PTRS-UplinkConfig for DFS-S-OFDM[1,2]")
+	confPtrsPuschCmd.Flags().StringVar(&puschPtrsGrpPatternTp, "puschPtrsGrpPatternTp", "p0", "The Scheduled-bandwidth column index of 3GPP TS 38.214 Table 6.2.3.2-1, deduced from sampleDensity of PTRS-UplinkConfig for DFS-S-OFDM[p0,p1,p2,p3,p4]")
+	confPtrsPuschCmd.Flags().Int("numGrpsTp", 2, "The Number-of-PT-RS-groups of 3GPP TS 38.214 Table 6.2.3.2-1, deduced from sampleDensity of PTRS-UplinkConfig for DFS-S-OFDM")
+	confPtrsPuschCmd.Flags().Int("samplesPerGrpTp", 2, "The Number-of-samples-per-PT-RS-group of 3GPP TS 38.214 Table 6.2.3.2-1, deduced from sampleDensity of PTRS-UplinkConfig for DFS-S-OFDM")
+	confPtrsPuschCmd.Flags().IntSlice("dmrsPortsTp", []int{}, "Associated DMRS antenna ports for DFT-S-OFDM")
+	confPtrsPuschCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsEnabled", confPtrsPuschCmd.Flags().Lookup("puschPtrsEnabled"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsTimeDensity", confPtrsPuschCmd.Flags().Lookup("puschPtrsTimeDensity"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsFreqDensity", confPtrsPuschCmd.Flags().Lookup("puschPtrsFreqDensity"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsReOffset", confPtrsPuschCmd.Flags().Lookup("puschPtrsReOffset"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsMaxNumPorts", confPtrsPuschCmd.Flags().Lookup("puschPtrsMaxNumPorts"))
+	viper.BindPFlag("nrrg.ptrspusch.dmrsPorts", confPtrsPuschCmd.Flags().Lookup("dmrsPorts"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsTimeDensityTp", confPtrsPuschCmd.Flags().Lookup("puschPtrsTimeDensityTp"))
+	viper.BindPFlag("nrrg.ptrspusch.puschPtrsGrpPatternTp", confPtrsPuschCmd.Flags().Lookup("puschPtrsGrpPatternTp"))
+	viper.BindPFlag("nrrg.ptrspusch.numGrpsTp", confPtrsPuschCmd.Flags().Lookup("numGrpsTp"))
+	viper.BindPFlag("nrrg.ptrspusch.samplesPerGrpTp", confPtrsPuschCmd.Flags().Lookup("samplesPerGrpTp"))
+	viper.BindPFlag("nrrg.ptrspusch.dmrsPortsTp", confPtrsPuschCmd.Flags().Lookup("dmrsPortsTp"))
+	confPtrsPuschCmd.Flags().MarkHidden("dmrsPorts")
+	confPtrsPuschCmd.Flags().MarkHidden("numGrpsTp")
+	confPtrsPuschCmd.Flags().MarkHidden("samplesPerGrpTp")
+	confPtrsPuschCmd.Flags().MarkHidden("dmrsPortsTp")
 }

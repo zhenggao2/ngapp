@@ -183,7 +183,7 @@ nrrg:
     mupdsch: 1
     rnti: C-RNTI
     tbs: 1277992
-  dmrsra:
+  dmrscommon:
     cdmgroupswodata:
     - 1
     - 1
@@ -229,6 +229,30 @@ nrrg:
     - "0"
     - "0"
     - "0:0"
+  dmrspdsch:
+    cdmgroupswodata: 2
+    dmrsports:
+    - 1000
+    - 1001
+    - 1002
+    - 1003
+    fdk: "111111111111"
+    numfrontloadsymbs: 1
+    pdschdmrsaddpos: pos0
+    pdschdmrstype: type1
+    pdschmaxlength: len1
+    tdl: "2"
+  dmrspusch:
+    cdmgroupswodata: 1
+    dmrsports:
+    - 0
+    - 1
+    fdk: "101010101010"
+    numfrontloadsymbs: 1
+    puschdmrsaddpos: pos0
+    puschdmrstype: type1
+    puschmaxlength: len1
+    tdl: "2"
   freqband:
     duplexmode: TDD
     freqrange: FR1
@@ -264,6 +288,26 @@ nrrg:
     tdnumsymbs: 6
     tdsliv: 74
     tdstartsymb: 4
+  ptrspdsch:
+    dmrsports:
+    - 1000
+    pdschptrsenabled: true
+    pdschptrsfreqdensity: 2
+    pdschptrsreoffset: offset00
+    pdschptrstimedensity: 1
+  ptrspusch:
+    dmrsports:
+    - 1000
+    dmrsportstp: []
+    numgrpstp: 2
+    puschptrsenabled: true
+    puschptrsfreqdensity: 2
+    puschptrsgrppatterntp: p0
+    puschptrsmaxnumports: n1
+    puschptrsreoffset: offset00
+    puschptrstimedensity: 1
+    puschptrstimedensitytp: 1
+    samplespergrptp: 2
   rach:
     cbpreambsperssb: 64
     contrestimer: sf64
