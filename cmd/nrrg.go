@@ -216,6 +216,13 @@ var (
 	trsOffset []int
 
 	// CSI-IM resource
+	csiImRePattern string
+	csiImScLoc string
+	csiImSymbLoc int
+	csiImStartRb int
+	csiImNumRbs int
+	csiImPeriod string
+	csiImOffset int
 
 	// CSI-ResourceConfig and CSI-ReportConfig
 
@@ -234,6 +241,7 @@ var nrrgCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg generates NR(new radio) resource grid according to network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
 		viper.WriteConfig()
 	},
 }
@@ -244,7 +252,7 @@ var nrrgConfCmd = &cobra.Command{
 	Short: "",
 	Long: `'nrrg conf' can be used to get/set network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("nrrg conf called")
+	    cmd.Help()
 		viper.WriteConfig()
 	},
 }
@@ -529,7 +537,19 @@ var confNzpCsiRsCmd = &cobra.Command{
 var confTrsCmd = &cobra.Command{
 	Use:   "trs",
 	Short: "",
-	Long: `'nrrg conf trs' can be used to get/set tracking RS resources related network configurations.`,
+	Long: `'nrrg conf trs' can be used to get/set TRS resources related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
+// confCsiImCmd represents the 'nrrg conf csiim' command
+var confCsiImCmd = &cobra.Command{
+	Use:   "csiim",
+	Short: "",
+	Long: `'nrrg conf csiim' can be used to get/set CSI-IM resource related network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Flag | ActualValue | DefaultValue\n")
 		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
@@ -577,6 +597,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confPuschCmd)
 	nrrgConfCmd.AddCommand(confNzpCsiRsCmd)
 	nrrgConfCmd.AddCommand(confTrsCmd)
+	nrrgConfCmd.AddCommand(confCsiImCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -1267,4 +1288,25 @@ func init() {
 	confTrsCmd.Flags().MarkHidden("_kap")
 	confTrsCmd.Flags().MarkHidden("_lap")
 
+	confCsiImCmd.Flags().Int("_resSetId", 0, "csi-IM-ResourceSetId of CSI-IM-ResourceSet")
+	confCsiImCmd.Flags().Int("_resId", 0, "csi-IM-ResourceId of CSI-IM-Resource")
+	confCsiImCmd.Flags().StringVar(&csiImRePattern, "csiImRePattern", "pattern0", "csi-IM-ResourceElementPattern of CSI-IM-Resource[pattern0,pattern1]")
+	confCsiImCmd.Flags().StringVar(&csiImScLoc, "csiImScLoc", "s8", "subcarrierLocation of csi-IM-ResourceElementPattern of CSI-IM-Resource[s0,s2,s4,s6,s8,s10]")
+	confCsiImCmd.Flags().IntVar(&csiImSymbLoc, "csiImSymbLoc", 1, "symbolLocation of csi-IM-ResourceElementPattern of CSI-IM-Resource[0..12]")
+	confCsiImCmd.Flags().IntVar(&csiImStartRb, "csiImStartRb", 0, "startingRB of CSI-FrequencyOccupation[0..274]")
+	confCsiImCmd.Flags().IntVar(&csiImNumRbs, "csiImNumRbs", 276, "nrofRBs of CSI-FrequencyOccupation[24..276]")
+	confCsiImCmd.Flags().StringVar(&csiImPeriod, "csiImPeriod", "slots20", "periodicityAndOffset of CSI-IM-Resource[slots4,slots5,slots8,slots10,slots16,slots20,slots32,slots40,slots64,slots80,slots160,slots320,slots640]")
+	confCsiImCmd.Flags().IntVar(&csiImOffset, "csiImOffset", 10, "periodicityAndOffset of CSI-IM-Resource[0..period-1]")
+	confCsiImCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.csiim._resSetId", confCsiImCmd.Flags().Lookup("_resSetId"))
+	viper.BindPFlag("nrrg.csiim._resId", confCsiImCmd.Flags().Lookup("_resId"))
+	viper.BindPFlag("nrrg.csiim.csiImRePattern", confCsiImCmd.Flags().Lookup("csiImRePattern"))
+	viper.BindPFlag("nrrg.csiim.csiImScLoc", confCsiImCmd.Flags().Lookup("csiImScLoc"))
+	viper.BindPFlag("nrrg.csiim.csiImSymbLoc", confCsiImCmd.Flags().Lookup("csiImSymbLoc"))
+	viper.BindPFlag("nrrg.csiim.csiImStartRb", confCsiImCmd.Flags().Lookup("csiImStartRb"))
+	viper.BindPFlag("nrrg.csiim.csiImNumRbs", confCsiImCmd.Flags().Lookup("csiImNumRbs"))
+	viper.BindPFlag("nrrg.csiim.csiImPeriod", confCsiImCmd.Flags().Lookup("csiImPeriod"))
+	viper.BindPFlag("nrrg.csiim.csiImOffset", confCsiImCmd.Flags().Lookup("csiImOffset"))
+	confCsiImCmd.Flags().MarkHidden("_resSetId")
+	confCsiImCmd.Flags().MarkHidden("_resId")
 }

@@ -61,6 +61,16 @@ nrrg:
     coreset1interleaversize: n2
     coreset1regbundlesize: n2
     coreset1shiftind: 0
+  csiim:
+    _resid: 0
+    _ressetid: 0
+    csiimnumrbs: 276
+    csiimoffset: 10
+    csiimperiod: slots20
+    csiimrepattern: pattern0
+    csiimscloc: s8
+    csiimstartrb: 0
+    csiimsymbloc: 1
   css0:
     css0agglevel: 4
     css0numcandidates: n4

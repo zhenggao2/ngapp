@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 Author: zhengwei.gao@yahoo.com
 Blog: http://blog.csdn.net/jeffyko`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		cmd.Help()
 	},
 }
 
