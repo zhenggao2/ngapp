@@ -422,6 +422,117 @@ nrrg:
     rarespwin: sl20
     ssbperrachoccasion: one
     totnumpreambs: 64
+  srs:
+    _dci01noncbsrslist:
+    - ""
+    - ""
+    _msrsb:
+    - 48,16,8,4
+    - 4,4,4,4
+    - 4,4,4,4
+    - 4,4,4,4
+    _nb:
+    - 1,3,2,2
+    - 1,1,1,1
+    - 1,1,1,1
+    - 1,1,1,1
+    _resid:
+    - 0
+    - 1
+    - 2
+    - 3
+    _ressetid:
+    - 0
+    - 1
+    _restype:
+    - periodic
+    - periodic
+    _type:
+    - periodic
+    - periodic
+    - periodic
+    - periodic
+    _usage:
+    - codebook
+    - nonCodebook
+    srsbhop:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsbsrs:
+    - 1
+    - 0
+    - 0
+    - 0
+    srscomboff:
+    - 0
+    - 0
+    - 0
+    - 0
+    srscs:
+    - 11
+    - 0
+    - 0
+    - 0
+    srscsrs:
+    - 12
+    - 0
+    - 0
+    - 0
+    srsfreqpos:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsfreqshift:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsnoncbptrsport:
+    - n0
+    - n0
+    - n0
+    - n0
+    srsnumcombs:
+    - n4
+    - n2
+    - n2
+    - n2
+    srsnumports:
+    - ports2
+    - port1
+    - port1
+    - port1
+    srsnumsymbs:
+    - n4
+    - n1
+    - n1
+    - n1
+    srsoffset:
+    - 7
+    - 0
+    - 0
+    - 0
+    srsperiod:
+    - sl10
+    - sl5
+    - sl5
+    - sl5
+    srsrepetition:
+    - n4
+    - n1
+    - n1
+    - n1
+    srssetresidlist:
+    - "0"
+    - "0_1_2_3"
+    srsstartpos:
+    - 3
+    - 0
+    - 0
+    - 0
   ssbburst:
     _maxl: 8
     grouppresence: ""
