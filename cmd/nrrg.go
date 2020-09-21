@@ -207,6 +207,13 @@ var (
 	nzpCsiRsOffset int
 
 	// TRS resource
+	trsFreqAllocBits string
+	trsFirstSymbs []int
+	trsStartRb int
+	trsNumRbs int
+	trsPeriod string
+	// TRS occupies two NZP-CSI-RS resources in one slot or four NZP-CSI-RS resources in two consecutive slots
+	trsOffset []int
 
 	// CSI-IM resource
 
@@ -518,6 +525,19 @@ var confNzpCsiRsCmd = &cobra.Command{
 	},
 }
 
+// confTrsCmd represents the 'nrrg conf trs' command
+var confTrsCmd = &cobra.Command{
+	Use:   "trs",
+	Short: "",
+	Long: `'nrrg conf trs' can be used to get/set tracking RS resources related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
+
 
 // TODO: add more subcmd here!!!
 
@@ -556,6 +576,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confPdschCmd)
 	nrrgConfCmd.AddCommand(confPuschCmd)
 	nrrgConfCmd.AddCommand(confNzpCsiRsCmd)
+	nrrgConfCmd.AddCommand(confTrsCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -1189,4 +1210,61 @@ func init() {
 	confNzpCsiRsCmd.Flags().MarkHidden("_cdmGrpIndj")
 	confNzpCsiRsCmd.Flags().MarkHidden("_kap")
 	confNzpCsiRsCmd.Flags().MarkHidden("_lap")
+
+	confTrsCmd.Flags().Int("_resSetId", 1, "nzp-CSI-ResourceSetId of NZP-CSI-RS-ResourceSet")
+	confTrsCmd.Flags().Bool("_trsInfo", true, "trs-Info of NZP-CSI-RS-ResourceSet")
+	confTrsCmd.Flags().Int("_firstResId", 100, "nzp-CSI-RS-ResourceId of NZP-CSI-RS-Resource for the first TRS resource")
+	confTrsCmd.Flags().String("_freqAllocRow", "row1", "The row of frequencyDomainAllocation of CSI-RS-ResourceMapping[row1,row2,row4,other]")
+	confTrsCmd.Flags().StringVar(&trsFreqAllocBits, "trsFreqAllocBits", "0001", "The bit-string of frequencyDomainAllocation of CSI-RS-ResourceMapping")
+	confTrsCmd.Flags().String("_numPorts", "p1", "nrofPorts of CSI-RS-ResourceMapping[p1,p2,p4,p8,p12,p16,p24,p32]")
+	confTrsCmd.Flags().String("_cdmType", "noCDM", "cdm-Type of CSI-RS-ResourceMapping[noCDM,fd-CDM2,cdm4-FD2-TD2,cdm8-FD2-TD4]")
+	confTrsCmd.Flags().String("_density", "three", "density of CSI-RS-ResourceMapping[evenPRBs,oddPRBs,one,three]")
+	confTrsCmd.Flags().IntSliceVar(&trsFirstSymbs, "trsFirstSymbs", []int{5, 9}, "firstOFDMSymbolInTimeDomain of CSI-RS-ResourceMapping for the two TRS resources in one slot[0..13]")
+	confTrsCmd.Flags().IntVar(&trsStartRb, "trsStartRb", 0, "startingRB of CSI-FrequencyOccupation[0..274]")
+	confTrsCmd.Flags().IntVar(&trsNumRbs, "trsNumRbs", 276, "nrofRBs of CSI-FrequencyOccupation[24..276]")
+	confTrsCmd.Flags().StringVar(&trsPeriod, "trsPeriod", "slots40", "periodicityAndOffset of NZP-CSI-RS-Resource[slots10,slots20,slots40,slots80,slots160,slots320,slots640]")
+	confTrsCmd.Flags().IntSliceVar(&trsOffset, "trsOffset", []int{10}, "periodicityAndOffset of NZP-CSI-RS-Resource for at most two consecutive slots[0..period-1]")
+	confTrsCmd.Flags().Int("_row", 1, "The Row of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().StringSlice("_kBarLBar", []string{"0,0","4,0", "8,0"}, "The constants deduced from (k_bar, l_bar) of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().IntSlice("_ki", []int{0, 0, 0}, "The index ki deduced from (k_bar, l_bar) of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().IntSlice("_li", []int{0, 0, 0}, "The index li deduced from (k_bar, l_bar) of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().IntSlice("_cdmGrpIndj", []int{0, 0, 0}, "The CDM-group-index-j of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().IntSlice("_kap", []int{0}, "The k_ap of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().IntSlice("_lap", []int{0}, "The l_ap of 3GPP TS 38.211 Table 7.4.1.5.3-1")
+	confTrsCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.trs._resSetId", confTrsCmd.Flags().Lookup("_resSetId"))
+	viper.BindPFlag("nrrg.trs._trsInfo", confTrsCmd.Flags().Lookup("_trsInfo"))
+	viper.BindPFlag("nrrg.trs._firstResId", confTrsCmd.Flags().Lookup("_firstResId"))
+	viper.BindPFlag("nrrg.trs._freqAllocRow", confTrsCmd.Flags().Lookup("_freqAllocRow"))
+	viper.BindPFlag("nrrg.trs.trsFreqAllocBits", confTrsCmd.Flags().Lookup("trsFreqAllocBits"))
+	viper.BindPFlag("nrrg.trs._numPorts", confTrsCmd.Flags().Lookup("_numPorts"))
+	viper.BindPFlag("nrrg.trs._cdmType", confTrsCmd.Flags().Lookup("_cdmType"))
+	viper.BindPFlag("nrrg.trs._density", confTrsCmd.Flags().Lookup("_density"))
+	viper.BindPFlag("nrrg.trs.trsFirstSymbs", confTrsCmd.Flags().Lookup("trsFirstSymbs"))
+	viper.BindPFlag("nrrg.trs.trsStartRb", confTrsCmd.Flags().Lookup("trsStartRb"))
+	viper.BindPFlag("nrrg.trs.trsNumRbs", confTrsCmd.Flags().Lookup("trsNumRbs"))
+	viper.BindPFlag("nrrg.trs.trsPeriod", confTrsCmd.Flags().Lookup("trsPeriod"))
+	viper.BindPFlag("nrrg.trs.trsOffset", confTrsCmd.Flags().Lookup("trsOffset"))
+	viper.BindPFlag("nrrg.trs._row", confTrsCmd.Flags().Lookup("_row"))
+	viper.BindPFlag("nrrg.trs._kBarLBar", confTrsCmd.Flags().Lookup("_kBarLBar"))
+	viper.BindPFlag("nrrg.trs._ki", confTrsCmd.Flags().Lookup("_ki"))
+	viper.BindPFlag("nrrg.trs._li", confTrsCmd.Flags().Lookup("_li"))
+	viper.BindPFlag("nrrg.trs._cdmGrpIndj", confTrsCmd.Flags().Lookup("_cdmGrpIndj"))
+	viper.BindPFlag("nrrg.trs._kap", confTrsCmd.Flags().Lookup("_kap"))
+	viper.BindPFlag("nrrg.trs._lap", confTrsCmd.Flags().Lookup("_lap"))
+	confTrsCmd.Flags().MarkHidden("_resSetId")
+	confTrsCmd.Flags().MarkHidden("_trsInfo")
+	confTrsCmd.Flags().MarkHidden("_firstResId")
+	confTrsCmd.Flags().MarkHidden("_freqAllocRow")
+	confTrsCmd.Flags().MarkHidden("_numPorts")
+	confTrsCmd.Flags().MarkHidden("_cdmType")
+	confTrsCmd.Flags().MarkHidden("_density")
+	confTrsCmd.Flags().MarkHidden("_row")
+	confTrsCmd.Flags().MarkHidden("_kBarLBar")
+	confTrsCmd.Flags().MarkHidden("_ki")
+	confTrsCmd.Flags().MarkHidden("_li")
+	confTrsCmd.Flags().MarkHidden("_cdmGrpIndj")
+	confTrsCmd.Flags().MarkHidden("_kap")
+	confTrsCmd.Flags().MarkHidden("_lap")
+
 }

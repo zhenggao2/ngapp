@@ -392,6 +392,45 @@ nrrg:
     _ssbpattern: Case C
     kssb: 0
     ssbscs: 30KHz
+  trs:
+    _cdmgrpindj:
+    - 0
+    - 0
+    - 0
+    _cdmtype: noCDM
+    _density: three
+    _firstresid: 100
+    _freqallocrow: row1
+    _kap:
+    - 0
+    _kbarlbar:
+    - 0,0
+    - 4,0
+    - 8,0
+    _ki:
+    - 0
+    - 0
+    - 0
+    _lap:
+    - 0
+    _li:
+    - 0
+    - 0
+    - 0
+    _numports: p1
+    _resid: 100
+    _ressetid: 1
+    _row: 1
+    _trsinfo: true
+    trsfirstsymbs:
+    - 5
+    - 9
+    trsfreqallocbits: "0001"
+    trsnumrbs: 276
+    trsoffset:
+    - 10
+    trsperiod: slots40
+    trsstartrb: 0
   uss:
     ussagglevel: 4
     ussduration: 1
