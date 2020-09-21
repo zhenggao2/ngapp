@@ -225,6 +225,9 @@ var (
 	csiImOffset int
 
 	// CSI-ResourceConfig and CSI-ReportConfig
+	csiRepPeriod string
+	csiRepOffset int
+	csiRepPucchRes int
 
 	// SRS resource
 
@@ -557,6 +560,18 @@ var confCsiImCmd = &cobra.Command{
 	},
 }
 
+// confCsiReportCmd represents the 'nrrg conf csireport' command
+var confCsiReportCmd = &cobra.Command{
+	Use:   "csireport",
+	Short: "",
+	Long: `'nrrg conf csireport' can be used to get/set CSI-ResourceConfig and CSI-ReportConfig related network configurations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Flag | ActualValue | DefaultValue\n")
+		cmd.Flags().VisitAll(func (f *pflag.Flag) { if f.Name != "config" && f.Name != "help" {fmt.Printf("%v | %v | %v\n", f.Name, f.Value, f.DefValue)}})
+		viper.WriteConfig()
+	},
+}
+
 
 
 // TODO: add more subcmd here!!!
@@ -598,6 +613,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confNzpCsiRsCmd)
 	nrrgConfCmd.AddCommand(confTrsCmd)
 	nrrgConfCmd.AddCommand(confCsiImCmd)
+	nrrgConfCmd.AddCommand(confCsiReportCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -1309,4 +1325,45 @@ func init() {
 	viper.BindPFlag("nrrg.csiim.csiImOffset", confCsiImCmd.Flags().Lookup("csiImOffset"))
 	confCsiImCmd.Flags().MarkHidden("_resSetId")
 	confCsiImCmd.Flags().MarkHidden("_resId")
+
+	confCsiReportCmd.Flags().StringSlice("_resCfgType", []string{"NZP-CSI-RS", "CSI-IM", "TRS"}, "type of CSI-ResourceConfig")
+	confCsiReportCmd.Flags().IntSlice("_resCfgId", []int{0, 10, 20}, "csi-ResourceConfigId of CSI-ResourceConfig")
+	confCsiReportCmd.Flags().IntSlice("_resSetId", []int{0, 0, 1}, "csi-RS-ResourceSetList of CSI-ResourceConfig")
+	confCsiReportCmd.Flags().IntSlice("_resBwpId", []int{1, 1, 1}, "bwp-Id of CSI-ResourceConfig")
+	confCsiReportCmd.Flags().StringSlice("_resType", []string{"periodic", "periodic", "periodic"}, "resourceType of CSI-ResourceConfig")
+	confCsiReportCmd.Flags().Int("_repCfgId", 0, "reportConfigId of CSI-ReportConfig")
+	confCsiReportCmd.Flags().Int("_resCfgIdChnMeas", 0, "resourcesForChannelMeasurement of CSI-ReportConfig")
+	confCsiReportCmd.Flags().Int("_resCfgIdCsiImIntf", 10, "csi-IM-ResourcesForInterference of CSI-ReportConfig")
+	confCsiReportCmd.Flags().String("_repCfgType", "periodic", "reportConfigType of CSI-ReportConfig")
+	confCsiReportCmd.Flags().StringVar(&csiRepPeriod, "csiRepPeriod", "slots320", "CSI-ReportPeriodicityAndOffset of CSI-ReportConfig[slots4,slots5,slots8,slots10,slots16,slots20,slots40,slots80,slots160,slots320]")
+	confCsiReportCmd.Flags().IntVar(&csiRepOffset, "csiRepOffset", 7, "CSI-ReportPeriodicityAndOffset of CSI-ReportConfig[0..period-1]")
+	confCsiReportCmd.Flags().Int("_ulBwpId", 1, "uplinkBandwidthPartId of PUCCH-CSI-Resource of CSI-ReportConfig")
+	confCsiReportCmd.Flags().IntVar(&csiRepPucchRes, "csiRepPucchRes", 2, "pucch-Resource of PUCCH-CSI-Resource of CSI-ReportConfig[2,3,4]")
+	confCsiReportCmd.Flags().String("_quantity", "cri-RI-PMI-CQI", "reportQuantity of CSI-ReportConfig")
+	confCsiReportCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.csireport._resCfgType", confCsiReportCmd.Flags().Lookup("_resCfgType"))
+	viper.BindPFlag("nrrg.csireport._resCfgId", confCsiReportCmd.Flags().Lookup("_resCfgId"))
+	viper.BindPFlag("nrrg.csireport._resSetId", confCsiReportCmd.Flags().Lookup("_resSetId"))
+	viper.BindPFlag("nrrg.csireport._resBwpId", confCsiReportCmd.Flags().Lookup("_resBwpId"))
+	viper.BindPFlag("nrrg.csireport._resType", confCsiReportCmd.Flags().Lookup("_resType"))
+	viper.BindPFlag("nrrg.csireport._repCfgId", confCsiReportCmd.Flags().Lookup("_repCfgId"))
+	viper.BindPFlag("nrrg.csireport._resCfgIdChnMeas", confCsiReportCmd.Flags().Lookup("_resCfgIdChnMeas"))
+	viper.BindPFlag("nrrg.csireport._resCfgIdCsiImIntf", confCsiReportCmd.Flags().Lookup("_resCfgIdCsiImIntf"))
+	viper.BindPFlag("nrrg.csireport._repCfgType", confCsiReportCmd.Flags().Lookup("_repCfgType"))
+	viper.BindPFlag("nrrg.csireport.csiRepPeriod", confCsiReportCmd.Flags().Lookup("csiRepPeriod"))
+	viper.BindPFlag("nrrg.csireport.csiRepOffset", confCsiReportCmd.Flags().Lookup("csiRepOffset"))
+	viper.BindPFlag("nrrg.csireport._ulBwpId", confCsiReportCmd.Flags().Lookup("_ulBwpId"))
+	viper.BindPFlag("nrrg.csireport.csiRepPucchRes", confCsiReportCmd.Flags().Lookup("csiRepPucchRes"))
+	viper.BindPFlag("nrrg.csireport._quantity", confCsiReportCmd.Flags().Lookup("_quantity"))
+	confCsiReportCmd.Flags().MarkHidden("_resCfgType")
+	confCsiReportCmd.Flags().MarkHidden("_resCfgId")
+	confCsiReportCmd.Flags().MarkHidden("_resSetId")
+	confCsiReportCmd.Flags().MarkHidden("_resBwpId")
+	confCsiReportCmd.Flags().MarkHidden("_resType")
+	confCsiReportCmd.Flags().MarkHidden("_repCfgId")
+	confCsiReportCmd.Flags().MarkHidden("_resCfgIdChnMeas")
+	confCsiReportCmd.Flags().MarkHidden("_resCfgIdCsiImIntf")
+	confCsiReportCmd.Flags().MarkHidden("_repCfgType")
+	confCsiReportCmd.Flags().MarkHidden("_ulBwpId")
+	confCsiReportCmd.Flags().MarkHidden("_quantity")
 }

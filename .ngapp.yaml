@@ -71,6 +71,36 @@ nrrg:
     csiimscloc: s8
     csiimstartrb: 0
     csiimsymbloc: 1
+  csireport:
+    _quantity: cri-RI-PMI-CQI
+    _repcfgid: 0
+    _repcfgtype: periodic
+    _resbwpid:
+    - 1
+    - 1
+    - 1
+    _rescfgid:
+    - 0
+    - 10
+    - 20
+    _rescfgidchnmeas: 0
+    _rescfgidcsiimintf: 10
+    _rescfgtype:
+    - NZP-CSI-RS
+    - CSI-IM
+    - TRS
+    _ressetid:
+    - 0
+    - 0
+    - 1
+    _restype:
+    - periodic
+    - periodic
+    - periodic
+    _ulbwpid: 1
+    csirepoffset: 7
+    csirepperiod: slots320
+    csireppucchres: 2
   css0:
     css0agglevel: 4
     css0numcandidates: n4
