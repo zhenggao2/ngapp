@@ -35,10 +35,8 @@ var ttiCmd = &cobra.Command{
 	Short: "",
 	Long: `tti parses and aggregates MAC TTI trace of LTE/NR.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		//fmt.Printf("tti called with flags: -d=%v, -p=%v\n", ttiDir, ttiPattern)
-	    //dir, _ := cmd.Flags().GetString("dir")
 	    if len(dir) == 0 {
-			cmd.Flags().Set("dir", viper.GetString("tti.dir"))
+				cmd.Flags().Set("dir", viper.GetString("tti.dir"))
 		} else {
 		    viper.WriteConfig()
 		}
