@@ -20,6 +20,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/zhenggao2/ngapp/nrgrid"
+	"strconv"
+	"strings"
+	"errors"
 )
 
 var (
@@ -55,6 +59,7 @@ type NrrgFlags struct {
 	csiReport CsiReportFlags
 	srs SrsFlags
 	pucch PucchFlags
+	advanced AdvancedFlags
 }
 
 // operating band
@@ -501,6 +506,16 @@ type PucchFlags struct {
 	dsrOffset []int
 }
 
+// Advanced settings
+type AdvancedFlags struct {
+	bestSsb int
+	pdcchSlotSib1 int
+	prachOccMsg1 int
+	pdcchOccMsg2 int
+	pdcchOccMsg4 int
+	dsrRes int
+}
+
 // nrrgCmd represents the nrrg command
 var nrrgCmd = &cobra.Command{
 	Use:   "nrrg",
@@ -535,9 +550,118 @@ var confFreqBandCmd = &cobra.Command{
 		flags.freqBand._freqRange = viper.GetString("nrrg.freqBand._freqRange")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		if cmd.Flags().Lookup("opBand").Changed {
+			band := flags.freqBand.opBand
+			p := nrgrid.OpBands[band]
+			if p == nil {
+				fmt.Println("Invalid frequency band indicator[n1..n1024]:", band)
+				return
+			}
+
+			if p.DuplexMode == "SUL" || p.DuplexMode == "SDL" {
+				fmt.Println(p.DuplexMode, "is not supported!")
+				return
+			}
+
+			fmt.Println("FreqBandInfo:", *p)
+
+			// update freqBand flags
+			flags.freqBand._duplexMode = p.DuplexMode
+			flags.freqBand._maxDlFreq = p.MaxDlFreq
+
+			v, _ := strconv.Atoi(band[1:])
+			if v >= 1 && v <= 256 {
+				flags.freqBand._freqRange = "FR1"
+			} else {
+				flags.freqBand._freqRange = "FR2"
+			}
+
+			// update ssb scs
+			var ssbScsSet []string
+			for _, v := range nrgrid.SsbRasters[band] {
+				ssbScsSet = append(ssbScsSet, v[0])
+			}
+			fmt.Println("Available SSB scs:", strings.Join(ssbScsSet, ","))
+
+			// update rmsi scs and carrier scs
+			var rmsiScsSet []string
+			var carrierScsSet []string
+			if flags.freqBand._freqRange == "FR1" {
+				rmsiScsSet = append(rmsiScsSet, []string{"15KHz", "30KHz"}...)
+
+				scsFr1 := []int{15, 30, 60}
+				for _, scs := range scsFr1 {
+					key := fmt.Sprintf("%v_%v", band, scs)
+					valid := false
+					for _, i := range nrgrid.BandScs2BwFr1[key] {
+					    if i > 0 {
+					    	valid = true
+					    	break
+						}
+					}
+					if valid {
+						carrierScsSet = append(carrierScsSet, fmt.Sprintf("%vKHz", scs))
+					}
+				}
+			} else {
+				rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
+				carrierScsSet = append(carrierScsSet, []string{"60KHz", "120KHz"}...)
+			}
+			fmt.Println("Available RMSI scs(subcarrierSpacingCommon of MIB):", strings.Join(rmsiScsSet, ","))
+			fmt.Println("Available carrier scs(subcarrierSpacing of SCS-SpecificCarrier):", strings.Join(carrierScsSet, ","))
+
+			// update rach info
+			err := updateRach()
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		}
+
 	    print(cmd, args)
 		viper.WriteConfig()
 	},
+}
+
+func updateRach() error {
+    var p *nrgrid.RachInfo
+	if flags.freqBand._freqRange == "FR1"{
+		if flags.freqBand._duplexMode == "FDD" {
+			p = nrgrid.RaCfgFr1FddSUl[flags.rach.prachConfId]
+		} else {
+			p = nrgrid.RaCfgFr1Tdd[flags.rach.prachConfId]
+		}
+	} else {
+		p = nrgrid.RaCfgFr2Tdd[flags.rach.prachConfId]
+	}
+
+	if p == nil {
+		return  errors.New(fmt.Sprintf("Invalid combination for PRACH: %v,%v with prach-ConfigurationIndex=%v", flags.freqBand._freqRange, flags.freqBand._duplexMode, flags.rach.prachConfId))
+	}
+
+	fmt.Println("RachInfo:", *p)
+
+	flags.rach._raFormat = p.Format
+	flags.rach._raX = p.X
+	flags.rach._raY = p.Y
+	flags.rach._raSubfNumFr1SlotNumFr2 = p.SubfNumFr1SlotNumFr2
+	flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 = p.NumSlotsPerSubfFr1Per60KSlotFr2
+	flags.rach._raNumOccasionsPerSlot = p.NumOccasionsPerSlot
+	flags.rach._raDuration = p.Duration
+
+	var raScsSet []string
+	if flags.rach._raFormat == "0" || flags.rach._raFormat == "1" || flags.rach._raFormat == "2" || flags.rach._raFormat == "3" {
+		raScsSet = append(raScsSet, nrgrid.ScsRaLongPrach["839_"+flags.rach._raFormat])
+	} else {
+		if flags.freqBand._freqRange == "FR1" {
+			raScsSet = append(raScsSet, []string{"15KHz", "30KHz"}...)
+		} else {
+			raScsSet = append(raScsSet, []string{"60KHz", "120KHz"}...)
+		}
+	}
+	fmt.Println("Available PRACH scs(msg1-SubcarrierSpacing of RACH-ConfigCommon):", strings.Join(raScsSet, ","))
+
+	return nil
 }
 
 // confSsbGridCmd represents the nrrg conf ssbgrid command
@@ -1215,6 +1339,25 @@ var confPucchCmd = &cobra.Command{
 	},
 }
 
+// confAdvancedCmd represents the nrrg conf advanced command
+var confAdvancedCmd = &cobra.Command{
+	Use:   "advanced",
+	Short: "",
+	Long: `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		flags.advanced.bestSsb = viper.GetInt("nrrg.advanced.bestSsb")
+		flags.advanced.pdcchSlotSib1 = viper.GetInt("nrrg.advanced.pdcchSlotSib1")
+		flags.advanced.prachOccMsg1 = viper.GetInt("nrrg.advanced.prachOccMsg1")
+		flags.advanced.pdcchOccMsg2 = viper.GetInt("nrrg.advanced.pdcchOccMsg2")
+		flags.advanced.pdcchOccMsg4 = viper.GetInt("nrrg.advanced.pdcchOccMsg4")
+		flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		print(cmd, args)
+		viper.WriteConfig()
+	},
+}
+
 // TODO: add more subcmd here!!!
 
 // nrrgSimCmd represents the nrrg sim command
@@ -1260,6 +1403,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confCsiReportCmd)
 	nrrgConfCmd.AddCommand(confSrsCmd)
 	nrrgConfCmd.AddCommand(confPucchCmd)
+	nrrgConfCmd.AddCommand(confAdvancedCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -1300,6 +1444,7 @@ func init() {
 	initConfCsiReportCmd()
 	initConfSrsCmd()
 	initConfPucchCmd()
+	initConfAdvancedCmd()
 }
 
 func initConfFreqBandCmd() {
@@ -2197,6 +2342,22 @@ func initConfPucchCmd() {
 	confPucchCmd.Flags().MarkHidden("_pucchResSetId")
 	confPucchCmd.Flags().MarkHidden("_dsrResId")
 	confPucchCmd.Flags().MarkHidden("_dsrPucchRes")
+}
+
+func initConfAdvancedCmd() {
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.bestSsb, "bestSsb", 0, "Best SSB index")
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchSlotSib1, "pdcchSlotSib1", -1, "PDCCH slot for SIB1")
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.prachOccMsg1, "prachOccMsg1", -1, "PRACH occasion for Msg1")
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg2, "pdcchOccMsg2", 4, "PDCCH occasion for Msg2")
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg4, "pdcchOccMsg4", 0, "PDCCH occasion for Msg4")
+	confAdvancedCmd.Flags().IntVar(&flags.advanced.dsrRes, "dsrRes", 0, "DSR resource index")
+	confAdvancedCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.advanced.bestSsb", confAdvancedCmd.Flags().Lookup("bestSsb"))
+	viper.BindPFlag("nrrg.advanced.pdcchSlotSib1", confAdvancedCmd.Flags().Lookup("pdcchSlotSib1"))
+	viper.BindPFlag("nrrg.advanced.prachOccMsg1", confAdvancedCmd.Flags().Lookup("prachOccMsg1"))
+	viper.BindPFlag("nrrg.advanced.pdcchOccMsg2", confAdvancedCmd.Flags().Lookup("pdcchOccMsg2"))
+	viper.BindPFlag("nrrg.advanced.pdcchOccMsg4", confAdvancedCmd.Flags().Lookup("pdcchOccMsg4"))
+	viper.BindPFlag("nrrg.advanced.dsrRes", confAdvancedCmd.Flags().Lookup("dsrRes"))
 }
 
 var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}

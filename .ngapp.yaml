@@ -1,4 +1,11 @@
 nrrg:
+  advanced:
+    bestssb: 0
+    dsrres: 0
+    pdcchoccmsg2: 4
+    pdcchoccmsg4: 0
+    pdcchslotsib1: -1
+    prachoccmsg1: -1
   bwp:
     _bwpcp:
     - normal

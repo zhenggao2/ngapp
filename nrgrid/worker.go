@@ -1,5 +1,6 @@
 package nrgrid
 
+/*
 import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
@@ -488,3 +489,4 @@ func (p *NrGridUi) onOkBtnClicked(checked bool) {
 func (p *NrGridUi) onCancelBtnClicked(checked bool) {
 	p.widget.Reject()
 }
+*/
