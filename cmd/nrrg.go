@@ -54,6 +54,7 @@ type NrrgFlags struct {
 	csiIm CsiImFlags
 	csiReport CsiReportFlags
 	srs SrsFlags
+	pucch PucchFlags
 }
 
 // operating band
@@ -474,12 +475,31 @@ type SrsFlags struct {
 	_dci01NonCbSrsList []string
 }
 
-// PUCCH resource
+// PUCCH-FormatConfig, PUCCH resource and DSR resource
+type PucchFlags struct {
+	// PUCCH-FormatConfig
+	pucchFmtCfgNumSlots string
+	pucchFmtCfgInterSlotFreqHop string
+	pucchFmtCfgAddDmrs bool
+	pucchFmtCfgSimAckCsi bool
 
-// PUCCH-FormatConfig
+	// PUCCH resource
+	_pucchResId []int
+	_pucchFormat []string
+	_pucchResSetId []int
+	pucchStartRb []int
+	pucchIntraSlotFreqHop []string
+	pucchSecondHopPrb []int
+	pucchNumRbs []int
+	pucchStartSymb []int
+	pucchNumSymbs []int
 
-// DSR resource
-
+	// DSR resource
+	_dsrResId []int
+	_dsrPucchRes []int
+	dsrPeriod []string
+	dsrOffset []int
+}
 
 // nrrgCmd represents the nrrg command
 var nrrgCmd = &cobra.Command{
@@ -1160,7 +1180,36 @@ var confSrsCmd = &cobra.Command{
 		flags.srs._dci01NonCbSrsList = viper.GetStringSlice("nrrg.srs._dci01NonCbSrsList")
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(cmd.Flags().GetStringSlice("srsSetResIdList"))
+		print(cmd, args)
+		viper.WriteConfig()
+	},
+}
+
+// confPucchcmd represents the nrrg conf pucch command
+var confPucchCmd = &cobra.Command{
+	Use:   "pucch",
+	Short: "",
+	Long: `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		flags.pucch.pucchFmtCfgNumSlots = viper.GetString("nrrg.pucch.pucchFmtCfgNumSlots")
+		flags.pucch.pucchFmtCfgInterSlotFreqHop = viper.GetString("nrrg.pucch.pucchFmtCfgInterSlotFreqHop")
+		flags.pucch.pucchFmtCfgAddDmrs = viper.GetBool("nrrg.pucch.pucchFmtCfgAddDmrs")
+		flags.pucch.pucchFmtCfgSimAckCsi = viper.GetBool("nrrg.pucch.pucchFmtCfgSimAckCsi")
+		flags.pucch._pucchResId = viper.GetIntSlice("nrrg.pucch._pucchResId")
+		flags.pucch._pucchFormat = viper.GetStringSlice("nrrg.pucch._pucchFormat")
+		flags.pucch._pucchResSetId = viper.GetIntSlice("nrrg.pucch._pucchResSetId")
+		flags.pucch.pucchStartRb = viper.GetIntSlice("nrrg.pucch.pucchStartRb")
+		flags.pucch.pucchIntraSlotFreqHop = viper.GetStringSlice("nrrg.pucch.pucchIntraSlotFreqHop")
+		flags.pucch.pucchSecondHopPrb = viper.GetIntSlice("nrrg.pucch.pucchSecondHopPrb")
+		flags.pucch.pucchNumRbs = viper.GetIntSlice("nrrg.pucch.pucchNumRbs")
+		flags.pucch.pucchStartSymb = viper.GetIntSlice("nrrg.pucch.pucchStartSymb")
+		flags.pucch.pucchNumSymbs = viper.GetIntSlice("nrrg.pucch.pucchNumSymbs")
+		flags.pucch._dsrResId = viper.GetIntSlice("nrrg.pucch._dsrResId")
+		flags.pucch._dsrPucchRes = viper.GetIntSlice("nrrg.pucch._dsrPucchRes")
+		flags.pucch.dsrPeriod = viper.GetStringSlice("nrrg.pucch.dsrPeriod")
+		flags.pucch.dsrOffset = viper.GetIntSlice("nrrg.pucch.dsrOffset")
+	},
+	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
 		viper.WriteConfig()
 	},
@@ -1210,6 +1259,7 @@ func init() {
 	nrrgConfCmd.AddCommand(confCsiImCmd)
 	nrrgConfCmd.AddCommand(confCsiReportCmd)
 	nrrgConfCmd.AddCommand(confSrsCmd)
+	nrrgConfCmd.AddCommand(confPucchCmd)
 	nrrgCmd.AddCommand(nrrgConfCmd)
 	nrrgCmd.AddCommand(nrrgSimCmd)
 	rootCmd.AddCommand(nrrgCmd)
@@ -1249,6 +1299,7 @@ func init() {
 	initConfCsiImCmd()
 	initConfCsiReportCmd()
 	initConfSrsCmd()
+	initConfPucchCmd()
 }
 
 func initConfFreqBandCmd() {
@@ -2103,6 +2154,49 @@ func initConfSrsCmd() {
 	confSrsCmd.Flags().MarkHidden("_resType")
 	confSrsCmd.Flags().MarkHidden("_usage")
 	confSrsCmd.Flags().MarkHidden("_dci01NonCbSrsList")
+}
+
+func initConfPucchCmd() {
+	confPucchCmd.Flags().StringVar(&flags.pucch.pucchFmtCfgNumSlots, "pucchFmtCfgNumSlots", "n2", "nrofSlots of PUCCH-FormatConfig for PUCCH format 1/3/4[n1,n2,n4,n8]")
+	confPucchCmd.Flags().StringVar(&flags.pucch.pucchFmtCfgInterSlotFreqHop, "pucchFmtCfgInterSlotFreqHop", "disabled", "interslotFrequencyHopping of PUCCH-FormatConfig for PUCCH format 1/3/4[disabled,enabled]")
+	confPucchCmd.Flags().BoolVar(&flags.pucch.pucchFmtCfgAddDmrs, "pucchFmtCfgAddDmrs", true, "additionalDMRS of PUCCH-FormatConfig for PUCCH format 3/4")
+	confPucchCmd.Flags().BoolVar(&flags.pucch.pucchFmtCfgSimAckCsi, "pucchFmtCfgSimAckCsi", true, "simultaneousHARQ-ACK-CSI of PUCCH-FormatConfig for PUCCH format 2/3/4")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResId, "_pucchResId", []int{0, 1, 2, 3, 4}, "pucch-ResourceId of PUCCH-Resource")
+	confPucchCmd.Flags().StringSliceVar(&flags.pucch._pucchFormat, "_pucchFormat", []string{"format0", "format1", "format2", "format3", "format4"}, "format of PUCCH-Resource")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResSetId, "_pucchResSetId", []int{0, 0, 1, 1, 1}, "pucch-ResourceSetId of PUCCH-ResourceSet")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchStartRb, "pucchStartRb", []int{0, 0, 0, 0, 0}, "startingPRB of PUCCH-ResourceSet[0..274]")
+	confPucchCmd.Flags().StringSliceVar(&flags.pucch.pucchIntraSlotFreqHop, "pucchIntraSlotFreqHop", []string{"enabled", "enabled", "disabled", "disabled", "disabled"}, "intraSlotFrequencyHopping of PUCCH-Resource[disabled,enabled]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchSecondHopPrb, "pucchSecondHopPrb", []int{272, 272, -1, -1, -1}, "secondHopPRB of PUCCH-Resource[0..274]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchNumRbs, "pucchNumRbs", []int{1, 1, 1, 1, 1}, "nrofPRBs of PUCCH-Resource, fixed to 1 for PUCCH format 0/1/4[1..16]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchStartSymb, "pucchStartSymb", []int{0, 0, 0, 0, 0}, "startingSymbolIndex of PUCCH-Resource[0..13(format 0/2) or 0..10(format 1/3/4)]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchNumSymbs, "pucchNumSymbs", []int{2, 4, 1, 4, 4}, "nrofSymbols of PUCCH-Resource[1..2(format 0/2) or 4..14(format 1/3/4)]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch._dsrResId, "_dsrResId", []int{0, 1}, "schedulingRequestResourceId of SchedulingRequestResourceConfig")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch._dsrPucchRes, "_dsrPucchRes", []int{0, 1}, "resource of SchedulingRequestResourceConfig")
+	confPucchCmd.Flags().StringSliceVar(&flags.pucch.dsrPeriod, "dsrPeriod", []string{"sl10", "sym6or7"}, "periodicityAndOffset of SchedulingRequestResourceConfig[sym2,sym6or7,sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl40,sl80,sl160,sl320,sl640]")
+	confPucchCmd.Flags().IntSliceVar(&flags.pucch.dsrOffset, "dsrOffset", []int{8, 0}, "periodicityAndOffset of SchedulingRequestResourceConfig[0..period-1]")
+	confPucchCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.pucch.pucchFmtCfgNumSlots", confPucchCmd.Flags().Lookup("pucchFmtCfgNumSlots"))
+	viper.BindPFlag("nrrg.pucch.pucchFmtCfgInterSlotFreqHop", confPucchCmd.Flags().Lookup("pucchFmtCfgInterSlotFreqHop"))
+	viper.BindPFlag("nrrg.pucch.pucchFmtCfgAddDmrs", confPucchCmd.Flags().Lookup("pucchFmtCfgAddDmrs"))
+	viper.BindPFlag("nrrg.pucch.pucchFmtCfgSimAckCsi", confPucchCmd.Flags().Lookup("pucchFmtCfgSimAckCsi"))
+	viper.BindPFlag("nrrg.pucch._pucchResId", confPucchCmd.Flags().Lookup("_pucchResId"))
+	viper.BindPFlag("nrrg.pucch._pucchFormat", confPucchCmd.Flags().Lookup("_pucchFormat"))
+	viper.BindPFlag("nrrg.pucch._pucchResSetId", confPucchCmd.Flags().Lookup("_pucchResSetId"))
+	viper.BindPFlag("nrrg.pucch.pucchStartRb", confPucchCmd.Flags().Lookup("pucchStartRb"))
+	viper.BindPFlag("nrrg.pucch.pucchIntraSlotFreqHop", confPucchCmd.Flags().Lookup("pucchIntraSlotFreqHop"))
+	viper.BindPFlag("nrrg.pucch.pucchSecondHopPrb", confPucchCmd.Flags().Lookup("pucchSecondHopPrb"))
+	viper.BindPFlag("nrrg.pucch.pucchNumRbs", confPucchCmd.Flags().Lookup("pucchNumRbs"))
+	viper.BindPFlag("nrrg.pucch.pucchStartSymb", confPucchCmd.Flags().Lookup("pucchStartSymb"))
+	viper.BindPFlag("nrrg.pucch.pucchNumSymbs", confPucchCmd.Flags().Lookup("pucchNumSymbs"))
+	viper.BindPFlag("nrrg.pucch._dsrResId", confPucchCmd.Flags().Lookup("_dsrResId"))
+	viper.BindPFlag("nrrg.pucch._dsrPucchRes", confPucchCmd.Flags().Lookup("_dsrPucchRes"))
+	viper.BindPFlag("nrrg.pucch.dsrPeriod", confPucchCmd.Flags().Lookup("dsrPeriod"))
+	viper.BindPFlag("nrrg.pucch.dsrOffset", confPucchCmd.Flags().Lookup("dsrOffset"))
+	confPucchCmd.Flags().MarkHidden("_pucchResId")
+	confPucchCmd.Flags().MarkHidden("_pucchFormat")
+	confPucchCmd.Flags().MarkHidden("_pucchResSetId")
+	confPucchCmd.Flags().MarkHidden("_dsrResId")
+	confPucchCmd.Flags().MarkHidden("_dsrPucchRes")
 }
 
 var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}

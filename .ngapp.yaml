@@ -387,6 +387,77 @@ nrrg:
     puschptrsreoffset: offset00
     puschptrstimedensity: 1
     puschptrstimedensitytp: 1
+  pucch:
+    _dsrpucchres:
+    - 0
+    - 1
+    _dsrresid:
+    - 0
+    - 1
+    _pucchformat:
+    - format0
+    - format1
+    - format2
+    - format3
+    - format4
+    _pucchresid:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    _pucchressetid:
+    - 0
+    - 0
+    - 1
+    - 1
+    - 1
+    dsroffset:
+    - 8
+    - 0
+    dsrperiod:
+    - sl10
+    - sym6or7
+    pucchfmtcfgadddmrs: true
+    pucchfmtcfginterslotfreqhop: disabled
+    pucchfmtcfgnumslots: n2
+    pucchfmtcfgsimackcsi: true
+    pucchintraslotfreqhop:
+    - enabled
+    - enabled
+    - disabled
+    - disabled
+    - disabled
+    pucchnumrbs:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    pucchnumsymbs:
+    - 2
+    - 4
+    - 1
+    - 4
+    - 4
+    pucchsecondhopprb:
+    - 272
+    - 272
+    - -1
+    - -1
+    - -1
+    pucchstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    pucchstartsymb:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
   pusch:
     _rbgsize: 16
     puschaggfactor: n1
