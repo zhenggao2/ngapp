@@ -544,17 +544,16 @@ var confFreqBandCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf freqband can be used to get/set frequency-band related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.freqBand.opBand = viper.GetString("nrrg.freqBand.opBand")
-		flags.freqBand._duplexMode = viper.GetString("nrrg.freqBand._duplexMode")
-		flags.freqBand._maxDlFreq = viper.GetInt("nrrg.freqBand._maxDlFreq")
-		flags.freqBand._freqRange = viper.GetString("nrrg.freqBand._freqRange")
+	    loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
+
 		if cmd.Flags().Lookup("opBand").Changed {
 			band := flags.freqBand.opBand
 			p := nrgrid.OpBands[band]
 			if p == nil {
-				fmt.Println("Invalid frequency band indicator[n1..n1024]:", band)
+				fmt.Println("Invalid frequency band(FreqBandIndicatorNR):", band)
 				return
 			}
 
@@ -563,9 +562,9 @@ var confFreqBandCmd = &cobra.Command{
 				return
 			}
 
-			fmt.Println("FreqBandInfo:", *p)
+			fmt.Println("nrgrid.FreqBandInfo:", *p)
 
-			// update freqBand flags
+			// update band info
 			flags.freqBand._duplexMode = p.DuplexMode
 			flags.freqBand._maxDlFreq = p.MaxDlFreq
 
@@ -639,7 +638,7 @@ func updateRach() error {
 		return  errors.New(fmt.Sprintf("Invalid combination for PRACH: %v,%v with prach-ConfigurationIndex=%v", flags.freqBand._freqRange, flags.freqBand._duplexMode, flags.rach.prachConfId))
 	}
 
-	fmt.Println("RachInfo:", *p)
+	fmt.Println("nrgrid.RachInfo:", *p)
 
 	flags.rach._raFormat = p.Format
 	flags.rach._raX = p.X
@@ -670,15 +669,68 @@ var confSsbGridCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ssbgrid can be used to get/set SSB-grid related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.ssbGrid.ssbScs = viper.GetString("nrrg.ssbGrid.ssbScs")
-		flags.ssbGrid._ssbPattern = viper.GetString("nrrg.ssbGrid._ssbPattern")
-		flags.ssbGrid.kSsb = viper.GetInt("nrrg.ssbGrid.kSsb")
-		flags.ssbGrid._nCrbSsb = viper.GetInt("nrrg.ssbGrid._nCrbSsb")
+	    loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
+
+		if cmd.Flags().Lookup("ssbScs").Changed {
+			// update SSB pattern
+			band := flags.freqBand.opBand
+		    scs := flags.ssbGrid.ssbScs
+		    for _, v := range nrgrid.SsbRasters[band] {
+		    	if v[0] == scs {
+		    	    fmt.Println("SsbRaster info:", v)
+		    		flags.ssbGrid._ssbPattern = v[1]
+				}
+			}
+
+			// update SSB burst
+			// refer to 3GPP TS 38.213 vfa0: 4.1	Cell search
+			pat := flags.ssbGrid._ssbPattern
+			dm := flags.freqBand._duplexMode
+			freq := flags.freqBand._maxDlFreq
+			if (pat == "Case A" || pat == "Case B") || (pat == "Case C" && dm == "FDD") {
+				if freq <= 3000 {
+					flags.ssbBurst._maxL = 4
+				} else {
+					flags.ssbBurst._maxL = 8
+				}
+			} else if pat == "Case C" && dm == "TDD" {
+				if freq <= 2300 {
+					flags.ssbBurst._maxL = 4
+				} else {
+					flags.ssbBurst._maxL = 8
+				}
+			} else {
+				// pat == "Case D" || pat == "Case E"
+				flags.ssbBurst._maxL = 64
+			}
+
+			switch flags.ssbBurst._maxL {
+			case 4:
+			    flags.ssbBurst.inOneGrp = "11110000"
+			    flags.ssbBurst.grpPresence = ""
+			case 8:
+				flags.ssbBurst.inOneGrp = "11111111"
+				flags.ssbBurst.grpPresence = ""
+			case 64:
+				flags.ssbBurst.inOneGrp = "11111111"
+				flags.ssbBurst.grpPresence = "11111111"
+			}
+
+			// validate Coreset0 and update n_CRB_SSB
+			validateCoreset0()
+		}
 	    print(cmd, args)
 		viper.WriteConfig()
 	},
+}
+
+func validateCoreset0() error {
+	// TODO
+
+	return nil
 }
 
 // confSsbBurstCmd represents the nrrg conf ssbburst command
@@ -687,10 +739,7 @@ var confSsbBurstCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ssbburst can be used to get/set SSB-burst related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.ssbBurst._maxL = viper.GetInt("nrrg.ssbBurst._maxL")
-		flags.ssbBurst.inOneGrp = viper.GetString("nrrg.ssbBurst.inOneGrp")
-		flags.ssbBurst.grpPresence = viper.GetString("nrrg.ssbBurst.grpPresence")
-		flags.ssbBurst.ssbPeriod = viper.GetString("nrrg.ssbBurst.ssbPeriod")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -704,17 +753,7 @@ var confMibCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf mib can be used to get/set MIB related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.mib.sfn = viper.GetInt("nrrg.mib.sfn")
-		flags.mib.hrf = viper.GetInt("nrrg.mib.hrf")
-		flags.mib.dmrsTypeAPos = viper.GetString("nrrg.mib.dmrsTypeAPos")
-		flags.mib.commonScs = viper.GetString("nrrg.mib.commonScs")
-		flags.mib.rmsiCoreset0 = viper.GetInt("nrrg.mib.rmsiCoreset0")
-		flags.mib.rmsiCss0 = viper.GetInt("nrrg.mib.rmsiCss0")
-		flags.mib._coreset0MultiplexingPat = viper.GetInt("nrrg.mib._coreset0MultiplexingPat")
-		flags.mib._coreset0NumRbs = viper.GetInt("nrrg.mib._coreset0NumRbs")
-		flags.mib._coreset0NumSymbs = viper.GetInt("nrrg.mib._coreset0NumSymbs")
-		flags.mib._coreset0OffsetList = viper.GetIntSlice("nrrg.mib._coreset0OffsetList")
-		flags.mib._coreset0Offset = viper.GetInt("nrrg.mib._coreset0Offset")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -728,10 +767,7 @@ var confCarrierGridCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf carriergrid can be used to get/set carrier-grid related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.carrierGrid.carrierScs = viper.GetString("nrrg.carrierGrid.carrierScs")
-		flags.carrierGrid.bw = viper.GetString("nrrg.carrierGrid.bw")
-		flags.carrierGrid._carrierNumRbs = viper.GetInt("nrrg.carrierGrid._carrierNumRbs")
-		flags.carrierGrid._offsetToCarrier = viper.GetInt("nrrg.carrierGrid._offsetToCarrier")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -745,14 +781,7 @@ var confCommonSettingCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf commonsetting can be used to get/set common-setting related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.commonSetting.pci = viper.GetInt("nrrg.commonsetting.pci")
-		flags.commonSetting.numUeAp = viper.GetString("nrrg.commonsetting.numUeAp")
-		flags.commonSetting._refScs = viper.GetString("nrrg.commonsetting._refScs")
-		flags.commonSetting.patPeriod = viper.GetStringSlice("nrrg.commonsetting.patPeriod")
-		flags.commonSetting.patNumDlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumDlSlots")
-		flags.commonSetting.patNumDlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumDlSymbs")
-		flags.commonSetting.patNumUlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumUlSymbs")
-		flags.commonSetting.patNumUlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumUlSlots")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -766,8 +795,7 @@ var confCss0Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf css0 can be used to get/set Common search space(CSS0) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.css0.css0AggLevel = viper.GetInt("nrrg.css0.css0AggLevel")
-		flags.css0.css0NumCandidates = viper.GetString("nrrg.css0.css0NumCandidates")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -781,12 +809,7 @@ var confCoreset1Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf coreset1 can be used to get/set CORESET1 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.coreset1.coreset1FreqRes = viper.GetString("nrrg.coreset1.coreset1FreqRes")
-		flags.coreset1.coreset1Duration = viper.GetInt("nrrg.coreset1.coreset1Duration")
-		flags.coreset1.coreset1CceRegMap = viper.GetString("nrrg.coreset1.coreset1CceRegMap")
-		flags.coreset1.coreset1RegBundleSize = viper.GetString("nrrg.coreset1.coreset1RegBundleSize")
-		flags.coreset1.coreset1InterleaverSize = viper.GetString("nrrg.coreset1.coreset1InterleaverSize")
-		flags.coreset1.coreset1ShiftInd = viper.GetInt("nrrg.coreset1.coreset1ShiftInd")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -800,12 +823,7 @@ var confUssCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf uss can be used to get/set UE-specific search space related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.uss.ussPeriod = viper.GetString("nrrg.uss.ussPeriod")
-		flags.uss.ussOffset = viper.GetInt("nrrg.uss.ussOffset")
-		flags.uss.ussDuration = viper.GetInt("nrrg.uss.ussDuration")
-		flags.uss.ussFirstSymbs = viper.GetString("nrrg.uss.ussFirstSymbs")
-		flags.uss.ussAggLevel = viper.GetInt("nrrg.uss.ussAggLevel")
-		flags.uss.ussNumCandidates = viper.GetString("nrrg.uss.ussNumCandidates")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -819,26 +837,7 @@ var confDci10Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci10 can be used to get/set DCI 1_0 (scheduling SIB1/Msg2/Msg4) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dci10._rnti = viper.GetStringSlice("nrrg.dci10._rnti")
-		flags.dci10._muPdcch = viper.GetIntSlice("nrrg.dci10._muPdcch")
-		flags.dci10._muPdsch = viper.GetIntSlice("nrrg.dci10._muPdsch")
-		flags.dci10.dci10TdRa = viper.GetIntSlice("nrrg.dci10.dci10TdRa")
-		flags.dci10._tdMappingType = viper.GetStringSlice("nrrg.dci10._tdMappingType")
-		flags.dci10._tdK0 = viper.GetIntSlice("nrrg.dci10._tdK0")
-		flags.dci10._tdSliv = viper.GetIntSlice("nrrg.dci10._tdSliv")
-		flags.dci10._tdStartSymb = viper.GetIntSlice("nrrg.dci10._tdStartSymb")
-		flags.dci10._tdNumSymbs = viper.GetIntSlice("nrrg.dci10._tdNumSymbs")
-		flags.dci10._fdRaType = viper.GetStringSlice("nrrg.dci10._fdRaType")
-		flags.dci10._fdRa = viper.GetStringSlice("nrrg.dci10._fdRa")
-		flags.dci10.dci10FdStartRb = viper.GetIntSlice("nrrg.dci10.dci10FdStartRb")
-		flags.dci10.dci10FdNumRbs = viper.GetIntSlice("nrrg.dci10.dci10FdNumRbs")
-		flags.dci10.dci10FdVrbPrbMappingType = viper.GetStringSlice("nrrg.dci10.dci10FdVrbPrbMappingType")
-		flags.dci10._fdBundleSize = viper.GetStringSlice("nrrg.dci10._fdBundleSize")
-		flags.dci10.dci10McsCw0 = viper.GetIntSlice("nrrg.dci10.dci10McsCw0")
-		flags.dci10._tbs = viper.GetIntSlice("nrrg.dci10._tbs")
-		flags.dci10.dci10Msg2TbScaling = viper.GetInt("nrrg.dci10.dci10Msg2TbScaling")
-		flags.dci10.dci10Msg4DeltaPri = viper.GetInt("nrrg.dci10.dci10Msg4DeltaPri")
-		flags.dci10.dci10Msg4TdK1 = viper.GetInt("nrrg.dci10.dci10Msg4TdK1")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -852,29 +851,7 @@ var confDci11Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci11 can be used to get/set DCI 1_1(scheduling PDSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dci11._rnti = viper.GetString("nrrg.dci11._rnti")
-		flags.dci11._muPdcch = viper.GetInt("nrrg.dci11._muPdcch")
-		flags.dci11._muPdsch = viper.GetInt("nrrg.dci11._muPdsch")
-		flags.dci11._actBwp = viper.GetInt("nrrg.dci11._actBwp")
-		flags.dci11._indicatedBwp = viper.GetInt("nrrg.dci11._indicatedBwp")
-		flags.dci11.dci11TdRa = viper.GetInt("nrrg.dci11.dci11TdRa")
-		flags.dci11.dci11TdMappingType = viper.GetString("nrrg.dci11.dci11TdMappingType")
-		flags.dci11.dci11TdK0 = viper.GetInt("nrrg.dci11.dci11TdK0")
-		flags.dci11.dci11TdSliv = viper.GetInt("nrrg.dci11.dci11TdSliv")
-		flags.dci11.dci11TdStartSymb = viper.GetInt("nrrg.dci11.dci11TdStartSymb")
-		flags.dci11.dci11TdNumSymbs = viper.GetInt("nrrg.dci11.dci11TdNumSymbs")
-		flags.dci11.dci11FdRaType = viper.GetString("nrrg.dci11.dci11FdRaType")
-		flags.dci11.dci11FdRa = viper.GetString("nrrg.dci11.dci11FdRa")
-		flags.dci11.dci11FdStartRb = viper.GetInt("nrrg.dci11.dci11FdStartRb")
-		flags.dci11.dci11FdNumRbs = viper.GetInt("nrrg.dci11.dci11FdNumRbs")
-		flags.dci11.dci11FdVrbPrbMappingType = viper.GetString("nrrg.dci11.dci11FdVrbPrbMappingType")
-		flags.dci11.dci11FdBundleSize = viper.GetString("nrrg.dci11.dci11FdBundleSize")
-		flags.dci11.dci11McsCw0 = viper.GetInt("nrrg.dci11.dci11McsCw0")
-		flags.dci11.dci11McsCw1 = viper.GetInt("nrrg.dci11.dci11McsCw1")
-		flags.dci11._tbs = viper.GetInt("nrrg.dci11._tbs")
-		flags.dci11.dci11DeltaPri = viper.GetInt("nrrg.dci11.dci11DeltaPri")
-		flags.dci11.dci11TdK1 = viper.GetInt("nrrg.dci11.dci11TdK1")
-		flags.dci11.dci11AntPorts = viper.GetInt("nrrg.dci11.dci11AntPorts")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -888,22 +865,7 @@ var confMsg3Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf msg3 can be used to get/set Msg3(scheduled by UL grant in RAR) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.msg3._muPusch = viper.GetInt("nrrg.msg3._muPusch")
-		flags.msg3.msg3TdRa = viper.GetInt("nrrg.msg3.msg3TdRa")
-		flags.msg3._tdMappingType = viper.GetString("nrrg.msg3._tdMappingType")
-		flags.msg3._tdK2 = viper.GetInt("nrrg.msg3._tdK2")
-		flags.msg3._tdDelta = viper.GetInt("nrrg.msg3._tdDelta")
-		flags.msg3._tdSliv = viper.GetInt("nrrg.msg3._tdSliv")
-		flags.msg3._tdStartSymb = viper.GetInt("nrrg.msg3._tdStartSymb")
-		flags.msg3._tdNumSymbs = viper.GetInt("nrrg.msg3._tdNumSymbs")
-		flags.msg3._fdRaType = viper.GetString("nrrg.msg3._fdRaType")
-		flags.msg3.msg3FdFreqHop = viper.GetString("nrrg.msg3.msg3FdFreqHop")
-		flags.msg3.msg3FdRa = viper.GetString("nrrg.msg3.msg3FdRa")
-		flags.msg3.msg3FdStartRb = viper.GetInt("nrrg.msg3.msg3FdStartRb")
-		flags.msg3.msg3FdNumRbs = viper.GetInt("nrrg.msg3.msg3FdNumRbs")
-		flags.msg3._fdSecondHopFreqOff = viper.GetInt("nrrg.msg3._fdSecondHopFreqOff")
-		flags.msg3.msg3McsCw0 = viper.GetInt("nrrg.msg3.msg3McsCw0")
-		flags.msg3._tbs = viper.GetInt("nrrg.msg3._tbs")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -917,28 +879,7 @@ var confDci01Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci01 can be used to get/set DCI 0_1(scheduling PUSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dci01._rnti = viper.GetString("nrrg.dci01._rnti")
-		flags.dci01._muPdcch = viper.GetInt("nrrg.dci01._muPdcch")
-		flags.dci01._muPusch = viper.GetInt("nrrg.dci01._muPusch")
-		flags.dci01._actBwp = viper.GetInt("nrrg.dci01._actBwp")
-		flags.dci01._indicatedBwp = viper.GetInt("nrrg.dci01._indicatedBwp")
-		flags.dci01.dci01TdRa = viper.GetInt("nrrg.dci01.dci01TdRa")
-		flags.dci01.dci01TdMappingType = viper.GetString("nrrg.dci01.dci01TdMappingType")
-		flags.dci01.dci01TdK2 = viper.GetInt("nrrg.dci01.dci01TdK2")
-		flags.dci01.dci01TdSliv = viper.GetInt("nrrg.dci01.dci01TdSliv")
-		flags.dci01.dci01TdStartSymb = viper.GetInt("nrrg.dci01.dci01TdStartSymb")
-		flags.dci01.dci01TdNumSymbs = viper.GetInt("nrrg.dci01.dci01TdNumSymbs")
-		flags.dci01.dci01FdRaType = viper.GetString("nrrg.dci01.dci01FdRaType")
-		flags.dci01.dci01FdFreqHop = viper.GetString("nrrg.dci01.dci01FdFreqHop")
-		flags.dci01.dci01FdRa = viper.GetString("nrrg.dci01.dci01FdRa")
-		flags.dci01.dci01FdStartRb = viper.GetInt("nrrg.dci01.dci01FdStartRb")
-		flags.dci01.dci01FdNumRbs = viper.GetInt("nrrg.dci01.dci01FdNumRbs")
-		flags.dci01.dci01McsCw0 = viper.GetInt("nrrg.dci01.dci01McsCw0")
-		flags.dci01._tbs = viper.GetInt("nrrg.dci01._tbs")
-		flags.dci01.dci01CbTpmiNumLayers = viper.GetInt("nrrg.dci01.dci01CbTpmiNumLayers")
-		flags.dci01.dci01Sri = viper.GetString("nrrg.dci01.dci01Sri")
-		flags.dci01.dci01AntPorts = viper.GetInt("nrrg.dci01.dci01AntPorts")
-		flags.dci01.dci01PtrsDmrsMap = viper.GetInt("nrrg.dci01.dci01PtrsDmrsMap")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -952,13 +893,7 @@ var confBwpCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf bwp can be used to get/set generic BWP related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.bwp._bwpType = viper.GetStringSlice("nrrg.bwp._bwpType")
-		flags.bwp._bwpId = viper.GetIntSlice("nrrg.bwp._bwpId")
-		flags.bwp._bwpScs = viper.GetStringSlice("nrrg.bwp._bwpScs")
-		flags.bwp._bwpCp = viper.GetStringSlice("nrrg.bwp._bwpCp")
-		flags.bwp.bwpLocAndBw = viper.GetIntSlice("nrrg.bwp.bwpLocAndBw")
-		flags.bwp.bwpStartRb = viper.GetIntSlice("nrrg.bwp.bwpStartRb")
-		flags.bwp.bwpNumRbs = viper.GetIntSlice("nrrg.bwp.bwpNumRbs")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -972,27 +907,7 @@ var confRachCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf rach can be used to get/set random access related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.rach.prachConfId = viper.GetInt("nrrg.rach.prachConfId")
-		flags.rach._raFormat = viper.GetString("nrrg.rach._raFormat")
-		flags.rach._raX = viper.GetInt("nrrg.rach._raX")
-		flags.rach._raY = viper.GetIntSlice("nrrg.rach._raY")
-		flags.rach._raSubfNumFr1SlotNumFr2 = viper.GetIntSlice("nrrg.rach._raSubfNumFr1SlotNumFr2")
-		flags.rach._raStartingSymb = viper.GetInt("nrrg.rach._raStartingSymb")
-		flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 = viper.GetInt("nrrg.rach._raNumSlotsPerSubfFr1Per60KSlotFr2")
-		flags.rach._raNumOccasionsPerSlot = viper.GetInt("nrrg.rach._raNumOccasionsPerSlot")
-		flags.rach._raDuration = viper.GetInt("nrrg.rach._raDuration")
-		flags.rach.msg1Scs = viper.GetString("nrrg.rach.msg1Scs")
-		flags.rach.msg1Fdm = viper.GetInt("nrrg.rach.msg1Fdm")
-		flags.rach.msg1FreqStart = viper.GetInt("nrrg.rach.msg1FreqStart")
-		flags.rach.raRespWin = viper.GetString("nrrg.rach.raRespWin")
-		flags.rach.totNumPreambs = viper.GetInt("nrrg.rach.totNumPreambs")
-		flags.rach.ssbPerRachOccasion = viper.GetString("nrrg.rach.ssbPerRachOccasion")
-		flags.rach.cbPreambsPerSsb = viper.GetInt("nrrg.rach.cbPreambsPerSsb")
-		flags.rach.contResTimer = viper.GetString("nrrg.rach.contResTimer")
-		flags.rach.msg3Tp = viper.GetString("nrrg.rach.msg3Tp")
-		flags.rach._raLen = viper.GetInt("nrrg.rach._raLen")
-		flags.rach._raNumRbs = viper.GetInt("nrrg.rach._raNumRbs")
-		flags.rach._raKBar = viper.GetInt("nrrg.rach._raKBar")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1006,15 +921,7 @@ var confDmrsCommonCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrscommon can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dmrsCommon._schInfo = viper.GetStringSlice("nrrg.dmrscommon._schInfo")
-		flags.dmrsCommon._dmrsType = viper.GetStringSlice("nrrg.dmrscommon._dmrsType")
-		flags.dmrsCommon._dmrsAddPos = viper.GetStringSlice("nrrg.dmrscommon._dmrsAddPos")
-		flags.dmrsCommon._maxLength = viper.GetStringSlice("nrrg.dmrscommon._maxLength")
-		flags.dmrsCommon._dmrsPorts = viper.GetIntSlice("nrrg.dmrscommon._dmrsPorts")
-		flags.dmrsCommon._cdmGroupsWoData = viper.GetIntSlice("nrrg.dmrscommon._cdmGroupsWoData")
-		flags.dmrsCommon._numFrontLoadSymbs = viper.GetIntSlice("nrrg.dmrscommon._numFrontLoadSymbs")
-		flags.dmrsCommon._tdL = viper.GetStringSlice("nrrg.dmrscommon._tdL")
-		flags.dmrsCommon._fdK = viper.GetStringSlice("nrrg.dmrscommon._fdK")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -1028,14 +935,7 @@ var confDmrsPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrspdsch can be used to get/set DMRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dmrsPdsch.pdschDmrsType = viper.GetString("nrrg.dmrspdsch.pdschDmrsType")
-		flags.dmrsPdsch.pdschDmrsAddPos = viper.GetString("nrrg.dmrspdsch.pdschDmrsAddPos")
-		flags.dmrsPdsch.pdschMaxLength = viper.GetString("nrrg.dmrspdsch.pdschMaxLength")
-		flags.dmrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspdsch._dmrsPorts")
-		flags.dmrsPdsch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspdsch._cdmGroupsWoData")
-		flags.dmrsPdsch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspdsch._numFrontLoadSymbs")
-		flags.dmrsPdsch._tdL = viper.GetString("nrrg.dmrspdsch._tdL")
-		flags.dmrsPdsch._fdK = viper.GetString("nrrg.dmrspdsch._fdK")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -1049,23 +949,10 @@ var confPtrsPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ptrspdsch can be used to get/set PTRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.ptrsPdsch.pdschPtrsEnabled = viper.GetBool("nrrg.ptrspdsch.pdschPtrsEnabled")
-		flags.ptrsPdsch.pdschPtrsTimeDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsTimeDensity")
-		flags.ptrsPdsch.pdschPtrsFreqDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsFreqDensity")
-		flags.ptrsPdsch.pdschPtrsReOffset = viper.GetString("nrrg.ptrspdsch.pdschPtrsReOffset")
-		flags.ptrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.ptrspdsch._dmrsPorts")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if cmd.Flags().NFlag() > 0{
-			if v,_ := cmd.Flags().GetBool("pdschPtrsEnabled"); v {
-			    // TODO
-			}
-			print(cmd, args)
-		} else {
-			print(cmd, args)
-		}
-
-		//print(cmd, args)
+		print(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1076,14 +963,7 @@ var confDmrsPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrspusch can be used to get/set DMRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.dmrsPusch.puschDmrsType = viper.GetString("nrrg.dmrspusch.puschDmrsType")
-		flags.dmrsPusch.puschDmrsAddPos = viper.GetString("nrrg.dmrspusch.puschDmrsAddPos")
-		flags.dmrsPusch.puschMaxLength = viper.GetString("nrrg.dmrspusch.puschMaxLength")
-		flags.dmrsPusch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspusch._dmrsPorts")
-		flags.dmrsPusch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspusch._cdmGroupsWoData")
-		flags.dmrsPusch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspusch._numFrontLoadSymbs")
-		flags.dmrsPusch._tdL = viper.GetString("nrrg.dmrspusch._tdL")
-		flags.dmrsPusch._fdK = viper.GetString("nrrg.dmrspusch._fdK")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1097,17 +977,7 @@ var confPtrsPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ptrspusch can be used to get/set PTRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.ptrsPusch.puschPtrsEnabled = viper.GetBool("nrrg.ptrspusch.puschPtrsEnabled")
-		flags.ptrsPusch.puschPtrsTimeDensity = viper.GetInt("nrrg.ptrspusch.puschPtrsTimeDensity")
-		flags.ptrsPusch.puschPtrsFreqDensity = viper.GetInt("nrrg.ptrspusch.puschPtrsFreqDensity")
-		flags.ptrsPusch.puschPtrsReOffset = viper.GetString("nrrg.ptrspusch.puschPtrsReOffset")
-		flags.ptrsPusch.puschPtrsMaxNumPorts = viper.GetString("nrrg.ptrspusch.puschPtrsMaxNumPorts")
-		flags.ptrsPusch._dmrsPorts = viper.GetIntSlice("nrrg.ptrspusch._dmrsPorts")
-		flags.ptrsPusch.puschPtrsTimeDensityTp = viper.GetInt("nrrg.ptrspusch.puschPtrsTimeDensityTp")
-		flags.ptrsPusch.puschPtrsGrpPatternTp = viper.GetString("nrrg.ptrspusch.puschPtrsGrpPatternTp")
-		flags.ptrsPusch._numGrpsTp = viper.GetInt("nrrg.ptrspusch._numGrpsTp")
-		flags.ptrsPusch._samplesPerGrpTp = viper.GetInt("nrrg.ptrspusch._samplesPerGrpTp")
-		flags.ptrsPusch._dmrsPortsTp = viper.GetIntSlice("nrrg.ptrspusch._dmrsPortsTp")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1121,11 +991,7 @@ var confPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pdsch can be used to get/set PDSCH-config or PDSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.pdsch.pdschAggFactor = viper.GetString("nrrg.pdsch.pdschAggFactor")
-		flags.pdsch.pdschRbgCfg = viper.GetString("nrrg.pdsch.pdschRbgCfg")
-		flags.pdsch._rbgSize = viper.GetInt("nrrg.pdsch._rbgSize")
-		flags.pdsch.pdschMcsTable = viper.GetString("nrrg.pdsch.pdschMcsTable")
-		flags.pdsch.pdschXOh = viper.GetString("nrrg.pdsch.pdschXOh")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    print(cmd, args)
@@ -1139,16 +1005,7 @@ var confPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pusch can be used to get/set PUSCH-config or PUSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.pusch.puschTxCfg = viper.GetString("nrrg.pusch.puschTxCfg")
-		flags.pusch.puschCbSubset = viper.GetString("nrrg.pusch.puschCbSubset")
-		flags.pusch.puschCbMaxRankNonCbMaxLayers = viper.GetInt("nrrg.pusch.puschCbMaxRankNonCbMaxLayers")
-		flags.pusch.puschFreqHopOffset = viper.GetInt("nrrg.pusch.puschFreqHopOffset")
-		flags.pusch.puschTp = viper.GetString("nrrg.pusch.puschTp")
-		flags.pusch.puschAggFactor = viper.GetString("nrrg.pusch.puschAggFactor")
-		flags.pusch.puschRbgCfg = viper.GetString("nrrg.pusch.puschRbgCfg")
-		flags.pusch._rbgSize = viper.GetInt("nrrg.pusch._rbgSize")
-		flags.pusch.puschMcsTable = viper.GetString("nrrg.pusch.puschMcsTable")
-		flags.pusch.puschXOh = viper.GetString("nrrg.pusch.puschXOh")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1162,27 +1019,7 @@ var confNzpCsiRsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf nzpcsirs can be used to get/set NZP-CSI-RS resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.nzpCsiRs._resSetId = viper.GetInt("nrrg.nzpcsirs._resSetId")
-		flags.nzpCsiRs._trsInfo = viper.GetBool("nrrg.nzpcsirs._trsInfo")
-		flags.nzpCsiRs._resId = viper.GetInt("nrrg.nzpcsirs._resId")
-		flags.nzpCsiRs.nzpCsiRsFreqAllocRow = viper.GetString("nrrg.nzpcsirs.nzpCsiRsFreqAllocRow")
-		flags.nzpCsiRs.nzpCsiRsFreqAllocBits = viper.GetString("nrrg.nzpcsirs.nzpCsiRsFreqAllocBits")
-		flags.nzpCsiRs.nzpCsiRsNumPorts = viper.GetString("nrrg.nzpcsirs.nzpCsiRsNumPorts")
-		flags.nzpCsiRs.nzpCsiRsCdmType = viper.GetString("nrrg.nzpcsirs.nzpCsiRsCdmType")
-		flags.nzpCsiRs.nzpCsiRsDensity = viper.GetString("nrrg.nzpcsirs.nzpCsiRsDensity")
-		flags.nzpCsiRs.nzpCsiRsFirstSymb = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsFirstSymb")
-		flags.nzpCsiRs.nzpCsiRsFirstSymb2 = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsFirstSymb2")
-		flags.nzpCsiRs.nzpCsiRsStartRb = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsStartRb")
-		flags.nzpCsiRs.nzpCsiRsNumRbs = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsNumRbs")
-		flags.nzpCsiRs.nzpCsiRsPeriod = viper.GetString("nrrg.nzpcsirs.nzpCsiRsPeriod")
-		flags.nzpCsiRs.nzpCsiRsOffset = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsOffset")
-		flags.nzpCsiRs._row = viper.GetInt("nrrg.nzpcsirs._row")
-		flags.nzpCsiRs._kBarLBar = viper.GetStringSlice("nrrg.nzpcsirs._kBarLBar")
-		flags.nzpCsiRs._ki = viper.GetIntSlice("nrrg.nzpcsirs._ki")
-		flags.nzpCsiRs._li = viper.GetIntSlice("nrrg.nzpcsirs._li")
-		flags.nzpCsiRs._cdmGrpIndj = viper.GetIntSlice("nrrg.nzpcsirs._cdmGrpIndj")
-		flags.nzpCsiRs._kap = viper.GetIntSlice("nrrg.nzpcsirs._kap")
-		flags.nzpCsiRs._lap = viper.GetIntSlice("nrrg.nzpcsirs._lap")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1196,26 +1033,7 @@ var confTrsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf trs can be used to get/set TRS resources related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.trs._resSetId = viper.GetInt("nrrg.trs._resSetId")
-		flags.trs._trsInfo = viper.GetBool("nrrg.trs._trsInfo")
-		flags.trs._firstResId = viper.GetInt("nrrg.trs._firstResId")
-		flags.trs._freqAllocRow = viper.GetString("nrrg.trs._freqAllocRow")
-		flags.trs.trsFreqAllocBits = viper.GetString("nrrg.trs.trsFreqAllocBits")
-		flags.trs._numPorts = viper.GetString("nrrg.trs._numPorts")
-		flags.trs._cdmType = viper.GetString("nrrg.trs._cdmType")
-		flags.trs._density = viper.GetString("nrrg.trs._density")
-		flags.trs.trsFirstSymbs = viper.GetIntSlice("nrrg.trs.trsFirstSymbs")
-		flags.trs.trsStartRb = viper.GetInt("nrrg.trs.trsStartRb")
-		flags.trs.trsNumRbs = viper.GetInt("nrrg.trs.trsNumRbs")
-		flags.trs.trsPeriod = viper.GetString("nrrg.trs.trsPeriod")
-		flags.trs.trsOffset = viper.GetIntSlice("nrrg.trs.trsOffset")
-		flags.trs._row = viper.GetInt("nrrg.trs._row")
-		flags.trs._kBarLBar = viper.GetStringSlice("nrrg.trs._kBarLBar")
-		flags.trs._ki = viper.GetIntSlice("nrrg.trs._ki")
-		flags.trs._li = viper.GetIntSlice("nrrg.trs._li")
-		flags.trs._cdmGrpIndj = viper.GetIntSlice("nrrg.trs._cdmGrpIndj")
-		flags.trs._kap = viper.GetIntSlice("nrrg.trs._kap")
-		flags.trs._lap = viper.GetIntSlice("nrrg.trs._lap")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1229,15 +1047,7 @@ var confCsiImCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf csiim can be used to get/set CSI-IM resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.csiIm._resSetId = viper.GetInt("nrrg.csiim._resSetId")
-		flags.csiIm._resId = viper.GetInt("nrrg.csiim._resId")
-		flags.csiIm.csiImRePattern = viper.GetString("nrrg.csiim.csiImRePattern")
-		flags.csiIm.csiImScLoc = viper.GetString("nrrg.csiim.csiImScLoc")
-		flags.csiIm.csiImSymbLoc = viper.GetInt("nrrg.csiim.csiImSymbLoc")
-		flags.csiIm.csiImStartRb = viper.GetInt("nrrg.csiim.csiImStartRb")
-		flags.csiIm.csiImNumRbs = viper.GetInt("nrrg.csiim.csiImNumRbs")
-		flags.csiIm.csiImPeriod = viper.GetString("nrrg.csiim.csiImPeriod")
-		flags.csiIm.csiImOffset = viper.GetInt("nrrg.csiim.csiImOffset")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1251,20 +1061,7 @@ var confCsiReportCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf csireport can be used to get/set CSI-ResourceConfig and CSI-ReportConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.csiReport._resCfgType = viper.GetStringSlice("nrrg.csireport._resCfgType")
-		flags.csiReport._resCfgId = viper.GetIntSlice("nrrg.csireport._resCfgId")
-		flags.csiReport._resSetId = viper.GetIntSlice("nrrg.csireport._resSetId")
-		flags.csiReport._resBwpId = viper.GetIntSlice("nrrg.csireport._resBwpId")
-		flags.csiReport._resType = viper.GetStringSlice("nrrg.csireport._resType")
-		flags.csiReport._repCfgId = viper.GetInt("nrrg.csireport._repCfgId")
-		flags.csiReport._resCfgIdChnMeas = viper.GetInt("nrrg.csireport._resCfgIdChnMeas")
-		flags.csiReport._resCfgIdCsiImIntf = viper.GetInt("nrrg.csireport._resCfgIdCsiImIntf")
-		flags.csiReport._repCfgType = viper.GetString("nrrg.csireport._repCfgType")
-		flags.csiReport.csiRepPeriod = viper.GetString("nrrg.csireport.csiRepPeriod")
-		flags.csiReport.csiRepOffset = viper.GetInt("nrrg.csireport.csiRepOffset")
-		flags.csiReport._ulBwpId = viper.GetInt("nrrg.csireport._ulBwpId")
-		flags.csiReport.csiRepPucchRes = viper.GetInt("nrrg.csireport.csiRepPucchRes")
-		flags.csiReport._quantity = viper.GetString("nrrg.csireport._quantity")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1278,30 +1075,7 @@ var confSrsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf srs can be used to get/set SRS-Resource and SRS-ResourceSet related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.srs._resId = viper.GetIntSlice("nrrg.srs._resId")
-		flags.srs.srsNumPorts = viper.GetStringSlice("nrrg.srs.srsNumPorts")
-		flags.srs.srsNonCbPtrsPort = viper.GetStringSlice("nrrg.srs.srsNonCbPtrsPort")
-		flags.srs.srsNumCombs = viper.GetStringSlice("nrrg.srs.srsNumCombs")
-		flags.srs.srsCombOff = viper.GetIntSlice("nrrg.srs.srsCombOff")
-		flags.srs.srsCs = viper.GetIntSlice("nrrg.srs.srsCs")
-		flags.srs.srsStartPos = viper.GetIntSlice("nrrg.srs.srsStartPos")
-		flags.srs.srsNumSymbs = viper.GetStringSlice("nrrg.srs.srsNumSymbs")
-		flags.srs.srsRepetition = viper.GetStringSlice("nrrg.srs.srsRepetition")
-		flags.srs.srsFreqPos = viper.GetIntSlice("nrrg.srs.srsFreqPos")
-		flags.srs.srsFreqShift = viper.GetIntSlice("nrrg.srs.srsFreqShift")
-		flags.srs.srsCSrs = viper.GetIntSlice("nrrg.srs.srsCSrs")
-		flags.srs.srsBSrs = viper.GetIntSlice("nrrg.srs.srsBSrs")
-		flags.srs.srsBHop = viper.GetIntSlice("nrrg.srs.srsBHop")
-		flags.srs._type = viper.GetStringSlice("nrrg.srs._type")
-		flags.srs.srsPeriod = viper.GetStringSlice("nrrg.srs.srsPeriod")
-		flags.srs.srsOffset = viper.GetIntSlice("nrrg.srs.srsOffset")
-		flags.srs._mSRSb = viper.GetStringSlice("nrrg.srs._mSRSb")
-		flags.srs._Nb = viper.GetStringSlice("nrrg.srs._Nb")
-		flags.srs._resSetId = viper.GetIntSlice("nrrg.srs._resSetId")
-		flags.srs.srsSetResIdList = viper.GetStringSlice("nrrg.srs.srsSetResIdList")
-		flags.srs._resType = viper.GetStringSlice("nrrg.srs._resType")
-		flags.srs._usage = viper.GetStringSlice("nrrg.srs._usage")
-		flags.srs._dci01NonCbSrsList = viper.GetStringSlice("nrrg.srs._dci01NonCbSrsList")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1315,23 +1089,7 @@ var confPucchCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.pucch.pucchFmtCfgNumSlots = viper.GetString("nrrg.pucch.pucchFmtCfgNumSlots")
-		flags.pucch.pucchFmtCfgInterSlotFreqHop = viper.GetString("nrrg.pucch.pucchFmtCfgInterSlotFreqHop")
-		flags.pucch.pucchFmtCfgAddDmrs = viper.GetBool("nrrg.pucch.pucchFmtCfgAddDmrs")
-		flags.pucch.pucchFmtCfgSimAckCsi = viper.GetBool("nrrg.pucch.pucchFmtCfgSimAckCsi")
-		flags.pucch._pucchResId = viper.GetIntSlice("nrrg.pucch._pucchResId")
-		flags.pucch._pucchFormat = viper.GetStringSlice("nrrg.pucch._pucchFormat")
-		flags.pucch._pucchResSetId = viper.GetIntSlice("nrrg.pucch._pucchResSetId")
-		flags.pucch.pucchStartRb = viper.GetIntSlice("nrrg.pucch.pucchStartRb")
-		flags.pucch.pucchIntraSlotFreqHop = viper.GetStringSlice("nrrg.pucch.pucchIntraSlotFreqHop")
-		flags.pucch.pucchSecondHopPrb = viper.GetIntSlice("nrrg.pucch.pucchSecondHopPrb")
-		flags.pucch.pucchNumRbs = viper.GetIntSlice("nrrg.pucch.pucchNumRbs")
-		flags.pucch.pucchStartSymb = viper.GetIntSlice("nrrg.pucch.pucchStartSymb")
-		flags.pucch.pucchNumSymbs = viper.GetIntSlice("nrrg.pucch.pucchNumSymbs")
-		flags.pucch._dsrResId = viper.GetIntSlice("nrrg.pucch._dsrResId")
-		flags.pucch._dsrPucchRes = viper.GetIntSlice("nrrg.pucch._dsrPucchRes")
-		flags.pucch.dsrPeriod = viper.GetStringSlice("nrrg.pucch.dsrPeriod")
-		flags.pucch.dsrOffset = viper.GetIntSlice("nrrg.pucch.dsrOffset")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -1345,12 +1103,7 @@ var confAdvancedCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		flags.advanced.bestSsb = viper.GetInt("nrrg.advanced.bestSsb")
-		flags.advanced.pdcchSlotSib1 = viper.GetInt("nrrg.advanced.pdcchSlotSib1")
-		flags.advanced.prachOccMsg1 = viper.GetInt("nrrg.advanced.prachOccMsg1")
-		flags.advanced.pdcchOccMsg2 = viper.GetInt("nrrg.advanced.pdcchOccMsg2")
-		flags.advanced.pdcchOccMsg4 = viper.GetInt("nrrg.advanced.pdcchOccMsg4")
-		flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
+		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		print(cmd, args)
@@ -2360,7 +2113,364 @@ func initConfAdvancedCmd() {
 	viper.BindPFlag("nrrg.advanced.dsrRes", confAdvancedCmd.Flags().Lookup("dsrRes"))
 }
 
-var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
+func loadFlags() {
+	flags.freqBand.opBand = viper.GetString("nrrg.freqBand.opBand")
+	flags.freqBand._duplexMode = viper.GetString("nrrg.freqBand._duplexMode")
+	flags.freqBand._maxDlFreq = viper.GetInt("nrrg.freqBand._maxDlFreq")
+	flags.freqBand._freqRange = viper.GetString("nrrg.freqBand._freqRange")
+
+	flags.ssbGrid.ssbScs = viper.GetString("nrrg.ssbGrid.ssbScs")
+	flags.ssbGrid._ssbPattern = viper.GetString("nrrg.ssbGrid._ssbPattern")
+	flags.ssbGrid.kSsb = viper.GetInt("nrrg.ssbGrid.kSsb")
+	flags.ssbGrid._nCrbSsb = viper.GetInt("nrrg.ssbGrid._nCrbSsb")
+
+	flags.ssbBurst._maxL = viper.GetInt("nrrg.ssbBurst._maxL")
+	flags.ssbBurst.inOneGrp = viper.GetString("nrrg.ssbBurst.inOneGrp")
+	flags.ssbBurst.grpPresence = viper.GetString("nrrg.ssbBurst.grpPresence")
+	flags.ssbBurst.ssbPeriod = viper.GetString("nrrg.ssbBurst.ssbPeriod")
+
+	flags.mib.sfn = viper.GetInt("nrrg.mib.sfn")
+	flags.mib.hrf = viper.GetInt("nrrg.mib.hrf")
+	flags.mib.dmrsTypeAPos = viper.GetString("nrrg.mib.dmrsTypeAPos")
+	flags.mib.commonScs = viper.GetString("nrrg.mib.commonScs")
+	flags.mib.rmsiCoreset0 = viper.GetInt("nrrg.mib.rmsiCoreset0")
+	flags.mib.rmsiCss0 = viper.GetInt("nrrg.mib.rmsiCss0")
+	flags.mib._coreset0MultiplexingPat = viper.GetInt("nrrg.mib._coreset0MultiplexingPat")
+	flags.mib._coreset0NumRbs = viper.GetInt("nrrg.mib._coreset0NumRbs")
+	flags.mib._coreset0NumSymbs = viper.GetInt("nrrg.mib._coreset0NumSymbs")
+	flags.mib._coreset0OffsetList = viper.GetIntSlice("nrrg.mib._coreset0OffsetList")
+	flags.mib._coreset0Offset = viper.GetInt("nrrg.mib._coreset0Offset")
+
+	flags.carrierGrid.carrierScs = viper.GetString("nrrg.carrierGrid.carrierScs")
+	flags.carrierGrid.bw = viper.GetString("nrrg.carrierGrid.bw")
+	flags.carrierGrid._carrierNumRbs = viper.GetInt("nrrg.carrierGrid._carrierNumRbs")
+	flags.carrierGrid._offsetToCarrier = viper.GetInt("nrrg.carrierGrid._offsetToCarrier")
+
+	flags.commonSetting.pci = viper.GetInt("nrrg.commonsetting.pci")
+	flags.commonSetting.numUeAp = viper.GetString("nrrg.commonsetting.numUeAp")
+	flags.commonSetting._refScs = viper.GetString("nrrg.commonsetting._refScs")
+	flags.commonSetting.patPeriod = viper.GetStringSlice("nrrg.commonsetting.patPeriod")
+	flags.commonSetting.patNumDlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumDlSlots")
+	flags.commonSetting.patNumDlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumDlSymbs")
+	flags.commonSetting.patNumUlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumUlSymbs")
+	flags.commonSetting.patNumUlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumUlSlots")
+
+	flags.css0.css0AggLevel = viper.GetInt("nrrg.css0.css0AggLevel")
+	flags.css0.css0NumCandidates = viper.GetString("nrrg.css0.css0NumCandidates")
+
+	flags.coreset1.coreset1FreqRes = viper.GetString("nrrg.coreset1.coreset1FreqRes")
+	flags.coreset1.coreset1Duration = viper.GetInt("nrrg.coreset1.coreset1Duration")
+	flags.coreset1.coreset1CceRegMap = viper.GetString("nrrg.coreset1.coreset1CceRegMap")
+	flags.coreset1.coreset1RegBundleSize = viper.GetString("nrrg.coreset1.coreset1RegBundleSize")
+	flags.coreset1.coreset1InterleaverSize = viper.GetString("nrrg.coreset1.coreset1InterleaverSize")
+	flags.coreset1.coreset1ShiftInd = viper.GetInt("nrrg.coreset1.coreset1ShiftInd")
+
+	flags.uss.ussPeriod = viper.GetString("nrrg.uss.ussPeriod")
+	flags.uss.ussOffset = viper.GetInt("nrrg.uss.ussOffset")
+	flags.uss.ussDuration = viper.GetInt("nrrg.uss.ussDuration")
+	flags.uss.ussFirstSymbs = viper.GetString("nrrg.uss.ussFirstSymbs")
+	flags.uss.ussAggLevel = viper.GetInt("nrrg.uss.ussAggLevel")
+	flags.uss.ussNumCandidates = viper.GetString("nrrg.uss.ussNumCandidates")
+
+	flags.dci10._rnti = viper.GetStringSlice("nrrg.dci10._rnti")
+	flags.dci10._muPdcch = viper.GetIntSlice("nrrg.dci10._muPdcch")
+	flags.dci10._muPdsch = viper.GetIntSlice("nrrg.dci10._muPdsch")
+	flags.dci10.dci10TdRa = viper.GetIntSlice("nrrg.dci10.dci10TdRa")
+	flags.dci10._tdMappingType = viper.GetStringSlice("nrrg.dci10._tdMappingType")
+	flags.dci10._tdK0 = viper.GetIntSlice("nrrg.dci10._tdK0")
+	flags.dci10._tdSliv = viper.GetIntSlice("nrrg.dci10._tdSliv")
+	flags.dci10._tdStartSymb = viper.GetIntSlice("nrrg.dci10._tdStartSymb")
+	flags.dci10._tdNumSymbs = viper.GetIntSlice("nrrg.dci10._tdNumSymbs")
+	flags.dci10._fdRaType = viper.GetStringSlice("nrrg.dci10._fdRaType")
+	flags.dci10._fdRa = viper.GetStringSlice("nrrg.dci10._fdRa")
+	flags.dci10.dci10FdStartRb = viper.GetIntSlice("nrrg.dci10.dci10FdStartRb")
+	flags.dci10.dci10FdNumRbs = viper.GetIntSlice("nrrg.dci10.dci10FdNumRbs")
+	flags.dci10.dci10FdVrbPrbMappingType = viper.GetStringSlice("nrrg.dci10.dci10FdVrbPrbMappingType")
+	flags.dci10._fdBundleSize = viper.GetStringSlice("nrrg.dci10._fdBundleSize")
+	flags.dci10.dci10McsCw0 = viper.GetIntSlice("nrrg.dci10.dci10McsCw0")
+	flags.dci10._tbs = viper.GetIntSlice("nrrg.dci10._tbs")
+	flags.dci10.dci10Msg2TbScaling = viper.GetInt("nrrg.dci10.dci10Msg2TbScaling")
+	flags.dci10.dci10Msg4DeltaPri = viper.GetInt("nrrg.dci10.dci10Msg4DeltaPri")
+	flags.dci10.dci10Msg4TdK1 = viper.GetInt("nrrg.dci10.dci10Msg4TdK1")
+
+	flags.dci11._rnti = viper.GetString("nrrg.dci11._rnti")
+	flags.dci11._muPdcch = viper.GetInt("nrrg.dci11._muPdcch")
+	flags.dci11._muPdsch = viper.GetInt("nrrg.dci11._muPdsch")
+	flags.dci11._actBwp = viper.GetInt("nrrg.dci11._actBwp")
+	flags.dci11._indicatedBwp = viper.GetInt("nrrg.dci11._indicatedBwp")
+	flags.dci11.dci11TdRa = viper.GetInt("nrrg.dci11.dci11TdRa")
+	flags.dci11.dci11TdMappingType = viper.GetString("nrrg.dci11.dci11TdMappingType")
+	flags.dci11.dci11TdK0 = viper.GetInt("nrrg.dci11.dci11TdK0")
+	flags.dci11.dci11TdSliv = viper.GetInt("nrrg.dci11.dci11TdSliv")
+	flags.dci11.dci11TdStartSymb = viper.GetInt("nrrg.dci11.dci11TdStartSymb")
+	flags.dci11.dci11TdNumSymbs = viper.GetInt("nrrg.dci11.dci11TdNumSymbs")
+	flags.dci11.dci11FdRaType = viper.GetString("nrrg.dci11.dci11FdRaType")
+	flags.dci11.dci11FdRa = viper.GetString("nrrg.dci11.dci11FdRa")
+	flags.dci11.dci11FdStartRb = viper.GetInt("nrrg.dci11.dci11FdStartRb")
+	flags.dci11.dci11FdNumRbs = viper.GetInt("nrrg.dci11.dci11FdNumRbs")
+	flags.dci11.dci11FdVrbPrbMappingType = viper.GetString("nrrg.dci11.dci11FdVrbPrbMappingType")
+	flags.dci11.dci11FdBundleSize = viper.GetString("nrrg.dci11.dci11FdBundleSize")
+	flags.dci11.dci11McsCw0 = viper.GetInt("nrrg.dci11.dci11McsCw0")
+	flags.dci11.dci11McsCw1 = viper.GetInt("nrrg.dci11.dci11McsCw1")
+	flags.dci11._tbs = viper.GetInt("nrrg.dci11._tbs")
+	flags.dci11.dci11DeltaPri = viper.GetInt("nrrg.dci11.dci11DeltaPri")
+	flags.dci11.dci11TdK1 = viper.GetInt("nrrg.dci11.dci11TdK1")
+	flags.dci11.dci11AntPorts = viper.GetInt("nrrg.dci11.dci11AntPorts")
+
+	flags.msg3._muPusch = viper.GetInt("nrrg.msg3._muPusch")
+	flags.msg3.msg3TdRa = viper.GetInt("nrrg.msg3.msg3TdRa")
+	flags.msg3._tdMappingType = viper.GetString("nrrg.msg3._tdMappingType")
+	flags.msg3._tdK2 = viper.GetInt("nrrg.msg3._tdK2")
+	flags.msg3._tdDelta = viper.GetInt("nrrg.msg3._tdDelta")
+	flags.msg3._tdSliv = viper.GetInt("nrrg.msg3._tdSliv")
+	flags.msg3._tdStartSymb = viper.GetInt("nrrg.msg3._tdStartSymb")
+	flags.msg3._tdNumSymbs = viper.GetInt("nrrg.msg3._tdNumSymbs")
+	flags.msg3._fdRaType = viper.GetString("nrrg.msg3._fdRaType")
+	flags.msg3.msg3FdFreqHop = viper.GetString("nrrg.msg3.msg3FdFreqHop")
+	flags.msg3.msg3FdRa = viper.GetString("nrrg.msg3.msg3FdRa")
+	flags.msg3.msg3FdStartRb = viper.GetInt("nrrg.msg3.msg3FdStartRb")
+	flags.msg3.msg3FdNumRbs = viper.GetInt("nrrg.msg3.msg3FdNumRbs")
+	flags.msg3._fdSecondHopFreqOff = viper.GetInt("nrrg.msg3._fdSecondHopFreqOff")
+	flags.msg3.msg3McsCw0 = viper.GetInt("nrrg.msg3.msg3McsCw0")
+	flags.msg3._tbs = viper.GetInt("nrrg.msg3._tbs")
+
+	flags.dci01._rnti = viper.GetString("nrrg.dci01._rnti")
+	flags.dci01._muPdcch = viper.GetInt("nrrg.dci01._muPdcch")
+	flags.dci01._muPusch = viper.GetInt("nrrg.dci01._muPusch")
+	flags.dci01._actBwp = viper.GetInt("nrrg.dci01._actBwp")
+	flags.dci01._indicatedBwp = viper.GetInt("nrrg.dci01._indicatedBwp")
+	flags.dci01.dci01TdRa = viper.GetInt("nrrg.dci01.dci01TdRa")
+	flags.dci01.dci01TdMappingType = viper.GetString("nrrg.dci01.dci01TdMappingType")
+	flags.dci01.dci01TdK2 = viper.GetInt("nrrg.dci01.dci01TdK2")
+	flags.dci01.dci01TdSliv = viper.GetInt("nrrg.dci01.dci01TdSliv")
+	flags.dci01.dci01TdStartSymb = viper.GetInt("nrrg.dci01.dci01TdStartSymb")
+	flags.dci01.dci01TdNumSymbs = viper.GetInt("nrrg.dci01.dci01TdNumSymbs")
+	flags.dci01.dci01FdRaType = viper.GetString("nrrg.dci01.dci01FdRaType")
+	flags.dci01.dci01FdFreqHop = viper.GetString("nrrg.dci01.dci01FdFreqHop")
+	flags.dci01.dci01FdRa = viper.GetString("nrrg.dci01.dci01FdRa")
+	flags.dci01.dci01FdStartRb = viper.GetInt("nrrg.dci01.dci01FdStartRb")
+	flags.dci01.dci01FdNumRbs = viper.GetInt("nrrg.dci01.dci01FdNumRbs")
+	flags.dci01.dci01McsCw0 = viper.GetInt("nrrg.dci01.dci01McsCw0")
+	flags.dci01._tbs = viper.GetInt("nrrg.dci01._tbs")
+	flags.dci01.dci01CbTpmiNumLayers = viper.GetInt("nrrg.dci01.dci01CbTpmiNumLayers")
+	flags.dci01.dci01Sri = viper.GetString("nrrg.dci01.dci01Sri")
+	flags.dci01.dci01AntPorts = viper.GetInt("nrrg.dci01.dci01AntPorts")
+	flags.dci01.dci01PtrsDmrsMap = viper.GetInt("nrrg.dci01.dci01PtrsDmrsMap")
+
+	flags.bwp._bwpType = viper.GetStringSlice("nrrg.bwp._bwpType")
+	flags.bwp._bwpId = viper.GetIntSlice("nrrg.bwp._bwpId")
+	flags.bwp._bwpScs = viper.GetStringSlice("nrrg.bwp._bwpScs")
+	flags.bwp._bwpCp = viper.GetStringSlice("nrrg.bwp._bwpCp")
+	flags.bwp.bwpLocAndBw = viper.GetIntSlice("nrrg.bwp.bwpLocAndBw")
+	flags.bwp.bwpStartRb = viper.GetIntSlice("nrrg.bwp.bwpStartRb")
+	flags.bwp.bwpNumRbs = viper.GetIntSlice("nrrg.bwp.bwpNumRbs")
+
+	flags.rach.prachConfId = viper.GetInt("nrrg.rach.prachConfId")
+	flags.rach._raFormat = viper.GetString("nrrg.rach._raFormat")
+	flags.rach._raX = viper.GetInt("nrrg.rach._raX")
+	flags.rach._raY = viper.GetIntSlice("nrrg.rach._raY")
+	flags.rach._raSubfNumFr1SlotNumFr2 = viper.GetIntSlice("nrrg.rach._raSubfNumFr1SlotNumFr2")
+	flags.rach._raStartingSymb = viper.GetInt("nrrg.rach._raStartingSymb")
+	flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 = viper.GetInt("nrrg.rach._raNumSlotsPerSubfFr1Per60KSlotFr2")
+	flags.rach._raNumOccasionsPerSlot = viper.GetInt("nrrg.rach._raNumOccasionsPerSlot")
+	flags.rach._raDuration = viper.GetInt("nrrg.rach._raDuration")
+	flags.rach.msg1Scs = viper.GetString("nrrg.rach.msg1Scs")
+	flags.rach.msg1Fdm = viper.GetInt("nrrg.rach.msg1Fdm")
+	flags.rach.msg1FreqStart = viper.GetInt("nrrg.rach.msg1FreqStart")
+	flags.rach.raRespWin = viper.GetString("nrrg.rach.raRespWin")
+	flags.rach.totNumPreambs = viper.GetInt("nrrg.rach.totNumPreambs")
+	flags.rach.ssbPerRachOccasion = viper.GetString("nrrg.rach.ssbPerRachOccasion")
+	flags.rach.cbPreambsPerSsb = viper.GetInt("nrrg.rach.cbPreambsPerSsb")
+	flags.rach.contResTimer = viper.GetString("nrrg.rach.contResTimer")
+	flags.rach.msg3Tp = viper.GetString("nrrg.rach.msg3Tp")
+	flags.rach._raLen = viper.GetInt("nrrg.rach._raLen")
+	flags.rach._raNumRbs = viper.GetInt("nrrg.rach._raNumRbs")
+	flags.rach._raKBar = viper.GetInt("nrrg.rach._raKBar")
+
+	flags.dmrsCommon._schInfo = viper.GetStringSlice("nrrg.dmrscommon._schInfo")
+	flags.dmrsCommon._dmrsType = viper.GetStringSlice("nrrg.dmrscommon._dmrsType")
+	flags.dmrsCommon._dmrsAddPos = viper.GetStringSlice("nrrg.dmrscommon._dmrsAddPos")
+	flags.dmrsCommon._maxLength = viper.GetStringSlice("nrrg.dmrscommon._maxLength")
+	flags.dmrsCommon._dmrsPorts = viper.GetIntSlice("nrrg.dmrscommon._dmrsPorts")
+	flags.dmrsCommon._cdmGroupsWoData = viper.GetIntSlice("nrrg.dmrscommon._cdmGroupsWoData")
+	flags.dmrsCommon._numFrontLoadSymbs = viper.GetIntSlice("nrrg.dmrscommon._numFrontLoadSymbs")
+	flags.dmrsCommon._tdL = viper.GetStringSlice("nrrg.dmrscommon._tdL")
+	flags.dmrsCommon._fdK = viper.GetStringSlice("nrrg.dmrscommon._fdK")
+
+	flags.dmrsPdsch.pdschDmrsType = viper.GetString("nrrg.dmrspdsch.pdschDmrsType")
+	flags.dmrsPdsch.pdschDmrsAddPos = viper.GetString("nrrg.dmrspdsch.pdschDmrsAddPos")
+	flags.dmrsPdsch.pdschMaxLength = viper.GetString("nrrg.dmrspdsch.pdschMaxLength")
+	flags.dmrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspdsch._dmrsPorts")
+	flags.dmrsPdsch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspdsch._cdmGroupsWoData")
+	flags.dmrsPdsch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspdsch._numFrontLoadSymbs")
+	flags.dmrsPdsch._tdL = viper.GetString("nrrg.dmrspdsch._tdL")
+	flags.dmrsPdsch._fdK = viper.GetString("nrrg.dmrspdsch._fdK")
+
+	flags.ptrsPdsch.pdschPtrsEnabled = viper.GetBool("nrrg.ptrspdsch.pdschPtrsEnabled")
+	flags.ptrsPdsch.pdschPtrsTimeDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsTimeDensity")
+	flags.ptrsPdsch.pdschPtrsFreqDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsFreqDensity")
+	flags.ptrsPdsch.pdschPtrsReOffset = viper.GetString("nrrg.ptrspdsch.pdschPtrsReOffset")
+	flags.ptrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.ptrspdsch._dmrsPorts")
+
+	flags.dmrsPusch.puschDmrsType = viper.GetString("nrrg.dmrspusch.puschDmrsType")
+	flags.dmrsPusch.puschDmrsAddPos = viper.GetString("nrrg.dmrspusch.puschDmrsAddPos")
+	flags.dmrsPusch.puschMaxLength = viper.GetString("nrrg.dmrspusch.puschMaxLength")
+	flags.dmrsPusch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspusch._dmrsPorts")
+	flags.dmrsPusch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspusch._cdmGroupsWoData")
+	flags.dmrsPusch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspusch._numFrontLoadSymbs")
+	flags.dmrsPusch._tdL = viper.GetString("nrrg.dmrspusch._tdL")
+	flags.dmrsPusch._fdK = viper.GetString("nrrg.dmrspusch._fdK")
+
+	flags.ptrsPusch.puschPtrsEnabled = viper.GetBool("nrrg.ptrspusch.puschPtrsEnabled")
+	flags.ptrsPusch.puschPtrsTimeDensity = viper.GetInt("nrrg.ptrspusch.puschPtrsTimeDensity")
+	flags.ptrsPusch.puschPtrsFreqDensity = viper.GetInt("nrrg.ptrspusch.puschPtrsFreqDensity")
+	flags.ptrsPusch.puschPtrsReOffset = viper.GetString("nrrg.ptrspusch.puschPtrsReOffset")
+	flags.ptrsPusch.puschPtrsMaxNumPorts = viper.GetString("nrrg.ptrspusch.puschPtrsMaxNumPorts")
+	flags.ptrsPusch._dmrsPorts = viper.GetIntSlice("nrrg.ptrspusch._dmrsPorts")
+	flags.ptrsPusch.puschPtrsTimeDensityTp = viper.GetInt("nrrg.ptrspusch.puschPtrsTimeDensityTp")
+	flags.ptrsPusch.puschPtrsGrpPatternTp = viper.GetString("nrrg.ptrspusch.puschPtrsGrpPatternTp")
+	flags.ptrsPusch._numGrpsTp = viper.GetInt("nrrg.ptrspusch._numGrpsTp")
+	flags.ptrsPusch._samplesPerGrpTp = viper.GetInt("nrrg.ptrspusch._samplesPerGrpTp")
+	flags.ptrsPusch._dmrsPortsTp = viper.GetIntSlice("nrrg.ptrspusch._dmrsPortsTp")
+
+	flags.pdsch.pdschAggFactor = viper.GetString("nrrg.pdsch.pdschAggFactor")
+	flags.pdsch.pdschRbgCfg = viper.GetString("nrrg.pdsch.pdschRbgCfg")
+	flags.pdsch._rbgSize = viper.GetInt("nrrg.pdsch._rbgSize")
+	flags.pdsch.pdschMcsTable = viper.GetString("nrrg.pdsch.pdschMcsTable")
+	flags.pdsch.pdschXOh = viper.GetString("nrrg.pdsch.pdschXOh")
+
+	flags.pusch.puschTxCfg = viper.GetString("nrrg.pusch.puschTxCfg")
+	flags.pusch.puschCbSubset = viper.GetString("nrrg.pusch.puschCbSubset")
+	flags.pusch.puschCbMaxRankNonCbMaxLayers = viper.GetInt("nrrg.pusch.puschCbMaxRankNonCbMaxLayers")
+	flags.pusch.puschFreqHopOffset = viper.GetInt("nrrg.pusch.puschFreqHopOffset")
+	flags.pusch.puschTp = viper.GetString("nrrg.pusch.puschTp")
+	flags.pusch.puschAggFactor = viper.GetString("nrrg.pusch.puschAggFactor")
+	flags.pusch.puschRbgCfg = viper.GetString("nrrg.pusch.puschRbgCfg")
+	flags.pusch._rbgSize = viper.GetInt("nrrg.pusch._rbgSize")
+	flags.pusch.puschMcsTable = viper.GetString("nrrg.pusch.puschMcsTable")
+	flags.pusch.puschXOh = viper.GetString("nrrg.pusch.puschXOh")
+
+	flags.nzpCsiRs._resSetId = viper.GetInt("nrrg.nzpcsirs._resSetId")
+	flags.nzpCsiRs._trsInfo = viper.GetBool("nrrg.nzpcsirs._trsInfo")
+	flags.nzpCsiRs._resId = viper.GetInt("nrrg.nzpcsirs._resId")
+	flags.nzpCsiRs.nzpCsiRsFreqAllocRow = viper.GetString("nrrg.nzpcsirs.nzpCsiRsFreqAllocRow")
+	flags.nzpCsiRs.nzpCsiRsFreqAllocBits = viper.GetString("nrrg.nzpcsirs.nzpCsiRsFreqAllocBits")
+	flags.nzpCsiRs.nzpCsiRsNumPorts = viper.GetString("nrrg.nzpcsirs.nzpCsiRsNumPorts")
+	flags.nzpCsiRs.nzpCsiRsCdmType = viper.GetString("nrrg.nzpcsirs.nzpCsiRsCdmType")
+	flags.nzpCsiRs.nzpCsiRsDensity = viper.GetString("nrrg.nzpcsirs.nzpCsiRsDensity")
+	flags.nzpCsiRs.nzpCsiRsFirstSymb = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsFirstSymb")
+	flags.nzpCsiRs.nzpCsiRsFirstSymb2 = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsFirstSymb2")
+	flags.nzpCsiRs.nzpCsiRsStartRb = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsStartRb")
+	flags.nzpCsiRs.nzpCsiRsNumRbs = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsNumRbs")
+	flags.nzpCsiRs.nzpCsiRsPeriod = viper.GetString("nrrg.nzpcsirs.nzpCsiRsPeriod")
+	flags.nzpCsiRs.nzpCsiRsOffset = viper.GetInt("nrrg.nzpcsirs.nzpCsiRsOffset")
+	flags.nzpCsiRs._row = viper.GetInt("nrrg.nzpcsirs._row")
+	flags.nzpCsiRs._kBarLBar = viper.GetStringSlice("nrrg.nzpcsirs._kBarLBar")
+	flags.nzpCsiRs._ki = viper.GetIntSlice("nrrg.nzpcsirs._ki")
+	flags.nzpCsiRs._li = viper.GetIntSlice("nrrg.nzpcsirs._li")
+	flags.nzpCsiRs._cdmGrpIndj = viper.GetIntSlice("nrrg.nzpcsirs._cdmGrpIndj")
+	flags.nzpCsiRs._kap = viper.GetIntSlice("nrrg.nzpcsirs._kap")
+	flags.nzpCsiRs._lap = viper.GetIntSlice("nrrg.nzpcsirs._lap")
+
+	flags.trs._resSetId = viper.GetInt("nrrg.trs._resSetId")
+	flags.trs._trsInfo = viper.GetBool("nrrg.trs._trsInfo")
+	flags.trs._firstResId = viper.GetInt("nrrg.trs._firstResId")
+	flags.trs._freqAllocRow = viper.GetString("nrrg.trs._freqAllocRow")
+	flags.trs.trsFreqAllocBits = viper.GetString("nrrg.trs.trsFreqAllocBits")
+	flags.trs._numPorts = viper.GetString("nrrg.trs._numPorts")
+	flags.trs._cdmType = viper.GetString("nrrg.trs._cdmType")
+	flags.trs._density = viper.GetString("nrrg.trs._density")
+	flags.trs.trsFirstSymbs = viper.GetIntSlice("nrrg.trs.trsFirstSymbs")
+	flags.trs.trsStartRb = viper.GetInt("nrrg.trs.trsStartRb")
+	flags.trs.trsNumRbs = viper.GetInt("nrrg.trs.trsNumRbs")
+	flags.trs.trsPeriod = viper.GetString("nrrg.trs.trsPeriod")
+	flags.trs.trsOffset = viper.GetIntSlice("nrrg.trs.trsOffset")
+	flags.trs._row = viper.GetInt("nrrg.trs._row")
+	flags.trs._kBarLBar = viper.GetStringSlice("nrrg.trs._kBarLBar")
+	flags.trs._ki = viper.GetIntSlice("nrrg.trs._ki")
+	flags.trs._li = viper.GetIntSlice("nrrg.trs._li")
+	flags.trs._cdmGrpIndj = viper.GetIntSlice("nrrg.trs._cdmGrpIndj")
+	flags.trs._kap = viper.GetIntSlice("nrrg.trs._kap")
+	flags.trs._lap = viper.GetIntSlice("nrrg.trs._lap")
+
+	flags.csiIm._resSetId = viper.GetInt("nrrg.csiim._resSetId")
+	flags.csiIm._resId = viper.GetInt("nrrg.csiim._resId")
+	flags.csiIm.csiImRePattern = viper.GetString("nrrg.csiim.csiImRePattern")
+	flags.csiIm.csiImScLoc = viper.GetString("nrrg.csiim.csiImScLoc")
+	flags.csiIm.csiImSymbLoc = viper.GetInt("nrrg.csiim.csiImSymbLoc")
+	flags.csiIm.csiImStartRb = viper.GetInt("nrrg.csiim.csiImStartRb")
+	flags.csiIm.csiImNumRbs = viper.GetInt("nrrg.csiim.csiImNumRbs")
+	flags.csiIm.csiImPeriod = viper.GetString("nrrg.csiim.csiImPeriod")
+	flags.csiIm.csiImOffset = viper.GetInt("nrrg.csiim.csiImOffset")
+
+	flags.csiReport._resCfgType = viper.GetStringSlice("nrrg.csireport._resCfgType")
+	flags.csiReport._resCfgId = viper.GetIntSlice("nrrg.csireport._resCfgId")
+	flags.csiReport._resSetId = viper.GetIntSlice("nrrg.csireport._resSetId")
+	flags.csiReport._resBwpId = viper.GetIntSlice("nrrg.csireport._resBwpId")
+	flags.csiReport._resType = viper.GetStringSlice("nrrg.csireport._resType")
+	flags.csiReport._repCfgId = viper.GetInt("nrrg.csireport._repCfgId")
+	flags.csiReport._resCfgIdChnMeas = viper.GetInt("nrrg.csireport._resCfgIdChnMeas")
+	flags.csiReport._resCfgIdCsiImIntf = viper.GetInt("nrrg.csireport._resCfgIdCsiImIntf")
+	flags.csiReport._repCfgType = viper.GetString("nrrg.csireport._repCfgType")
+	flags.csiReport.csiRepPeriod = viper.GetString("nrrg.csireport.csiRepPeriod")
+	flags.csiReport.csiRepOffset = viper.GetInt("nrrg.csireport.csiRepOffset")
+	flags.csiReport._ulBwpId = viper.GetInt("nrrg.csireport._ulBwpId")
+	flags.csiReport.csiRepPucchRes = viper.GetInt("nrrg.csireport.csiRepPucchRes")
+	flags.csiReport._quantity = viper.GetString("nrrg.csireport._quantity")
+
+	flags.srs._resId = viper.GetIntSlice("nrrg.srs._resId")
+	flags.srs.srsNumPorts = viper.GetStringSlice("nrrg.srs.srsNumPorts")
+	flags.srs.srsNonCbPtrsPort = viper.GetStringSlice("nrrg.srs.srsNonCbPtrsPort")
+	flags.srs.srsNumCombs = viper.GetStringSlice("nrrg.srs.srsNumCombs")
+	flags.srs.srsCombOff = viper.GetIntSlice("nrrg.srs.srsCombOff")
+	flags.srs.srsCs = viper.GetIntSlice("nrrg.srs.srsCs")
+	flags.srs.srsStartPos = viper.GetIntSlice("nrrg.srs.srsStartPos")
+	flags.srs.srsNumSymbs = viper.GetStringSlice("nrrg.srs.srsNumSymbs")
+	flags.srs.srsRepetition = viper.GetStringSlice("nrrg.srs.srsRepetition")
+	flags.srs.srsFreqPos = viper.GetIntSlice("nrrg.srs.srsFreqPos")
+	flags.srs.srsFreqShift = viper.GetIntSlice("nrrg.srs.srsFreqShift")
+	flags.srs.srsCSrs = viper.GetIntSlice("nrrg.srs.srsCSrs")
+	flags.srs.srsBSrs = viper.GetIntSlice("nrrg.srs.srsBSrs")
+	flags.srs.srsBHop = viper.GetIntSlice("nrrg.srs.srsBHop")
+	flags.srs._type = viper.GetStringSlice("nrrg.srs._type")
+	flags.srs.srsPeriod = viper.GetStringSlice("nrrg.srs.srsPeriod")
+	flags.srs.srsOffset = viper.GetIntSlice("nrrg.srs.srsOffset")
+	flags.srs._mSRSb = viper.GetStringSlice("nrrg.srs._mSRSb")
+	flags.srs._Nb = viper.GetStringSlice("nrrg.srs._Nb")
+	flags.srs._resSetId = viper.GetIntSlice("nrrg.srs._resSetId")
+	flags.srs.srsSetResIdList = viper.GetStringSlice("nrrg.srs.srsSetResIdList")
+	flags.srs._resType = viper.GetStringSlice("nrrg.srs._resType")
+	flags.srs._usage = viper.GetStringSlice("nrrg.srs._usage")
+	flags.srs._dci01NonCbSrsList = viper.GetStringSlice("nrrg.srs._dci01NonCbSrsList")
+
+	flags.pucch.pucchFmtCfgNumSlots = viper.GetString("nrrg.pucch.pucchFmtCfgNumSlots")
+	flags.pucch.pucchFmtCfgInterSlotFreqHop = viper.GetString("nrrg.pucch.pucchFmtCfgInterSlotFreqHop")
+	flags.pucch.pucchFmtCfgAddDmrs = viper.GetBool("nrrg.pucch.pucchFmtCfgAddDmrs")
+	flags.pucch.pucchFmtCfgSimAckCsi = viper.GetBool("nrrg.pucch.pucchFmtCfgSimAckCsi")
+	flags.pucch._pucchResId = viper.GetIntSlice("nrrg.pucch._pucchResId")
+	flags.pucch._pucchFormat = viper.GetStringSlice("nrrg.pucch._pucchFormat")
+	flags.pucch._pucchResSetId = viper.GetIntSlice("nrrg.pucch._pucchResSetId")
+	flags.pucch.pucchStartRb = viper.GetIntSlice("nrrg.pucch.pucchStartRb")
+	flags.pucch.pucchIntraSlotFreqHop = viper.GetStringSlice("nrrg.pucch.pucchIntraSlotFreqHop")
+	flags.pucch.pucchSecondHopPrb = viper.GetIntSlice("nrrg.pucch.pucchSecondHopPrb")
+	flags.pucch.pucchNumRbs = viper.GetIntSlice("nrrg.pucch.pucchNumRbs")
+	flags.pucch.pucchStartSymb = viper.GetIntSlice("nrrg.pucch.pucchStartSymb")
+	flags.pucch.pucchNumSymbs = viper.GetIntSlice("nrrg.pucch.pucchNumSymbs")
+	flags.pucch._dsrResId = viper.GetIntSlice("nrrg.pucch._dsrResId")
+	flags.pucch._dsrPucchRes = viper.GetIntSlice("nrrg.pucch._dsrPucchRes")
+	flags.pucch.dsrPeriod = viper.GetStringSlice("nrrg.pucch.dsrPeriod")
+	flags.pucch.dsrOffset = viper.GetIntSlice("nrrg.pucch.dsrOffset")
+
+	flags.advanced.bestSsb = viper.GetInt("nrrg.advanced.bestSsb")
+	flags.advanced.pdcchSlotSib1 = viper.GetInt("nrrg.advanced.pdcchSlotSib1")
+	flags.advanced.prachOccMsg1 = viper.GetInt("nrrg.advanced.prachOccMsg1")
+	flags.advanced.pdcchOccMsg2 = viper.GetInt("nrrg.advanced.pdcchOccMsg2")
+	flags.advanced.pdcchOccMsg4 = viper.GetInt("nrrg.advanced.pdcchOccMsg4")
+	flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
+}
+
+//var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
+var w =[]int{len("Flag"), len("Type"), len("Current Value")}
 func print(cmd *cobra.Command, args []string) {
 	cmd.Flags().VisitAll(
 		func (f *pflag.Flag) {
@@ -2368,7 +2478,7 @@ func print(cmd *cobra.Command, args []string) {
 				if len(f.Name) > w[0] { w[0] = len(f.Name) }
 				if len(f.Value.Type()) > w[1] { w[1] = len(f.Value.Type()) }
 				if len(f.Value.String()) > w[2] { w[2] = len(f.Value.String()) }
-				if len(f.DefValue) > w[3] { w[3] = len(f.DefValue) }
+				// if len(f.DefValue) > w[3] { w[3] = len(f.DefValue) }
 			}
 		})
 
@@ -2376,11 +2486,13 @@ func print(cmd *cobra.Command, args []string) {
 		w[i] += 4
 	}
 
-	fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
+	// fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
+	fmt.Printf("%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", "Modifiable")
 	cmd.Flags().VisitAll(
 		func (f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
-				fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, w[3], f.DefValue, !f.Hidden)
+				// fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, w[3], f.DefValue, !f.Hidden)
+				fmt.Printf("%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, !f.Hidden)
 			}
 		})
 }

@@ -613,9 +613,7 @@ nrrg:
     - 0
   ssbburst:
     _maxl: 8
-    grouppresence: ""
     grppresence: ""
-    inonegroup: "11111111"
     inonegrp: "11111111"
     ssbperiod: 20ms
   ssbgrid:
