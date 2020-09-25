@@ -737,6 +737,18 @@ var confSsbGridCmd = &cobra.Command{
 				}
 			}
 		}
+
+		if cmd.Flags().Lookup("kSsb").Changed {
+			// validate Coreset0 and update n_CRB_SSB
+			err := validateCoreset0()
+			if err != nil {
+				fmt.Print(err.Error())
+				return
+			} else {
+				updateKSsbAndNCrbSsb()
+			}
+		}
+
 	    print(cmd, args)
 		viper.WriteConfig()
 	},
