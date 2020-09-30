@@ -816,7 +816,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 4, 1) {
 		for _, L := range utils.PyRange(3, 15, 1) {
 			if S+L >= 3 && S+L < 15 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					pdschToSliv[keyToSliv] = sliv
@@ -832,7 +832,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 4, 1) {
 		for _, L := range utils.PyRange(3, 13, 1) {
 			if S+L >= 3 && S+L < 13 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					pdschToSliv[keyToSliv] = sliv
@@ -848,7 +848,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 13, 1) {
 		for _, L := range []int{2, 4, 7} {
 			if S+L >= 2 && S+L < 15 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					pdschToSliv[keyToSliv] = sliv
@@ -864,7 +864,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 11, 1) {
 		for _, L := range []int{2, 4, 6} {
 			if S+L >= 2 && S+L < 13 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					pdschToSliv[keyToSliv] = sliv
@@ -893,7 +893,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	for _, S := range []int{0} {
 		for _, L := range utils.PyRange(4, 15, 1) {
 			if S+L >= 4 && S+L < 15 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					puschToSliv[keyToSliv] = sliv
@@ -909,7 +909,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	for _, S := range []int{0} {
 		for _, L := range utils.PyRange(4, 13, 1) {
 			if S+L >= 4 && S+L < 13 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					puschToSliv[keyToSliv] = sliv
@@ -925,7 +925,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 14, 1) {
 		for _, L := range utils.PyRange(1, 15, 1) {
 			if S+L >= 1 && S+L < 15 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					puschToSliv[keyToSliv] = sliv
@@ -941,7 +941,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	for _, S := range utils.PyRange(0, 13, 1) {
 		for _, L := range utils.PyRange(1, 13, 1) {
 			if S+L >= 1 && S+L < 13 {
-				sliv, err := MakeSliv(S, L)
+				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
 					puschToSliv[keyToSliv] = sliv
@@ -955,7 +955,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	return puschToSliv, puschFromSliv
 }
 
-func MakeSliv(S, L int) (int, error) {
+func makeSliv(S, L int) (int, error) {
 	if L <= 0 || L > 14-S {
 		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
 	}
@@ -968,6 +968,78 @@ func MakeSliv(S, L int) (int, error) {
 	}
 
 	return sliv, nil
+}
+
+
+// ToSliv returns SLIV from given S/L.
+//  S: starting symbol
+//	L: number of symbols
+//	sch: PDSCH or PUSCH
+//	mappingType: typeA or typeB
+//	cp: normal or extended
+func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
+	var prefix string
+	if mappingType == "typeA" {
+		prefix += "0"
+	} else {
+	    prefix += "1"
+	}
+
+	if cp == "normal" {
+		prefix += "0"
+	} else {
+		prefix += "1"
+	}
+
+	key := fmt.Sprintf("%v_%v_%v", prefix, S, L)
+	var sliv int
+	var exist bool
+	if sch == "PDSCH" {
+	    sliv, exist = PdschToSliv[key]
+	} else {
+		sliv, exist = PuschToSliv[key]
+	}
+
+	if !exist {
+		return -1, errors.New(fmt.Sprintf("Invalid call to ToSliv: prefix=%v, S=%v, L=%v", prefix, S, L))
+	} else {
+		return sliv, nil
+	}
+}
+
+// FromSliv returns S/L from given sliv.
+//  sliv: start and length indicator
+//	sch: PDSCH or PUSCH
+//	mappingType: typeA or typeB
+//	cp: normal or extended
+func FromSliv(sliv int, sch, mappingType, cp string) ([]int, error) {
+	var prefix string
+	if mappingType == "typeA" {
+		prefix += "0"
+	} else {
+		prefix += "1"
+	}
+
+	if cp == "normal" {
+		prefix += "0"
+	} else {
+		prefix += "1"
+	}
+
+	key := fmt.Sprintf("%v_%v", prefix, sliv)
+	var sl []int
+	var exist bool
+	if sch == "PDSCH" {
+		sl, exist = PdschFromSliv[key]
+	} else {
+		sl, exist = PuschFromSliv[key]
+	}
+
+	if !exist {
+		return nil, errors.New(fmt.Sprintf("Invalid call to FromSliv: prefix=%v, slIV=%v", prefix, sliv))
+	} else {
+		return sl, nil
+	}
 }
 
 /*
