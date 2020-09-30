@@ -1,5 +1,7 @@
 package utils
 
+import "math"
+
 // ContainsInt checks whether 't' exist in a slice of int
 func ContainsInt(s []int, t int) bool {
     for _, v := range s {
@@ -22,8 +24,24 @@ func IndexInt(s []int, t int) int {
     return -1
 }
 
-// MaxInt returns the maximum and its index of a slice of int
-func MaxInt(s []int) (int, int) {
+// MaxInt returns the maximum of a slice of int
+func MaxInt(s []int) int {
+    if len(s) == 0 {
+        return -1
+    }
+
+    max := s[0]
+    for _, v := range s {
+        if v > max {
+            max = v
+        }
+    }
+
+    return max
+}
+
+// MaxInt2 returns the maximum and its index of a slice of int
+func MaxInt2(s []int) (int, int) {
     if len(s) == 0 {
         return -1, -1
     }
@@ -40,8 +58,24 @@ func MaxInt(s []int) (int, int) {
     return max, maxi
 }
 
-// MinInt returns the minimum and its index of a slice of int
-func MinInt(s []int) (int, int) {
+// MinInt returns the minimum of a slice of int
+func MinInt(s []int) int {
+    if len(s) == 0 {
+        return -1
+    }
+
+    min := s[0]
+    for _, v := range s {
+        if v < min {
+            min = v
+        }
+    }
+
+    return min
+}
+
+// MinInt2 returns the minimum and its index of a slice of int
+func MinInt2(s []int) (int, int) {
     if len(s) == 0 {
         return -1, -1
     }
@@ -102,3 +136,19 @@ func IndexBool(s []bool, t bool) int {
 
     return -1
 }
+
+// FloorInt wraps math.Floor and returns an int
+func FloorInt(x float64) int {
+    return int(math.Floor(x))
+}
+
+// CeilInt wraps math.Ceil and returns an int
+func CeilInt(x float64) int {
+    return int(math.Ceil(x))
+}
+
+// RoundInt returns a rounding int
+func RoundInt(x float64) int {
+    return int(math.Floor(x + 0.5))
+}
+
