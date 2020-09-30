@@ -25,7 +25,6 @@ import (
 	"github.com/zhenggao2/ngapp/utils"
 	"math"
 	"strconv"
-	"strings"
 )
 
 var (
@@ -263,6 +262,14 @@ type BwpFlags struct {
 	bwpStartRb  []int
 	bwpNumRbs   []int
 }
+
+const (
+	INI_DL_BWP int = 0
+	DED_DL_BWP int = 1
+	INI_UL_BWP int = 2
+	DED_UL_BWP int = 3
+	N_SC_RB int = 12
+)
 
 // random access
 type RachFlags struct {
@@ -556,16 +563,16 @@ var confFreqBandCmd = &cobra.Command{
 			band := flags.freqBand.opBand
 			p, exist := nrgrid.OpBands[band]
 			if !exist {
-				fmt.Println("Invalid frequency band(FreqBandIndicatorNR):", band)
+				fmt.Printf("Invalid frequency band(FreqBandIndicatorNR): %v\n", band)
 				return
 			}
 
 			if p.DuplexMode == "SUL" || p.DuplexMode == "SDL" {
-				fmt.Println(p.DuplexMode, "is not supported!")
+				fmt.Printf("%v is not supported!", p.DuplexMode)
 				return
 			}
 
-			fmt.Println("nrgrid.FreqBandInfo:", *p)
+			fmt.Printf("nrgrid.FreqBandInfo: %v\n", *p)
 
 			// update band info
 			flags.freqBand._duplexMode = p.DuplexMode
@@ -583,7 +590,7 @@ var confFreqBandCmd = &cobra.Command{
 			for _, v := range nrgrid.SsbRasters[band] {
 				ssbScsSet = append(ssbScsSet, v[0])
 			}
-			fmt.Println("Available SSB scs:", strings.Join(ssbScsSet, ","))
+			fmt.Printf("SSB scs range: %v\n", ssbScsSet)
 
 			// update rmsi scs and carrier scs
 			var rmsiScsSet []string
@@ -609,8 +616,8 @@ var confFreqBandCmd = &cobra.Command{
 				rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
 				carrierScsSet = append(carrierScsSet, []string{"60KHz", "120KHz"}...)
 			}
-			fmt.Println("RMSI scs(subcarrierSpacingCommon of MIB) range:", strings.Join(rmsiScsSet, ","))
-			fmt.Println("carrier scs(subcarrierSpacing of SCS-SpecificCarrier) range:", strings.Join(carrierScsSet, ","))
+			fmt.Printf("RMSI scs(subcarrierSpacingCommon of MIB) range: %v\n", rmsiScsSet)
+			fmt.Printf("Carrier scs(subcarrierSpacing of SCS-SpecificCarrier) range: %v\n", carrierScsSet)
 
 			// update rach info
 			err := updateRach()
@@ -642,7 +649,7 @@ func updateRach() error {
 		return  errors.New(fmt.Sprintf("Invalid configurations for PRACH: %v,%v with prach-ConfigurationIndex=%v\n", flags.freqBand._freqRange, flags.freqBand._duplexMode, flags.rach.prachConfId))
 	}
 
-	fmt.Println("nrgrid.RachInfo:", *p)
+	fmt.Printf("nrgrid.RachInfo: %v\n", *p)
 
 	flags.rach._raFormat = p.Format
 	flags.rach._raX = p.X
@@ -662,7 +669,7 @@ func updateRach() error {
 			raScsSet = append(raScsSet, []string{"60KHz", "120KHz"}...)
 		}
 	}
-	fmt.Println("PRACH scs(msg1-SubcarrierSpacing of RACH-ConfigCommon) range:", strings.Join(raScsSet, ","))
+	fmt.Printf("PRACH scs(msg1-SubcarrierSpacing of RACH-ConfigCommon) range: %v\n", raScsSet)
 
 	return nil
 }
@@ -684,7 +691,7 @@ var confSsbGridCmd = &cobra.Command{
 		    scs := flags.ssbGrid.ssbScs
 		    for _, v := range nrgrid.SsbRasters[band] {
 		    	if v[0] == scs {
-		    	    fmt.Println("nrgrid.SsbRaster:", v)
+		    	    fmt.Printf("nrgrid.SsbRaster: %v\n", v)
 		    		flags.ssbGrid._ssbPattern = v[1]
 				}
 			}
@@ -812,9 +819,9 @@ func validateCoreset0() error {
 		p, exist = nrgrid.Coreset0Fr2[key]
 	}
 	if !exist || p == nil {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%v, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.mib.rmsiCoreset0))
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.mib.rmsiCoreset0))
 	}
-	fmt.Println("nrgrid.Coreset0Info:", *p)
+	fmt.Printf("nrgrid.Coreset0Info: %v\n", *p)
 	flags.mib._coreset0MultiplexingPat = p.MultiplexingPat
 	flags.mib._coreset0NumRbs = p.NumRbs
 	flags.mib._coreset0NumSymbs = p.NumSymbs
@@ -842,7 +849,7 @@ func validateCoreset0() error {
 		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.mib._coreset0NumRbs))
 	}
 
-	// validate CORESET0 against k_SSB
+	// update coreset0Offset w.r.t k_SSB
 	kssb := flags.ssbGrid.kSsb
 	if len(flags.mib._coreset0OffsetList) == 2 {
 		if kssb == 0 {
@@ -860,7 +867,7 @@ func validateCoreset0() error {
 	ssbScsInt, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
 	var minBw int
 	if flags.mib._coreset0Offset >= 0 {
-	    minBw, _ = utils.MaxInt([]int{flags.mib._coreset0NumRbs, flags.mib._coreset0Offset + 20 * ssbScsInt / rmsiScsInt})
+	    minBw = utils.MaxInt([]int{flags.mib._coreset0NumRbs, flags.mib._coreset0Offset + 20 * ssbScsInt / rmsiScsInt})
 	} else {
 		minBw = flags.mib._coreset0NumRbs - flags.mib._coreset0Offset
 	}
@@ -869,24 +876,25 @@ func validateCoreset0() error {
 	}
 
 	// validate coreste0NumSymbs against dmrs-pointA-Position
-	dmrsTypeAPos, _ := strconv.Atoi(flags.mib.dmrsTypeAPos[3:])
-	if flags.mib._coreset0NumSymbs == 3 && dmrsTypeAPos != 3 {
+	// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
+	// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
+	if flags.mib._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
 		return errors.New(fmt.Sprintf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.mib._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
 	}
 
 	// update info of initial dl bwp
 	if flags.mib._coreset0Offset >= 0 {
-		upper, _ := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
 		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", 0, upper)
 	} else {
-		upper, _ := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
 		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", -flags.mib._coreset0Offset, upper)
 	}
 	fmt.Printf("iniDlBwp.L_RBs range: [%v]\n", flags.mib._coreset0NumRbs)
 
 	// update info of 'frquency domain assignment' bitwidth of SIB1/Msg2/Msg4
 	nrb := float64(flags.mib._coreset0NumRbs)
-	bitwidth := int(math.Ceil(math.Log2(nrb * (nrb + 1) / 2)))
+	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
 	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
 
 	// print CORESET0 info
@@ -978,6 +986,7 @@ var confSsbBurstCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		print(cmd, args)
 		viper.WriteConfig()
 	},
@@ -992,9 +1001,291 @@ var confMibCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
+
+		if cmd.Flags().Lookup("commonScs").Changed {
+		    rmsiScs := flags.mib.commonScs
+		    rmsiMu := nrgrid.Scs2Mu[rmsiScs]
+
+			// update scs for initial dl bwp; update u_pdcch/u_pdsch for sib1/msg2/msg4
+			// refer to 3GPP TS 38.331 vfa0: subcarrierSpacing of BWP
+			// For the initial DL BWP this field has the same value as the field subCarrierSpacingCommon in MIB of the same serving cell.
+			flags.bwp._bwpScs[INI_DL_BWP] = rmsiScs
+			flags.dci10._muPdcch = []int{rmsiMu, rmsiMu, rmsiMu}
+			flags.dci10._muPdsch = []int{rmsiMu, rmsiMu, rmsiMu}
+
+			// validate CORESET0 and update n_CRB_SSB
+			err := validateCoreset0()
+			if err != nil {
+				fmt.Print(err.Error())
+				return
+			} else {
+				updateKSsbAndNCrbSsb()
+				err2 := validateCss0()
+				if err2 != nil {
+					fmt.Print(err2.Error())
+					return
+				}
+			}
+
+			// update ra-ResponseWindow info
+			// refer to 3GPP TS 38.331 vfa0: ra-ResponseWindow of RACH-ConfigGeneric
+			// The network configures a value lower than or equal to 10 ms (see TS 38.321 [3], clause 5.1.4).
+			// FIXME: better validate above restraint when rach.raRespWin changed.
+			var raRespWinSet []string
+			switch rmsiScs {
+			case "15KHz":
+			    raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10"}...)
+			case "30KHz":
+				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20"}...)
+			case "60KHz":
+				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40"}...)
+			case "120KHz":
+				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40", "sl80"}...)
+			}
+			fmt.Printf("ra-ResponseWindow range: %v\n", raRespWinSet)
+		}
+
+		if cmd.Flags().Lookup("dmrsTypeAPos").Changed {
+		    dmrsTypeAPos := flags.mib.dmrsTypeAPos
+
+			// validate CORESET duration
+			// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
+			// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
+			if flags.mib._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.mib._coreset0NumSymbs, flags.mib.dmrsTypeAPos)
+				return
+			}
+			if flags.coreset1.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset1Duration can be 3 only if dmrs-TypeA-Position is pos3! (coreset1Duration=%v,dmrsTypeAPos=%v)\n", flags.coreset1.coreset1Duration, flags.mib.dmrsTypeAPos)
+				return
+			}
+
+			// validate 'Time domain resource assignment" field of DCI 1_0/1_1
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
+			// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
+			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
+			for i, rnti := range flags.dci10._rnti {
+			    var p *nrgrid.TimeAllocInfo
+			    var exist bool
+
+			    row := flags.dci10.dci10TdRa[i] + 1
+				key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
+				switch rnti {
+				case "SI-RNTI":
+				    switch flags.mib._coreset0MultiplexingPat {
+					case 1:
+						p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
+					case 2:
+						// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
+						// Note 1: If the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space, the UE may assume that this PDSCH resource allocation is not applied.
+						if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10.dci10TdRa[i] + 1) {
+							fmt.Printf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1)
+							return
+						}
+						p, exist = nrgrid.PdschTimeAllocDefB[key]
+					case 3:
+						// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
+						// Note 1: The UE may assume that this PDSCH resource allocation is not used, if the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space.
+						if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10.dci10TdRa[i] + 1) {
+							fmt.Printf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1)
+							return
+						}
+						p, exist = nrgrid.PdschTimeAllocDefC[key]
+					}
+
+				case "RA-RNTI", "TC-RNTI":
+				    if flags.bwp._bwpCp[INI_DL_BWP] == "normal" {
+						p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
+					} else {
+						p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
+					}
+				}
+
+				if !exist {
+					fmt.Printf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos)
+					return
+				} else {
+				    fmt.Printf("nrgrid.TimeAllocInfo(rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
+
+				    // update dci10 info
+					flags.dci10._tdMappingType[i] = p.MappingType
+					flags.dci10._tdK0[i] = p.K0
+					flags.dci10._tdStartSymb[i] = p.S
+					flags.dci10._tdNumSymbs[i] = p.L
+					sliv, _ := nrgrid.MakeSliv(p.S, p.L)
+					flags.dci10._tdSliv[i] = sliv
+
+					// update dmrs info
+					// refer to 3GPP TS 38.214 vfa0: 5.1.6.2	DM-RS reception procedure
+					// When receiving PDSCH scheduled by DCI format 1_0, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
+					if p.L == 2 {
+						flags.dmrsCommon._cdmGroupsWoData[i] = 1
+					} else {
+						flags.dmrsCommon._cdmGroupsWoData[i] = 2
+					}
+
+					// -For PDSCH with mapping type A, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
+					// -For PDSCH with allocation duration of 7 symbols for normal CP or 6 symbols for extended CP with mapping type B, the UE shall assume one additional single-symbol DM-RS present in the 5th or 6th symbol when the front-loaded DM-RS symbol is in the 1st or 2nd symbol respectively of the PDSCH allocation duration, otherwise the UE shall assume that the additional DM-RS symbol is not present, and
+					// -For PDSCH with allocation duration of 4 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and
+					// -For PDSCH with allocation duration of 2 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
+					if p.MappingType == "typeA" {
+						flags.dmrsCommon._dmrsAddPos[i] = "pos2"
+					} else {
+					    // Initial DL bwp always use normal CP.
+					    if flags.bwp._bwpCp[INI_DL_BWP] == "normal" && p.L == 7 {
+							flags.dmrsCommon._dmrsAddPos[i] = "pos1"
+						} else {
+							flags.dmrsCommon._dmrsAddPos[i] = "pos0"
+						}
+					}
+
+					// update TBS info
+					td := flags.dci10._tdNumSymbs[i]
+					fd := flags.dci10.dci10FdNumRbs[i]
+					mcs := flags.dci10.dci10McsCw0[i]
+
+					key2 := fmt.Sprintf("%v_%v_%v", td, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
+					// refer to 3GPP TS 38.214 vfa0:
+					// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
+					dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
+					if !exist2 || dmrs == nil {
+					    fmt.Printf("Invalid DMRS for PDSCH settings(rnti=%v, key=%v)\n", flags.dci10._rnti[i], key2)
+					    return
+					}
+
+					// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+					// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+					// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+					//
+					// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+					// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+					if flags.dci10._tdMappingType[i] == "typeA" {
+						ld := flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
+						if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
+							fmt.Printf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v\n", ld)
+							return
+						}
+					}
+
+					dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
+					fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
+
+					tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
+					if err != nil {
+						fmt.Printf(err.Error())
+						return
+					} else {
+						fmt.Printf("TBS=%v bits\n", tbs)
+						flags.dci10._tbs[i] = tbs
+					}
+				}
+			}
+
+			// validate PUSCH/PDSCH DMRS
+			// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
+			// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+			// For PUSCH mapping type A, l_d = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+			// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+			// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+			// TODO
+		}
+
 	    print(cmd, args)
 		viper.WriteConfig()
 	},
+}
+
+func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs int, layer int, dmrs int, xoh int, scale float64) (int, error) {
+	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
+	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
+
+	if !utils.ContainsStr(rntiSet, rnti) || !utils.ContainsStr(mcsTabSet, mcsTab) {
+		return 0, errors.New("Invalid RNTI or MCS table!")
+	}
+
+	// refer to 3GPP TS 38.214 vfa0
+	// 5.1.3	Modulation order, target code rate, redundancy version and transport block size determination
+	// 6.1.4	Modulation order, redundancy version and transport block size determination
+	// 1st step: get Qm and R(x1024)
+	var p *nrgrid.McsInfo
+	if sch == "PDSCH" || (sch == "PUSCH" && !tp) {
+		if rnti == "C-RNTI" && mcsTab == "qam256" {
+			p = nrgrid.PdschMcsTabQam256[mcs]
+		} else if rnti == "C-RNTI" &&  mcsTab == "qam64LowSE" {
+			p = nrgrid.PdschMcsTabQam64LowSE[mcs]
+		} else {
+			p = nrgrid.PdschMcsTabQam64[mcs]
+		}
+	} else if sch == "PUSCH" && tp {
+		if rnti == "C-RNTI" && mcsTab == "qam256" {
+			p = nrgrid.PdschMcsTabQam256[mcs]
+		} else if rnti == "C-RNTI" &&  mcsTab == "qam64LowSE" {
+			p = nrgrid.PuschTpMcsTabQam64LowSE[mcs]
+		} else {
+			p = nrgrid.PuschTpMcsTabQam64[mcs]
+		}
+	}
+
+	if p == nil {
+		return 0, errors.New(fmt.Sprintf("Invalid MCS: sch=%v, tp=%v, rnti=%v, mcsTab=%v, mcs=%v", sch, tp, rnti, mcsTab, mcs))
+	}
+	Qm, R := p.ModOrder, p.CodeRate
+
+	// The UE is not expected to decode a PDSCH scheduled with P-RNTI, RA-RNTI, SI-RNTI and Qm > 2.
+	// FIXME: assume PDSCH scheduled with TC-RNTI has the same restraint.
+	if (rnti == "RA-RNTI" || rnti == "SI-RNTI" || rnti == "TC-RNTI") && Qm > 2 {
+		return 0, errors.New(fmt.Sprintf("The UE is not expected to decode a PDSCH scheduled with P-RNTI, RA-RNTI, SI-RNTI and Qm > 2.\nnrgrid.McsInfo=%v\n", *p))
+	}
+
+	// 2nd step: get N_RE
+	N_RE_ap := N_SC_RB * td - dmrs - xoh
+	min := utils.MinInt([]int{156, N_RE_ap})
+	N_RE := min * fd
+
+	// 3rd step: get N_info
+	N_info := scale * float64(N_RE) * (R / 1024) * float64(Qm) * float64(layer)
+
+	// 4th step: get TBS
+	var tbs int
+	if N_info <= 3824 {
+		n := utils.MaxInt([]int{3, utils.FloorInt(math.Log2(N_info)) - 6})
+		n2 := 1 << n
+		N_info_ap := utils.MaxInt([]int{24, n2 * utils.FloorInt(N_info / float64(n2))})
+		for _, v := range nrgrid.TbsTabLessThan3824 {
+			if v >= N_info_ap {
+				tbs = v
+				break
+			}
+		}
+	} else {
+		n := utils.FloorInt(math.Log2(N_info-24)) - 5
+		n2 := 1 << n
+		N_info_ap := utils.MaxInt([]int{3840, n2 * utils.RoundInt((N_info-24) / float64(n2))})
+		if R <= 256 {
+			C := utils.CeilInt(float64(N_info_ap+24) / 3816)
+			tbs = 8*C*utils.CeilInt(float64(N_info_ap+24) / float64(8*C)) - 24
+		} else {
+			if N_info_ap > 8424 {
+				C := utils.CeilInt(float64(N_info_ap+24) / 8424)
+				tbs = 8*C*utils.CeilInt(float64(N_info_ap+24) / float64(8*C)) - 24
+			} else {
+				tbs = 8*utils.CeilInt(float64(N_info_ap+24)/8) - 24
+			}
+		}
+	}
+
+	// The UE is not expected to receive a PDSCH assigned by a PDCCH with CRC scrambled by SI-RNTI with a TBS exceeding 2976 bits.
+	if rnti == "SI-RNTI" && tbs > 2976 {
+		return 0, errors.New(fmt.Sprintf("The UE is not expected to receive a PDSCH assigned by a PDCCH with CRC scrambled by SI-RNTI with a TBS exceeding 2976 bits.\nCalculated TBS=%v bits\n", tbs))
+	}
+
+	return tbs, nil
 }
 
 // confCarrierGridCmd represents the nrrg conf carriergrid command
@@ -2705,8 +2996,8 @@ func loadFlags() {
 	flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
 }
 
-//var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
-var w =[]int{len("Flag"), len("Type"), len("Current Value")}
+var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
+// var w =[]int{len("Flag"), len("Type"), len("Current Value")}
 func print(cmd *cobra.Command, args []string) {
 	cmd.Flags().VisitAll(
 		func (f *pflag.Flag) {
@@ -2714,7 +3005,7 @@ func print(cmd *cobra.Command, args []string) {
 				if len(f.Name) > w[0] { w[0] = len(f.Name) }
 				if len(f.Value.Type()) > w[1] { w[1] = len(f.Value.Type()) }
 				if len(f.Value.String()) > w[2] { w[2] = len(f.Value.String()) }
-				// if len(f.DefValue) > w[3] { w[3] = len(f.DefValue) }
+				 if len(f.DefValue) > w[3] { w[3] = len(f.DefValue) }
 			}
 		})
 
@@ -2722,13 +3013,13 @@ func print(cmd *cobra.Command, args []string) {
 		w[i] += 4
 	}
 
-	// fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
-	fmt.Printf("%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", "Modifiable")
+	 fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
+	// fmt.Printf("%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", "Modifiable")
 	cmd.Flags().VisitAll(
 		func (f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
-				// fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, w[3], f.DefValue, !f.Hidden)
-				fmt.Printf("%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, !f.Hidden)
+				 fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, w[3], f.DefValue, !f.Hidden)
+				// fmt.Printf("%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, !f.Hidden)
 			}
 		})
 }
