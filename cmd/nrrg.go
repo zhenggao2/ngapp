@@ -1062,128 +1062,16 @@ var confMibCmd = &cobra.Command{
 			}
 
 			// validate 'Time domain resource assignment" field of DCI 1_0/1_1
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
-			// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
-			// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
-			for i, rnti := range flags.dci10._rnti {
-			    var p *nrgrid.TimeAllocInfo
-			    var exist bool
+			err := validateDci10TdRa()
+			if err != nil {
+				fmt.Print(err.Error())
+				return
+			}
 
-			    row := flags.dci10.dci10TdRa[i] + 1
-				key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
-				switch rnti {
-				case "SI-RNTI":
-				    switch flags.mib._coreset0MultiplexingPat {
-					case 1:
-						p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
-					case 2:
-						// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
-						// Note 1: If the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space, the UE may assume that this PDSCH resource allocation is not applied.
-						if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10.dci10TdRa[i] + 1) {
-							fmt.Printf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1)
-							return
-						}
-						p, exist = nrgrid.PdschTimeAllocDefB[key]
-					case 3:
-						// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
-						// Note 1: The UE may assume that this PDSCH resource allocation is not used, if the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space.
-						if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10.dci10TdRa[i] + 1) {
-							fmt.Printf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1)
-							return
-						}
-						p, exist = nrgrid.PdschTimeAllocDefC[key]
-					}
-
-				case "RA-RNTI", "TC-RNTI":
-				    if flags.bwp._bwpCp[INI_DL_BWP] == "normal" {
-						p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
-					} else {
-						p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
-					}
-				}
-
-				if !exist {
-					fmt.Printf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos)
-					return
-				} else {
-				    fmt.Printf("nrgrid.TimeAllocInfo(rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
-
-				    // update dci10 info
-					flags.dci10._tdMappingType[i] = p.MappingType
-					flags.dci10._tdK0[i] = p.K0
-					flags.dci10._tdStartSymb[i] = p.S
-					flags.dci10._tdNumSymbs[i] = p.L
-					sliv, _ := nrgrid.MakeSliv(p.S, p.L)
-					flags.dci10._tdSliv[i] = sliv
-
-					// update dmrs info
-					// refer to 3GPP TS 38.214 vfa0: 5.1.6.2	DM-RS reception procedure
-					// When receiving PDSCH scheduled by DCI format 1_0, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
-					if p.L == 2 {
-						flags.dmrsCommon._cdmGroupsWoData[i] = 1
-					} else {
-						flags.dmrsCommon._cdmGroupsWoData[i] = 2
-					}
-
-					// -For PDSCH with mapping type A, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
-					// -For PDSCH with allocation duration of 7 symbols for normal CP or 6 symbols for extended CP with mapping type B, the UE shall assume one additional single-symbol DM-RS present in the 5th or 6th symbol when the front-loaded DM-RS symbol is in the 1st or 2nd symbol respectively of the PDSCH allocation duration, otherwise the UE shall assume that the additional DM-RS symbol is not present, and
-					// -For PDSCH with allocation duration of 4 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and
-					// -For PDSCH with allocation duration of 2 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
-					if p.MappingType == "typeA" {
-						flags.dmrsCommon._dmrsAddPos[i] = "pos2"
-					} else {
-					    // Initial DL bwp always use normal CP.
-					    if flags.bwp._bwpCp[INI_DL_BWP] == "normal" && p.L == 7 {
-							flags.dmrsCommon._dmrsAddPos[i] = "pos1"
-						} else {
-							flags.dmrsCommon._dmrsAddPos[i] = "pos0"
-						}
-					}
-
-					// update TBS info
-					td := flags.dci10._tdNumSymbs[i]
-					fd := flags.dci10.dci10FdNumRbs[i]
-					mcs := flags.dci10.dci10McsCw0[i]
-
-					key2 := fmt.Sprintf("%v_%v_%v", td, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
-					// refer to 3GPP TS 38.214 vfa0:
-					// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
-					dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
-					if !exist2 || dmrs == nil {
-					    fmt.Printf("Invalid DMRS for PDSCH settings(rnti=%v, key=%v)\n", flags.dci10._rnti[i], key2)
-					    return
-					}
-
-					// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-					// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-					// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-					//
-					// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-					// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
-					if flags.dci10._tdMappingType[i] == "typeA" {
-						ld := flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
-						if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
-							fmt.Printf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v\n", ld)
-							return
-						}
-					}
-
-					dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
-					fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
-
-					tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
-					if err != nil {
-						fmt.Printf(err.Error())
-						return
-					} else {
-						fmt.Printf("TBS=%v bits\n", tbs)
-						flags.dci10._tbs[i] = tbs
-					}
-				}
+			err2 := validateDci11TdRa()
+			if err2 != nil {
+				fmt.Print(err2.Error())
+				return
 			}
 
 			// validate PUSCH/PDSCH DMRS
@@ -1201,6 +1089,200 @@ var confMibCmd = &cobra.Command{
 	},
 }
 
+// validateDci10TdRa validates the "Time domain resource assignment" field of DCI 1_0 scheduling SIB1/Msg2/Msg4,
+// updates associated DMRS, and calculate TBS.
+func validateDci10TdRa() error {
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
+	// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
+	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
+	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	for i, rnti := range flags.dci10._rnti {
+		row := flags.dci10.dci10TdRa[i] + 1
+		key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
+		var p *nrgrid.TimeAllocInfo
+		var exist bool
+
+		switch rnti {
+		case "SI-RNTI":
+			switch flags.mib._coreset0MultiplexingPat {
+			case 1:
+				p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
+			case 2:
+				// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
+				// Note 1: If the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space, the UE may assume that this PDSCH resource allocation is not applied.
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10.dci10TdRa[i] + 1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1))
+				}
+				p, exist = nrgrid.PdschTimeAllocDefB[key]
+			case 3:
+				// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
+				// Note 1: The UE may assume that this PDSCH resource allocation is not used, if the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space.
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10.dci10TdRa[i] + 1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1))
+				}
+				p, exist = nrgrid.PdschTimeAllocDefC[key]
+			}
+
+		case "RA-RNTI", "TC-RNTI":
+			if flags.bwp._bwpCp[INI_DL_BWP] == "normal" {
+				p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
+			} else {
+				p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
+			}
+		}
+
+		if !exist {
+			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos))
+		} else {
+			// update dci10 info
+			fmt.Printf("nrgrid.TimeAllocInfo(rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
+			flags.dci10._tdMappingType[i] = p.MappingType
+			flags.dci10._tdK0[i] = p.K0
+			flags.dci10._tdStartSymb[i] = p.S
+			flags.dci10._tdNumSymbs[i] = p.L
+			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
+			flags.dci10._tdSliv[i] = sliv
+
+			// update dmrs info
+			// refer to 3GPP TS 38.214 vfa0: 5.1.6.2	DM-RS reception procedure
+			// When receiving PDSCH scheduled by DCI format 1_0, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
+			if p.L == 2 {
+				flags.dmrsCommon._cdmGroupsWoData[i] = 1
+			} else {
+				flags.dmrsCommon._cdmGroupsWoData[i] = 2
+			}
+
+			// -For PDSCH with mapping type A, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
+			// -For PDSCH with allocation duration of 7 symbols for normal CP or 6 symbols for extended CP with mapping type B, the UE shall assume one additional single-symbol DM-RS present in the 5th or 6th symbol when the front-loaded DM-RS symbol is in the 1st or 2nd symbol respectively of the PDSCH allocation duration, otherwise the UE shall assume that the additional DM-RS symbol is not present, and
+			// -For PDSCH with allocation duration of 4 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and
+			// -For PDSCH with allocation duration of 2 symbols with mapping type B, the UE shall assume that no additional DM-RS are present, and the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
+			if p.MappingType == "typeA" {
+				flags.dmrsCommon._dmrsAddPos[i] = "pos2"
+			} else {
+				// Initial DL bwp always use normal CP.
+				if flags.bwp._bwpCp[INI_DL_BWP] == "normal" && p.L == 7 {
+					flags.dmrsCommon._dmrsAddPos[i] = "pos1"
+				} else {
+					flags.dmrsCommon._dmrsAddPos[i] = "pos0"
+				}
+			}
+
+			// update TBS info
+			td := flags.dci10._tdNumSymbs[i]
+			fd := flags.dci10.dci10FdNumRbs[i]
+			mcs := flags.dci10.dci10McsCw0[i]
+
+			key2 := fmt.Sprintf("%v_%v_%v", td, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
+			// refer to 3GPP TS 38.214 vfa0:
+			// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
+			dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
+			if !exist2 || dmrs == nil {
+				return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings(rnti=%v, key=%v)\n", flags.dci10._rnti[i], key2))
+			}
+
+			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+			// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+			// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+			//
+			// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+			// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+			if flags.dci10._tdMappingType[i] == "typeA" {
+				ld := flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
+				if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
+					return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
+				}
+			}
+
+			dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
+			fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
+
+			tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
+			if err != nil {
+				return err
+			} else {
+				fmt.Printf("TBS=%v bits\n", tbs)
+				flags.dci10._tbs[i] = tbs
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
+func validateDci11TdRa() error {
+	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+
+	if flags.dci11.dci11TdRa >= 0 && flags.dci11.dci11TdRa <= 15 {
+		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
+		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
+		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
+		row := flags.dci11.dci11TdRa + 1
+		key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
+		var p *nrgrid.TimeAllocInfo
+		var exist bool
+
+		if flags.bwp._bwpCp[DED_DL_BWP] == "normal" {
+			p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
+		} else {
+			p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
+		}
+
+		if !exist {
+			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.mib.dmrsTypeAPos))
+		} else {
+			// update dci11 info
+			fmt.Printf("nrgrid.TimeAllocInfo: %v\n", *p)
+			flags.dci11.dci11TdMappingType = p.MappingType
+			flags.dci11.dci11TdK0 = p.K0
+			flags.dci11.dci11TdStartSymb = p.S
+			flags.dci11.dci11TdNumSymbs = p.L
+			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
+			flags.dci11.dci11TdSliv = sliv
+		}
+	} else {
+		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
+		// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
+		if flags.dci11.dci11TdMappingType == "typeA" && flags.dci11.dci11TdStartSymb == 3 && dmrsTypeAPos != "pos3" {
+			return errors.New(fmt.Sprintf("S = 3 is applicable only if dmrs-TypeA-Position = 3 when PDSCH mapping type is typeA.\ndci11TdStartSymb=%v,dmrsTypeAPos=%v\n", flags.dci11.dci11TdStartSymb, dmrsTypeAPos))
+		}
+
+		// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+		// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+		// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+		//
+		// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+		// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+		if flags.dmrsPdsch.pdschDmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
+			return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
+		}
+		if flags.dci11.dci11TdMappingType == "typeA" {
+			ld := flags.dci11.dci11TdStartSymb + flags.dci11.dci11TdNumSymbs
+			if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
+				return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v,dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
+			}
+		}
+	}
+
+	return nil
+}
+
+// getTbs calculates TBS for PUSCH/PDSCH.
+//  sch: PUSCH or PDSCH
+//	tp: PUSCH transform percoding flag
+//	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
+//	mcsTab: qam64, qam64LowSE or qam256
+//	td: number of symbols
+//	fd: number of PRBs
+//	mcs: MCS
+// 	layer: number of spatial multiplexing layers
+// 	dmrs: overhead of DMRS
+//	xoh: the xOverhead
+//	scale: TB scaling for Msg2
 func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs int, layer int, dmrs int, xoh int, scale float64) (int, error) {
 	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
 	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
