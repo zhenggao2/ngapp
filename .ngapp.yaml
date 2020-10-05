@@ -375,8 +375,7 @@ nrrg:
     pdschrbgcfg: config1
     pdschxoh: xOh0
   ptrspdsch:
-    _dmrsports:
-    - 1000
+    _dmrsports: 1000
     pdschptrsenabled: true
     pdschptrsfreqdensity: 2
     pdschptrsreoffset: offset00

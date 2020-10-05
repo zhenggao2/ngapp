@@ -25,6 +25,7 @@ import (
 	"github.com/zhenggao2/ngapp/utils"
 	"math"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -327,7 +328,7 @@ type PtrsPdschFlags struct {
 	pdschPtrsTimeDensity int
 	pdschPtrsFreqDensity int
 	pdschPtrsReOffset    string
-	_dmrsPorts           []int
+	_dmrsPorts           int
 }
 
 // DMRS for PUSCH
@@ -1074,6 +1075,18 @@ var confMibCmd = &cobra.Command{
 				return
 			}
 
+			err3 := validateDci01TdRa()
+			if err3 != nil {
+				fmt.Print(err3.Error())
+				return
+			}
+
+			err4 := validateMsg3TdRa()
+			if err4 != nil {
+				fmt.Print(err4.Error())
+				return
+			}
+
 			// validate PUSCH/PDSCH DMRS
 			// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
 			// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
@@ -1089,8 +1102,9 @@ var confMibCmd = &cobra.Command{
 	},
 }
 
-// validateDci10TdRa validates the "Time domain resource assignment" field of DCI 1_0 scheduling SIB1/Msg2/Msg4,
-// updates associated DMRS, and calculate TBS.
+/*
+validateDci10TdRa validates the "Time domain resource assignment" field of DCI 1_0 scheduling SIB1/Msg2/Msg4, updates associated DMRS, and calculate TBS.
+ */
 func validateDci10TdRa() error {
 	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
 	// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
@@ -1139,7 +1153,7 @@ func validateDci10TdRa() error {
 			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos))
 		} else {
 			// update dci10 info
-			fmt.Printf("nrgrid.TimeAllocInfo(rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
+			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
 			flags.dci10._tdMappingType[i] = p.MappingType
 			flags.dci10._tdK0[i] = p.K0
 			flags.dci10._tdStartSymb[i] = p.S
@@ -1213,7 +1227,9 @@ func validateDci10TdRa() error {
 	return nil
 }
 
-// validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
+/*
+validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
+ */
 func validateDci11TdRa() error {
 	dmrsTypeAPos := flags.mib.dmrsTypeAPos
 
@@ -1236,7 +1252,7 @@ func validateDci11TdRa() error {
 			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.mib.dmrsTypeAPos))
 		} else {
 			// update dci11 info
-			fmt.Printf("nrgrid.TimeAllocInfo: %v\n", *p)
+			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_1, rnti=C-RNTI): %v\n", *p)
 			flags.dci11.dci11TdMappingType = p.MappingType
 			flags.dci11.dci11TdK0 = p.K0
 			flags.dci11.dci11TdStartSymb = p.S
@@ -1268,21 +1284,157 @@ func validateDci11TdRa() error {
 		}
 	}
 
+	// validate 'Antenna port(s)' field of DCI 1_1 scheduling PDSCH
+	dmrsType := flags.dmrsPdsch.pdschDmrsType
+	maxLength := flags.dmrsPdsch.pdschMaxLength
+	var mcsSet []int
+	if flags.dci11.dci11McsCw0 >= 0 {
+		mcsSet = append(mcsSet, flags.dci11.dci11McsCw0)
+	}
+	if flags.dci11.dci11McsCw1 >= 0 {
+		mcsSet = append(mcsSet, flags.dci11.dci11McsCw1)
+	}
+
+	var tokens []string
+	if dmrsType == "type1" && maxLength == "len1" && len(mcsSet) == 1 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCwValid, "-")
+	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 1 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCwValid, "-")
+	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 2 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen2TwoCwsValid, "-")
+	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 1 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen1OneCwValid, "-")
+	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 2 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen1TwoCwsValid, "-")
+	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 1 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen2OneCwValid, "-")
+	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 2 {
+		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCwsValid, "-")
+	} else {
+		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v\n", dmrsType, maxLength, len(mcsSet)))
+	}
+
+	minVal, _ := strconv.Atoi(tokens[0])
+	maxVal, _ := strconv.Atoi(tokens[1])
+	fmt.Printf("'Antenna port(s)' field of DCI 1_1 range: [%v, %v]\n", minVal, maxVal)
+
+	ap := flags.dci11.dci11AntPorts
+	if ap < minVal || ap > maxVal {
+		return errors.New(fmt.Sprintf("Invalid 'Antenna port(s)' field for DCI 1_1.\nrange=[%v, %v], antPorts=%v\n", minVal, maxVal, ap))
+	}
+
+	// update DMRS for PDSCH
+	var p *nrgrid.AntPortsInfo
+	if dmrsType == "type1" && maxLength == "len1" && len(mcsSet) == 1 {
+	    p = nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCw[ap]
+	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 1 {
+		p = nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCw[ap]
+	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 2 {
+		p = nrgrid.Dci11AntPortsDmrsType1MaxLen2TwoCws[ap]
+	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 1 {
+		p = nrgrid.Dci11AntPortsDmrsType2MaxLen1OneCw[ap]
+	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 2 {
+		p = nrgrid.Dci11AntPortsDmrsType2MaxLen1TwoCws[ap]
+	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 1 {
+		p = nrgrid.Dci11AntPortsDmrsType2MaxLen2OneCw[ap]
+	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 2 {
+		p = nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCws[ap]
+	} else {
+		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v\n", dmrsType, maxLength, len(mcsSet)))
+	}
+
+	for i, _ := range p.DmrsPorts {
+		p.DmrsPorts[i] += 1000
+	}
+
+	fmt.Printf("nrgrid.AntPortsInfo(PDSCH): %v\n", *p)
+	flags.dmrsPdsch._cdmGroupsWoData = p.CdmGroups
+	flags.dmrsPdsch._dmrsPorts = p.DmrsPorts
+	flags.dmrsPdsch._numFrontLoadSymbs = p.NumDmrsSymbs
+
+	// update PTRS for PDSCH
+	maxDmrsPorts := utils.MaxInt(flags.dmrsPdsch._dmrsPorts)
+	noPtrs := false
+	// refer to 3GPP TS 38.214 vfa0: 5.1.6.2	DM-RS reception procedure
+	// If a UE receiving PDSCH is configured with the higher layer parameter phaseTrackingRS in DMRS-DownlinkConfig, the UE may assume that the following configurations are not occurring simultaneously for the received PDSCH:
+	//-	any DM-RS ports among 1004-1007 or 1006-1011 for DM-RS configurations type 1 and type 2, respectively are scheduled for the UE and the other UE(s) sharing the DM-RS REs on the same CDM group(s), and
+	//-	PT-RS is transmitted to the UE.
+	if (dmrsType == "type1" && maxDmrsPorts >= 1004) || (dmrsType == "type2" && maxDmrsPorts >= 1006) {
+		noPtrs = true
+	}
+
+	fmt.Printf("noPtrs=%v\n", noPtrs)
+
+	if noPtrs {
+		flags.ptrsPdsch.pdschPtrsEnabled = false
+	} else {
+	    // refer to 3GPP TS 38.214 vfa0: 5.1.6.3	PT-RS reception procedure
+		// If a UE is scheduled with one codeword, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the PDSCH.
+		// If a UE is scheduled with two codewords, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the codeword with the higher MCS. If the MCS indices of the two codewords are the same, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port assigned for codeword 0.
+	    if len(mcsSet) == 1 {
+	    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
+		} else {
+		    // refer to 3GPP TS 38.211 vf80: Table 7.3.1.3-1: Codeword-to-layer mapping for spatial multiplexing.
+			// refer to 3GPP TS 38.211 vf80: 7.3.1.4	Antenna port mapping
+		    numLayersCw0 := utils.FloorInt(float64(len(flags.dmrsPdsch._dmrsPorts)) / 2)
+		    if mcsSet[0] >= mcsSet[1] {
+		    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
+			} else {
+				flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[numLayersCw0]
+			}
+		}
+	}
+
+	// update PDSCH TBS
+	// TODO
+
 	return nil
 }
 
-// getTbs calculates TBS for PUSCH/PDSCH.
-//  sch: PUSCH or PDSCH
-//	tp: PUSCH transform percoding flag
-//	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
-//	mcsTab: qam64, qam64LowSE or qam256
-//	td: number of symbols
-//	fd: number of PRBs
-//	mcs: MCS
-// 	layer: number of spatial multiplexing layers
-// 	dmrs: overhead of DMRS
-//	xoh: the xOverhead
-//	scale: TB scaling for Msg2
+func validateDci01TdRa() error {
+	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+
+	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
+	// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	// For PUSCH mapping type A, l_d = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	//
+	//- ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+	//-	ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+	//-	ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used.
+	if flags.dci01.dci01TdMappingType == "typeA" && flags.dmrsPusch.puschDmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
+		return errors.New(fmt.Sprintf("For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\ndci01TdMappingType=%v, puschDmrsAddPos=%v, dmrsTypeAPos=%v\n", flags.dci01.dci01TdMappingType, flags.dmrsPusch.puschDmrsAddPos, dmrsTypeAPos))
+	}
+
+	// update PUSCH TBS
+	// TODO
+
+	return nil
+}
+
+func validateMsg3TdRa() error {
+	// dmrsTypeAPos := flags.mib.dmrsTypeAPos
+
+
+	// update Msg3 TBS
+	// TODO
+
+	return nil
+}
+
+/*
+getTbs calculates TBS for PUSCH/PDSCH.
+	sch: PUSCH or PDSCH
+	tp: PUSCH transform percoding flag
+	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
+	mcsTab: qam64, qam64LowSE or qam256
+	td: number of symbols
+	fd: number of PRBs
+	mcs: MCS
+	layer: number of spatial multiplexing layers
+	dmrs: overhead of DMRS
+	xoh: the xOverhead
+	scale: TB scaling for Msg2
+ */
 func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs int, layer int, dmrs int, xoh int, scale float64) (int, error) {
 	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
 	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
@@ -2315,7 +2467,7 @@ func initConfPtrsPdschCmd() {
 	confPtrsPdschCmd.Flags().IntVar(&flags.ptrsPdsch.pdschPtrsTimeDensity, "pdschPtrsTimeDensity", 1, "The L_PTRS deduced from timeDensity of PTRS-DownlinkConfig[1,2,4]")
 	confPtrsPdschCmd.Flags().IntVar(&flags.ptrsPdsch.pdschPtrsFreqDensity, "pdschPtrsFreqDensity", 2, "The K_PTRS deduced from frequencyDensity of PTRS-DownlinkConfig[2,4]")
 	confPtrsPdschCmd.Flags().StringVar(&flags.ptrsPdsch.pdschPtrsReOffset, "pdschPtrsReOffset", "offset00", "resourceElementOffset of PTRS-DownlinkConfig[offset00,offset01,offset10,offset11]")
-	confPtrsPdschCmd.Flags().IntSliceVar(&flags.ptrsPdsch._dmrsPorts, "_dmrsPorts", []int{1000}, "Associated DMRS antenna ports")
+	confPtrsPdschCmd.Flags().IntVar(&flags.ptrsPdsch._dmrsPorts, "_dmrsPorts", 1000, "Associated DMRS antenna port")
 	confPtrsPdschCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsEnabled", confPtrsPdschCmd.Flags().Lookup("pdschPtrsEnabled"))
 	viper.BindPFlag("nrrg.ptrspdsch.pdschPtrsTimeDensity", confPtrsPdschCmd.Flags().Lookup("pdschPtrsTimeDensity"))
@@ -2919,7 +3071,7 @@ func loadFlags() {
 	flags.ptrsPdsch.pdschPtrsTimeDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsTimeDensity")
 	flags.ptrsPdsch.pdschPtrsFreqDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsFreqDensity")
 	flags.ptrsPdsch.pdschPtrsReOffset = viper.GetString("nrrg.ptrspdsch.pdschPtrsReOffset")
-	flags.ptrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.ptrspdsch._dmrsPorts")
+	flags.ptrsPdsch._dmrsPorts = viper.GetInt("nrrg.ptrspdsch._dmrsPorts")
 
 	flags.dmrsPusch.puschDmrsType = viper.GetString("nrrg.dmrspusch.puschDmrsType")
 	flags.dmrsPusch.puschDmrsAddPos = viper.GetString("nrrg.dmrspusch.puschDmrsAddPos")
