@@ -631,7 +631,7 @@ var confFreqBandCmd = &cobra.Command{
 			}
 		}
 
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -743,7 +743,7 @@ var confSsbGridCmd = &cobra.Command{
 				updateKSsbAndNCrbSsb()
 				err2 := validateCss0()
 				if err2 != nil {
-					fmt.Print(err.Error())
+					fmt.Print(err2.Error())
 					return
 				}
 			}
@@ -760,7 +760,7 @@ var confSsbGridCmd = &cobra.Command{
 			}
 		}
 
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -901,8 +901,6 @@ func validateCoreset0() error {
 	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
 	flags.dci10._fdBitwidthRaType1 = []int{bitwidth, bitwidth, bitwidth}
 	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
-
-	// print CORESET0 info
 	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.mib._coreset0MultiplexingPat, flags.mib._coreset0NumRbs, flags.mib._coreset0NumSymbs, flags.mib._coreset0Offset)
 
 	return nil
@@ -992,7 +990,7 @@ var confSsbBurstCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1104,7 +1102,7 @@ var confMibCmd = &cobra.Command{
 			// TODO
 		}
 
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1156,7 +1154,7 @@ func validateDci10TdRa() error {
 			}
 		}
 
-		if !exist {
+		if !exist || p == nil {
 			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos))
 		} else {
 			// update dci10 info
@@ -1348,7 +1346,7 @@ func validateDci11TdRa() error {
 
 
 	fmt.Printf("nrgrid.AntPortsInfo(PDSCH): %v\n", *p)
-	for i, _ := range p.DmrsPorts {
+	for i := range p.DmrsPorts {
 		p.DmrsPorts[i] += 1000
 	}
 
@@ -1367,7 +1365,7 @@ func validateDci11TdRa() error {
 		noPtrs = true
 	}
 
-	fmt.Printf("noPtrs=%v\n", noPtrs)
+	fmt.Printf("PDSCH noPtrs=%v\n", noPtrs)
 
 	if noPtrs {
 		flags.ptrsPdsch.pdschPtrsEnabled = false
@@ -1543,7 +1541,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
 
 	if !utils.ContainsStr(rntiSet, rnti) || !utils.ContainsStr(mcsTabSet, mcsTab) {
-		return 0, errors.New("Invalid RNTI or MCS table!")
+		return 0, errors.New(fmt.Sprintf("Invalid RNTI or MCS table!\n"))
 	}
 
 	// refer to 3GPP TS 38.214 vfa0
@@ -1634,7 +1632,7 @@ var confCarrierGridCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1648,7 +1646,7 @@ var confCommonSettingCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1662,7 +1660,7 @@ var confCss0Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1676,7 +1674,7 @@ var confCoreset1Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1690,7 +1688,7 @@ var confUssCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1704,7 +1702,7 @@ var confDci10Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1718,7 +1716,7 @@ var confDci11Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1732,7 +1730,7 @@ var confMsg3Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1746,7 +1744,7 @@ var confDci01Cmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1760,7 +1758,7 @@ var confBwpCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1774,7 +1772,7 @@ var confRachCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1788,7 +1786,7 @@ var confDmrsCommonCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1802,7 +1800,7 @@ var confDmrsPdschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1816,7 +1814,7 @@ var confPtrsPdschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1830,7 +1828,7 @@ var confDmrsPuschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1844,7 +1842,7 @@ var confPtrsPuschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1858,7 +1856,7 @@ var confPdschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    print(cmd, args)
+	    laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1872,7 +1870,7 @@ var confPuschCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1886,7 +1884,7 @@ var confNzpCsiRsCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1900,7 +1898,7 @@ var confTrsCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1914,7 +1912,7 @@ var confCsiImCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1928,7 +1926,7 @@ var confCsiReportCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1942,7 +1940,7 @@ var confSrsCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1956,7 +1954,7 @@ var confPucchCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -1970,7 +1968,7 @@ var confAdvancedCmd = &cobra.Command{
 		loadFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		print(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -3347,7 +3345,11 @@ func loadFlags() {
 
 var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
 // var w =[]int{len("Flag"), len("Type"), len("Current Value")}
-func print(cmd *cobra.Command, args []string) {
+
+/*
+laPrint performs left-aligned printing.
+ */
+func laPrint(cmd *cobra.Command, args []string) {
 	cmd.Flags().VisitAll(
 		func (f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
