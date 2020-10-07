@@ -167,6 +167,7 @@ type Dci10Flags struct {
 	_tdStartSymb             []int
 	_tdNumSymbs              []int
 	_fdRaType                []string
+	_fdBitwidthRaType1 []int
 	_fdRa                    []string
 	dci10FdStartRb           []int
 	dci10FdNumRbs            []int
@@ -193,6 +194,8 @@ type Dci11Flags struct {
 	dci11TdStartSymb         int
 	dci11TdNumSymbs          int
 	dci11FdRaType            string
+	_dci11FdBitwidthRaType0 int
+	_dci11FdBitwidthRaType1 int
 	dci11FdRa                string
 	dci11FdStartRb           int
 	dci11FdNumRbs            int
@@ -200,7 +203,7 @@ type Dci11Flags struct {
 	dci11FdBundleSize        string
 	dci11McsCw0              int
 	dci11McsCw1              int
-	_tbs                     int
+	_tbs                     []int
 	dci11DeltaPri            int
 	dci11TdK1                int
 	dci11AntPorts            int
@@ -896,6 +899,7 @@ func validateCoreset0() error {
 	// update info of 'frquency domain assignment' bitwidth of SIB1/Msg2/Msg4
 	nrb := float64(flags.mib._coreset0NumRbs)
 	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
+	flags.dci10._fdBitwidthRaType1 = []int{bitwidth, bitwidth, bitwidth}
 	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
 
 	// print CORESET0 info
@@ -1062,25 +1066,28 @@ var confMibCmd = &cobra.Command{
 				return
 			}
 
-			// validate 'Time domain resource assignment" field of DCI 1_0/1_1
+			// validate 'Time domain resource assignment" field of DCI 1_0
 			err := validateDci10TdRa()
 			if err != nil {
 				fmt.Print(err.Error())
 				return
 			}
 
+			// validate 'Time domain resource assignment" field of DCI 1_1
 			err2 := validateDci11TdRa()
 			if err2 != nil {
 				fmt.Print(err2.Error())
 				return
 			}
 
+			// validate 'Time domain resource assignment" field of DCI 0_1
 			err3 := validateDci01TdRa()
 			if err3 != nil {
 				fmt.Print(err3.Error())
 				return
 			}
 
+			// validate 'Time domain resource assignment" field of RAR Msg3
 			err4 := validateMsg3TdRa()
 			if err4 != nil {
 				fmt.Print(err4.Error())
@@ -1187,25 +1194,31 @@ func validateDci10TdRa() error {
 
 			// update TBS info
 			td := flags.dci10._tdNumSymbs[i]
+			ld := 0
 			fd := flags.dci10.dci10FdNumRbs[i]
 			mcs := flags.dci10.dci10McsCw0[i]
 
-			key2 := fmt.Sprintf("%v_%v_%v", td, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
+			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+			// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+			// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+			if flags.dci10._tdMappingType[i] == "typeA" {
+				ld = flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
+			} else {
+				ld = td
+			}
+
+			key2 := fmt.Sprintf("%v_%v_%v", ld, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
 			// refer to 3GPP TS 38.214 vfa0:
 			// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
 			dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
 			if !exist2 || dmrs == nil {
-				return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings(rnti=%v, key=%v)\n", flags.dci10._rnti[i], key2))
+				return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci10._rnti[i], 1, key2))
 			}
 
 			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 			// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
 			// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-			//
-			// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-			// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
 			if flags.dci10._tdMappingType[i] == "typeA" {
-				ld := flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
 				if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
 					return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
 				}
@@ -1218,7 +1231,7 @@ func validateDci10TdRa() error {
 			if err != nil {
 				return err
 			} else {
-				fmt.Printf("TBS=%v bits\n", tbs)
+				fmt.Printf("CW0 TBS=%v bits\n", tbs)
 				flags.dci10._tbs[i] = tbs
 			}
 		}
@@ -1295,21 +1308,32 @@ func validateDci11TdRa() error {
 		mcsSet = append(mcsSet, flags.dci11.dci11McsCw1)
 	}
 
+	ap := flags.dci11.dci11AntPorts
+	// update DMRS for PDSCH
 	var tokens []string
+	var p *nrgrid.AntPortsInfo
+	var exist bool
 	if dmrsType == "type1" && maxLength == "len1" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCwValid, "-")
+	    p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCw[ap]
 	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCwValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCw[ap]
 	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 2 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen2TwoCwsValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen2TwoCws[ap]
 	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen1OneCwValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType2MaxLen1OneCw[ap]
 	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 2 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen1TwoCwsValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType2MaxLen1TwoCws[ap]
 	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen2OneCwValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType2MaxLen2OneCw[ap]
 	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 2 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCwsValid, "-")
+		p, exist = nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCws[ap]
 	} else {
 		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v\n", dmrsType, maxLength, len(mcsSet)))
 	}
@@ -1318,36 +1342,16 @@ func validateDci11TdRa() error {
 	maxVal, _ := strconv.Atoi(tokens[1])
 	fmt.Printf("'Antenna port(s)' field of DCI 1_1 range: [%v, %v]\n", minVal, maxVal)
 
-	ap := flags.dci11.dci11AntPorts
-	if ap < minVal || ap > maxVal {
-		return errors.New(fmt.Sprintf("Invalid 'Antenna port(s)' field for DCI 1_1.\nrange=[%v, %v], antPorts=%v\n", minVal, maxVal, ap))
+	if !exist || p == nil {
+		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v, dci11AntPorts=%v\n", dmrsType, maxLength, len(mcsSet), ap))
 	}
 
-	// update DMRS for PDSCH
-	var p *nrgrid.AntPortsInfo
-	if dmrsType == "type1" && maxLength == "len1" && len(mcsSet) == 1 {
-	    p = nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCw[ap]
-	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 1 {
-		p = nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCw[ap]
-	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 2 {
-		p = nrgrid.Dci11AntPortsDmrsType1MaxLen2TwoCws[ap]
-	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 1 {
-		p = nrgrid.Dci11AntPortsDmrsType2MaxLen1OneCw[ap]
-	} else if dmrsType == "type2" && maxLength == "len1" && len(mcsSet) == 2 {
-		p = nrgrid.Dci11AntPortsDmrsType2MaxLen1TwoCws[ap]
-	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 1 {
-		p = nrgrid.Dci11AntPortsDmrsType2MaxLen2OneCw[ap]
-	} else if dmrsType == "type2" && maxLength == "len2" && len(mcsSet) == 2 {
-		p = nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCws[ap]
-	} else {
-		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v\n", dmrsType, maxLength, len(mcsSet)))
-	}
 
+	fmt.Printf("nrgrid.AntPortsInfo(PDSCH): %v\n", *p)
 	for i, _ := range p.DmrsPorts {
 		p.DmrsPorts[i] += 1000
 	}
 
-	fmt.Printf("nrgrid.AntPortsInfo(PDSCH): %v\n", *p)
 	flags.dmrsPdsch._cdmGroupsWoData = p.CdmGroups
 	flags.dmrsPdsch._dmrsPorts = p.DmrsPorts
 	flags.dmrsPdsch._numFrontLoadSymbs = p.NumDmrsSymbs
@@ -1386,9 +1390,108 @@ func validateDci11TdRa() error {
 	}
 
 	// update PDSCH TBS
-	// TODO
+	fdRaType := flags.dci11.dci11FdRaType
+	fdRa := flags.dci11.dci11FdRa
+	if (fdRaType == "raType0" && len(fdRa) != flags.dci11._dci11FdBitwidthRaType0) || (fdRaType == "raType1" && len(fdRa) != flags.dci11._dci11FdBitwidthRaType1) {
+		return errors.New(fmt.Sprintf("Invalid 'Frequency domain resource assignment' field of DCI 1_1: fdRaType=%v, fdRa=%v, len(fdRa)=%v, bitwidthRaType0=%v, bitwidthRaType1=%v\n", fdRaType, fdRa, len(fdRa), flags.dci11._dci11FdBitwidthRaType0, flags.dci11._dci11FdBitwidthRaType1))
+	}
+
+	fd := 0
+	if fdRaType == "raType0" {
+		rbgs := getRaType0Rbgs(flags.bwp.bwpStartRb[DED_DL_BWP], flags.bwp.bwpNumRbs[DED_DL_BWP], flags.pdsch._rbgSize)
+		for i, c := range fdRa {
+			if c == '1' {
+				fd += rbgs[i]
+			}
+		}
+	} else {
+		fd = flags.dci11.dci11FdNumRbs
+	}
+
+	// calculate DMRS overhead
+	td := flags.dci11.dci11TdNumSymbs
+	ld := 0
+	tdMapppingType := flags.dci11.dci11TdMappingType
+	dmrsAddPos := flags.dmrsPdsch.pdschDmrsAddPos
+
+	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+	if tdMapppingType == "typeA" {
+		ld = flags.dci11.dci11TdStartSymb + flags.dci11.dci11TdNumSymbs
+	} else {
+		ld = td
+	}
+
+	key := fmt.Sprintf("%v_%v_%v", ld, tdMapppingType, dmrsAddPos)
+	var dmrs []int
+	// var exist bool
+	if flags.dmrsPdsch._numFrontLoadSymbs == 1 {
+		dmrs, exist = nrgrid.DmrsPdschPosOneSymb[key]
+	} else {
+		dmrs, exist = nrgrid.DmrsPdschPosTwoSymbs[key]
+	}
+
+	if !exist || dmrs == nil {
+	    return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci11._rnti, flags.dmrsPdsch._numFrontLoadSymbs, key))
+	}
+
+	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// For PDSCH mapping type B
+	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
+	// TODO when PDSCH allocation collides with CORESET/SS
+	if tdMapppingType == "typeB" && (ld == 2 || ld == 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
+	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMapppingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
+	}
+
+	dmrsOh := (2 * flags.dmrsPdsch._cdmGroupsWoData) * len(dmrs)
+	fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsPdsch._cdmGroupsWoData, key, dmrs)
+
+	xoh, _ := strconv.Atoi(flags.pdsch.pdschXOh[3:])
+	if flags.dci11.dci11McsCw0 >= 0 {
+		tbs, err := getTbs("PDSCH", false, "C-RNTI", flags.pdsch.pdschMcsTable, td, fd, flags.dci11.dci11McsCw0, len(flags.dmrsPdsch._dmrsPorts), dmrsOh, xoh, 1)
+		if err != nil {
+			return err
+		} else {
+			fmt.Printf("CW0 TBS=%v bits\n", tbs)
+			flags.dci11._tbs[0] = tbs
+		}
+	}
+
+	if flags.dci11.dci11McsCw1 >= 0 {
+		tbs, err := getTbs("PDSCH", false, "C-RNTI", flags.pdsch.pdschMcsTable, td, fd, flags.dci11.dci11McsCw1, len(flags.dmrsPdsch._dmrsPorts), dmrsOh, xoh, 1)
+		if err != nil {
+			return err
+		} else {
+			fmt.Printf("CW1 TBS=%v bits\n", tbs)
+			flags.dci11._tbs[1] = tbs
+		}
+	}
 
 	return nil
+}
+
+/*
+getRaType0Rbgs return RBGs for PDSCH/PUSCH resource allocation Type 0.
+ */
+func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
+	bitwidth := utils.CeilInt((float64(bwpSize) + float64(bwpStart % P)) / float64(P))
+	rbgs := make([]int, bitwidth)
+	for i := 0; i < bitwidth; i++ {
+		if i == 0 {
+		    rbgs[i] = P - bwpStart % P
+		} else if i == bitwidth - 1 {
+			if (bwpStart + bwpSize) % P > 0 {
+				rbgs[i] = (bwpStart + bwpSize) % P
+			} else {
+				rbgs[i] = P
+			}
+		} else {
+			rbgs[i] = P
+		}
+	}
+
+	return rbgs
 }
 
 func validateDci01TdRa() error {
@@ -2121,6 +2224,7 @@ func initConfDci10Cmd() {
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._tdStartSymb, "_tdStartSymb", []int{12, 12, 12}, "Starting symbol S for PDSCH time-domain allocation")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._tdNumSymbs, "_tdNumSymbs", []int{2, 2, 2}, "Number of OFDM symbols L for PDSCH time-domain allocation")
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._fdRaType, "_fdRaType", []string{"raType1", "raType1", "raType1"}, "resourceAllocation for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._fdBitwidthRaType1, "_fdBitwidthRaType1", []int{11, 11, 11}, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._fdRa, "_fdRa", []string{"00001011111", "00001011111", "00001011111"}, "Frequency-domain-resource-assignment field of DCI 1_0")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10FdStartRb, "dci10FdStartRb", []int{0, 0, 0}, "RB_start of RIV for PDSCH frequency-domain allocation")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10FdNumRbs, "dci10FdNumRbs", []int{48, 48, 48}, "L_RBs of RIV for PDSCH frequency-domain allocation")
@@ -2142,6 +2246,7 @@ func initConfDci10Cmd() {
 	viper.BindPFlag("nrrg.dci10._tdStartSymb", confDci10Cmd.Flags().Lookup("_tdStartSymb"))
 	viper.BindPFlag("nrrg.dci10._tdNumSymbs", confDci10Cmd.Flags().Lookup("_tdNumSymbs"))
 	viper.BindPFlag("nrrg.dci10._fdRaType", confDci10Cmd.Flags().Lookup("_fdRaType"))
+	viper.BindPFlag("nrrg.dci10._fdBitwidthRaType1", confDci10Cmd.Flags().Lookup("_fdBitwidthRaType1"))
 	viper.BindPFlag("nrrg.dci10._fdRa", confDci10Cmd.Flags().Lookup("_fdRa"))
 	viper.BindPFlag("nrrg.dci10.dci10FdStartRb", confDci10Cmd.Flags().Lookup("dci10FdStartRb"))
 	viper.BindPFlag("nrrg.dci10.dci10FdNumRbs", confDci10Cmd.Flags().Lookup("dci10FdNumRbs"))
@@ -2161,6 +2266,7 @@ func initConfDci10Cmd() {
 	confDci10Cmd.Flags().MarkHidden("_tdStartSymb")
 	confDci10Cmd.Flags().MarkHidden("_tdNumSymbs")
 	confDci10Cmd.Flags().MarkHidden("_fdRaType")
+	confDci10Cmd.Flags().MarkHidden("_fdBitwidthRaType1")
 	confDci10Cmd.Flags().MarkHidden("_fdRa")
 	confDci10Cmd.Flags().MarkHidden("_fdBundleSize")
 	confDci10Cmd.Flags().MarkHidden("_tbs")
@@ -2179,6 +2285,8 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdStartSymb, "dci11TdStartSymb", 0, "Starting symbol S for PDSCH time-domain allocation")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdNumSymbs, "dci11TdNumSymbs", 14, "Number of OFDM symbols L for PDSCH time-domain allocation")
 	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11FdRaType, "dci11FdRaType", "raType1", "resourceAllocation for PDSCH frequency-domain allocation[raType0,raType1]")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType0, "_dci11FdBitwidthRaType0", 18, "Bitwidth of PDSCH frequency-domain allocation for RA Type 0")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType1, "_dci11FdBitwidthRaType1", 16, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
 	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11FdRa, "dci11FdRa", "0000001000100001", "Frequency-domain-resource-assignment field of DCI 1_1")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11FdStartRb, "dci11FdStartRb", 0, "RB_start of RIV for PDSCH frequency-domain allocation")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11FdNumRbs, "dci11FdNumRbs", 273, "L_RBs of RIV for PDSCH frequency-domain allocation")
@@ -2186,7 +2294,7 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11FdBundleSize, "dci11FdBundleSize", "n2", "L(vrb-ToPRB-Interleaver) for PDSCH frequency-domain allocation[n2,n4]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11McsCw0, "dci11McsCw0", 27, "Modulation-and-coding-scheme-cw0 field of DCI 1_1[-1 or 0..28]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11McsCw1, "dci11McsCw1", -1, "Modulation-and-coding-scheme-cw1 field of DCI 1_1[-1 or 0..28]")
-	confDci11Cmd.Flags().IntVar(&flags.dci11._tbs, "_tbs", 1277992, "Transport block size(bits) for PDSCH")
+	confDci11Cmd.Flags().IntSliceVar(&flags.dci11._tbs, "_tbs", []int{1277992, -1}, "Transport block size(bits) for PDSCH")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11DeltaPri, "dci11DeltaPri", 1, "PUCCH-resource-indicator field of DCI 1_1[0..4]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdK1, "dci11TdK1", 2, "PDSCH-to-HARQ_feedback-timing-indicator(K1) field of DCI 1_1[0..7]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11AntPorts, "dci11AntPorts", 10, "Antenna_port(s) field of DCI 1_1[0..15]")
@@ -2203,6 +2311,8 @@ func initConfDci11Cmd() {
 	viper.BindPFlag("nrrg.dci11.dci11TdStartSymb", confDci11Cmd.Flags().Lookup("dci11TdStartSymb"))
 	viper.BindPFlag("nrrg.dci11.dci11TdNumSymbs", confDci11Cmd.Flags().Lookup("dci11TdNumSymbs"))
 	viper.BindPFlag("nrrg.dci11.dci11FdRaType", confDci11Cmd.Flags().Lookup("dci11FdRaType"))
+	viper.BindPFlag("nrrg.dci11._dci11FdBitwidthRaType0", confDci11Cmd.Flags().Lookup("_dci11FdBitwidthRaType0"))
+	viper.BindPFlag("nrrg.dci11._dci11FdBitwidthRaType1", confDci11Cmd.Flags().Lookup("_dci11FdBitwidthRaType1"))
 	viper.BindPFlag("nrrg.dci11.dci11FdRa", confDci11Cmd.Flags().Lookup("dci11FdRa"))
 	viper.BindPFlag("nrrg.dci11.dci11FdStartRb", confDci11Cmd.Flags().Lookup("dci11FdStartRb"))
 	viper.BindPFlag("nrrg.dci11.dci11FdNumRbs", confDci11Cmd.Flags().Lookup("dci11FdNumRbs"))
@@ -2219,6 +2329,8 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().MarkHidden("_muPdsch")
 	confDci11Cmd.Flags().MarkHidden("_actBwp")
 	confDci11Cmd.Flags().MarkHidden("_indicatedBwp")
+	confDci11Cmd.Flags().MarkHidden("_dci11FdBitwidthRaType0")
+	confDci11Cmd.Flags().MarkHidden("_dci11FdBitwidthRaType1")
 	confDci11Cmd.Flags().MarkHidden("_tbs")
 }
 
@@ -2943,6 +3055,7 @@ func loadFlags() {
 	flags.dci10._tdStartSymb = viper.GetIntSlice("nrrg.dci10._tdStartSymb")
 	flags.dci10._tdNumSymbs = viper.GetIntSlice("nrrg.dci10._tdNumSymbs")
 	flags.dci10._fdRaType = viper.GetStringSlice("nrrg.dci10._fdRaType")
+	flags.dci10._fdBitwidthRaType1 = viper.GetIntSlice("nrrg.dci10._fdBitwidthRaType1")
 	flags.dci10._fdRa = viper.GetStringSlice("nrrg.dci10._fdRa")
 	flags.dci10.dci10FdStartRb = viper.GetIntSlice("nrrg.dci10.dci10FdStartRb")
 	flags.dci10.dci10FdNumRbs = viper.GetIntSlice("nrrg.dci10.dci10FdNumRbs")
@@ -2966,6 +3079,8 @@ func loadFlags() {
 	flags.dci11.dci11TdStartSymb = viper.GetInt("nrrg.dci11.dci11TdStartSymb")
 	flags.dci11.dci11TdNumSymbs = viper.GetInt("nrrg.dci11.dci11TdNumSymbs")
 	flags.dci11.dci11FdRaType = viper.GetString("nrrg.dci11.dci11FdRaType")
+	flags.dci11._dci11FdBitwidthRaType0 = viper.GetInt("nrrg.dci11._dci11FdBitwidthRaType0")
+	flags.dci11._dci11FdBitwidthRaType1 = viper.GetInt("nrrg.dci11._dci11FdBitwidthRaType1")
 	flags.dci11.dci11FdRa = viper.GetString("nrrg.dci11.dci11FdRa")
 	flags.dci11.dci11FdStartRb = viper.GetInt("nrrg.dci11.dci11FdStartRb")
 	flags.dci11.dci11FdNumRbs = viper.GetInt("nrrg.dci11.dci11FdNumRbs")
@@ -2973,7 +3088,7 @@ func loadFlags() {
 	flags.dci11.dci11FdBundleSize = viper.GetString("nrrg.dci11.dci11FdBundleSize")
 	flags.dci11.dci11McsCw0 = viper.GetInt("nrrg.dci11.dci11McsCw0")
 	flags.dci11.dci11McsCw1 = viper.GetInt("nrrg.dci11.dci11McsCw1")
-	flags.dci11._tbs = viper.GetInt("nrrg.dci11._tbs")
+	flags.dci11._tbs = viper.GetIntSlice("nrrg.dci11._tbs")
 	flags.dci11.dci11DeltaPri = viper.GetInt("nrrg.dci11.dci11DeltaPri")
 	flags.dci11.dci11TdK1 = viper.GetInt("nrrg.dci11.dci11TdK1")
 	flags.dci11.dci11AntPorts = viper.GetInt("nrrg.dci11.dci11AntPorts")

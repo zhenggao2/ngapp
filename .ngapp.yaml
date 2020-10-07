@@ -135,6 +135,10 @@ nrrg:
     dci01tdsliv: 27
     dci01tdstartsymb: 0
   dci10:
+    _fdbitwidthratype1:
+    - 11
+    - 11
+    - 11
     _fdbundlesize:
     - n2
     - n2
@@ -208,11 +212,15 @@ nrrg:
     - 10
   dci11:
     _actbwp: 1
+    _dci11fdbitwidthratype0: 18
+    _dci11fdbitwidthratype1: 16
     _indicatedbwp: 1
     _mupdcch: 1
     _mupdsch: 1
     _rnti: C-RNTI
-    _tbs: 1277992
+    _tbs:
+    - 1277992
+    - -1
     dci11antports: 10
     dci11deltapri: 1
     dci11fdbundlesize: n2
