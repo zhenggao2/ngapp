@@ -22,23 +22,23 @@ import (
 )
 
 var (
-	dir string
+	dir     string
 	pattern string
-	rat string
-	scs string
-	debug bool
+	rat     string
+	scs     string
+	debug   bool
 )
 
 // ttiCmd represents the tti command
 var ttiCmd = &cobra.Command{
 	Use:   "tti",
 	Short: "",
-	Long: `tti parses and aggregates MAC TTI trace of LTE/NR.`,
+	Long:  `tti parses and aggregates MAC TTI trace of LTE/NR.`,
 	Run: func(cmd *cobra.Command, args []string) {
-	    if len(dir) == 0 {
-				cmd.Flags().Set("dir", viper.GetString("tti.dir"))
+		if len(dir) == 0 {
+			cmd.Flags().Set("dir", viper.GetString("tti.dir"))
 		} else {
-		    viper.WriteConfig()
+			viper.WriteConfig()
 		}
 
 		// fmt.Println(dir)
