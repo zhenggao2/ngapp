@@ -533,7 +533,7 @@ type AdvancedFlags struct {
 // nrrgCmd represents the nrrg command
 var nrrgCmd = &cobra.Command{
 	Use:   "nrrg",
-	Short: "",
+	Short: "NR resource grid tool",
 	Long: `nrrg generates NR(new radio) resource grid according to network configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
@@ -558,7 +558,7 @@ var confFreqBandCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf freqband can be used to get/set frequency-band related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-	    loadFlags()
+	    loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -637,6 +637,8 @@ var confFreqBandCmd = &cobra.Command{
 }
 
 func updateRach() error {
+	fmt.Printf("\n-->%s\n", "calling updateRach")
+
     var p *nrgrid.RachInfo
     var exist bool
 	if flags.freqBand._freqRange == "FR1"{
@@ -684,7 +686,7 @@ var confSsbGridCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ssbgrid can be used to get/set SSB-grid related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-	    loadFlags()
+	    loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -766,6 +768,8 @@ var confSsbGridCmd = &cobra.Command{
 }
 
 func validateCoreset0() error {
+	fmt.Printf("\n-->%s\n", "calling validateCoreset0")
+
 	band := flags.freqBand.opBand
 	fr := flags.freqBand._freqRange
 	ssbScs := flags.ssbGrid.ssbScs
@@ -907,6 +911,8 @@ func validateCoreset0() error {
 }
 
 func updateKSsbAndNCrbSsb() error {
+	fmt.Printf("\n-->%s\n", "calling updateKSsbAndNCrbSsb")
+
     var offset int
     if flags.mib._coreset0Offset < 0 {
     	offset = 0
@@ -960,6 +966,8 @@ func updateKSsbAndNCrbSsb() error {
 }
 
 func validateCss0() error {
+	fmt.Printf("\n-->%s\n", "calling validateCss0")
+
     fr := flags.freqBand._freqRange
     pat := flags.mib._coreset0MultiplexingPat
     css0 := flags.mib.rmsiCss0
@@ -986,7 +994,7 @@ var confSsbBurstCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ssbburst can be used to get/set SSB-burst related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -1001,7 +1009,7 @@ var confMibCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf mib can be used to get/set MIB related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -1078,28 +1086,19 @@ var confMibCmd = &cobra.Command{
 				return
 			}
 
-			// validate 'Time domain resource assignment" field of DCI 0_1
-			err3 := validateDci01TdRa()
+			// validate DCI 0_1 scheduled PUSCH
+			err3 := validatePuschAntPorts()
 			if err3 != nil {
 				fmt.Print(err3.Error())
 				return
 			}
 
-			// validate 'Time domain resource assignment" field of RAR Msg3
-			err4 := validateMsg3TdRa()
+			// update TBS of Msg3 PUSCH scheduled by RAR Msg2
+			err4 := updateMsg3PuschTbs()
 			if err4 != nil {
 				fmt.Print(err4.Error())
 				return
 			}
-
-			// validate PUSCH/PDSCH DMRS
-			// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
-			// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-			// For PUSCH mapping type A, l_d = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-			// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-			// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-			// TODO
 		}
 
 	    laPrint(cmd, args)
@@ -1111,6 +1110,8 @@ var confMibCmd = &cobra.Command{
 validateDci10TdRa validates the "Time domain resource assignment" field of DCI 1_0 scheduling SIB1/Msg2/Msg4, updates associated DMRS, and calculate TBS.
  */
 func validateDci10TdRa() error {
+	fmt.Printf("\n-->%s\n", "calling validateDci10TdRa")
+
 	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
 	// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
 	// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
@@ -1191,48 +1192,68 @@ func validateDci10TdRa() error {
 			}
 
 			// update TBS info
-			td := flags.dci10._tdNumSymbs[i]
-			ld := 0
-			fd := flags.dci10.dci10FdNumRbs[i]
-			mcs := flags.dci10.dci10McsCw0[i]
-
-			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-			// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-			// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
-			if flags.dci10._tdMappingType[i] == "typeA" {
-				ld = flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
-			} else {
-				ld = td
-			}
-
-			key2 := fmt.Sprintf("%v_%v_%v", ld, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
-			// refer to 3GPP TS 38.214 vfa0:
-			// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
-			dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
-			if !exist2 || dmrs == nil {
-				return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci10._rnti[i], 1, key2))
-			}
-
-			// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-			// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-			// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-			if flags.dci10._tdMappingType[i] == "typeA" {
-				if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
-					return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
-				}
-			}
-
-			dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
-			fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
-
-			tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
+			err := updateDci10Tbs(i)
 			if err != nil {
 				return err
-			} else {
-				fmt.Printf("CW0 TBS=%v bits\n", tbs)
-				flags.dci10._tbs[i] = tbs
 			}
 		}
+	}
+
+	return nil
+}
+
+/*
+updateDci10Tbs updates the TBS field of DCI 1_0 scheduling Sib1/Msg2/Msg4.
+i: index of the flags.dci10 slices
+ */
+func updateDci10Tbs(i int) error {
+	fmt.Printf("\n-->%s\n", "calling updateDci10Tbs")
+
+	td := flags.dci10._tdNumSymbs[i]
+	ld := 0
+	fd := flags.dci10.dci10FdNumRbs[i]
+	mcs := flags.dci10.dci10McsCw0[i]
+
+	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+	if flags.dci10._tdMappingType[i] == "typeA" {
+		ld = flags.dci10._tdStartSymb[i] + flags.dci10._tdNumSymbs[i]
+	} else {
+		ld = td
+	}
+
+	key2 := fmt.Sprintf("%v_%v_%v", ld, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
+	// refer to 3GPP TS 38.214 vfa0:
+	// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
+	dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
+	if !exist2 || dmrs == nil {
+		return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci10._rnti[i], 1, key2))
+	}
+
+	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	// TODO: For PDSCH mapping type A single-symbol DMRS, l1 = 11 except if ...
+	// For PDSCH mapping type B
+	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
+	// TODO: For PDSCH mapping type B, when PDSCH allocation collides with CORESET ...
+	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	if flags.dci10._tdMappingType[i] == "typeA" {
+		if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
+			return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
+		}
+	}
+
+	dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
+	fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
+
+	tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
+	if err != nil {
+		return err
+	} else {
+		fmt.Printf("CW0 TBS=%v bits\n", tbs)
+		flags.dci10._tbs[i] = tbs
 	}
 
 	return nil
@@ -1242,6 +1263,8 @@ func validateDci10TdRa() error {
 validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
  */
 func validateDci11TdRa() error {
+	fmt.Printf("\n-->%s\n", "calling validateDci11TdRa")
+
 	dmrsTypeAPos := flags.mib.dmrsTypeAPos
 
 	if flags.dci11.dci11TdRa >= 0 && flags.dci11.dci11TdRa <= 15 {
@@ -1277,25 +1300,23 @@ func validateDci11TdRa() error {
 		if flags.dci11.dci11TdMappingType == "typeA" && flags.dci11.dci11TdStartSymb == 3 && dmrsTypeAPos != "pos3" {
 			return errors.New(fmt.Sprintf("S = 3 is applicable only if dmrs-TypeA-Position = 3 when PDSCH mapping type is typeA.\ndci11TdStartSymb=%v,dmrsTypeAPos=%v\n", flags.dci11.dci11TdStartSymb, dmrsTypeAPos))
 		}
-
-		// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-		// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-		// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-		//
-		// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-		// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
-		if flags.dmrsPdsch.pdschDmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
-			return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
-		}
-		if flags.dci11.dci11TdMappingType == "typeA" {
-			ld := flags.dci11.dci11TdStartSymb + flags.dci11.dci11TdNumSymbs
-			if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
-				return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v,dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
-			}
-		}
 	}
 
 	// validate 'Antenna port(s)' field of DCI 1_1 scheduling PDSCH
+	err := validatePdschAntPorts()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+validatePdschAntPorts validates PDSCH configurations, updates DMRS/PTRS for PDSCH and updates PDSCH TBS.
+ */
+func validatePdschAntPorts() error {
+	fmt.Printf("\n-->%s\n", "calling validatePdschAntPorts")
+
 	dmrsType := flags.dmrsPdsch.pdschDmrsType
 	maxLength := flags.dmrsPdsch.pdschMaxLength
 	var mcsSet []int
@@ -1409,19 +1430,19 @@ func validateDci11TdRa() error {
 	// calculate DMRS overhead
 	td := flags.dci11.dci11TdNumSymbs
 	ld := 0
-	tdMapppingType := flags.dci11.dci11TdMappingType
+	tdMappingType := flags.dci11.dci11TdMappingType
 	dmrsAddPos := flags.dmrsPdsch.pdschDmrsAddPos
 
 	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
 	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
-	if tdMapppingType == "typeA" {
+	if tdMappingType == "typeA" {
 		ld = flags.dci11.dci11TdStartSymb + flags.dci11.dci11TdNumSymbs
 	} else {
 		ld = td
 	}
 
-	key := fmt.Sprintf("%v_%v_%v", ld, tdMapppingType, dmrsAddPos)
+	key := fmt.Sprintf("%v_%v_%v", ld, tdMappingType, dmrsAddPos)
 	var dmrs []int
 	// var exist bool
 	if flags.dmrsPdsch._numFrontLoadSymbs == 1 {
@@ -1435,12 +1456,25 @@ func validateDci11TdRa() error {
 	}
 
 	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	// TODO: For PDSCH mapping type A single-symbol DMRS, l1 = 11 except if ...
 	// For PDSCH mapping type B
 	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
-	// TODO when PDSCH allocation collides with CORESET/SS
-	if tdMapppingType == "typeB" && (ld == 2 || ld == 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
-	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMapppingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
+	// TODO: For PDSCH mapping type B, when PDSCH allocation collides with CORESET ...
+	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	if dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
+		return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
 	}
+	if tdMappingType == "typeA" {
+		if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
+			return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
+		}
+	}
+	if tdMappingType == "typeB" && (ld == 2 || ld == 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
+	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
+	}
+
 
 	dmrsOh := (2 * flags.dmrsPdsch._cdmGroupsWoData) * len(dmrs)
 	fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsPdsch._cdmGroupsWoData, key, dmrs)
@@ -1470,9 +1504,32 @@ func validateDci11TdRa() error {
 }
 
 /*
+updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
+ */
+func updateMsg3PuschTbs() error {
+	fmt.Printf("\n-->%s\n", "calling updateMsg3PuschTbs")
+	//TODO
+
+	return nil
+}
+
+/*
+validatePuschAntPorts validates PUSCH configurations, updates DMRS/PTRS for PUSCH and updates PUSCH TBS.
+ */
+func validatePuschAntPorts() error {
+	fmt.Printf("\n-->%s\n", "calling validatePuschAntPorts")
+	//TODO
+
+	return nil
+}
+
+
+/*
 getRaType0Rbgs return RBGs for PDSCH/PUSCH resource allocation Type 0.
  */
 func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
+	fmt.Printf("\n-->%s\n", "calling getRaType0Rbgs")
+
 	bitwidth := utils.CeilInt((float64(bwpSize) + float64(bwpStart % P)) / float64(P))
 	rbgs := make([]int, bitwidth)
 	for i := 0; i < bitwidth; i++ {
@@ -1493,6 +1550,8 @@ func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
 }
 
 func validateDci01TdRa() error {
+	fmt.Printf("\n-->%s\n", "calling validateDci01TdRa")
+
 	dmrsTypeAPos := flags.mib.dmrsTypeAPos
 
 	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
@@ -1513,6 +1572,8 @@ func validateDci01TdRa() error {
 }
 
 func validateMsg3TdRa() error {
+	fmt.Printf("\n-->%s\n", "calling validateMsg3TdRa")
+
 	// dmrsTypeAPos := flags.mib.dmrsTypeAPos
 
 
@@ -1537,6 +1598,8 @@ getTbs calculates TBS for PUSCH/PDSCH.
 	scale: TB scaling for Msg2
  */
 func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs int, layer int, dmrs int, xoh int, scale float64) (int, error) {
+	fmt.Printf("\n-->%s\n", "calling getTbs")
+
 	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
 	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
 
@@ -1629,7 +1692,7 @@ var confCarrierGridCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf carriergrid can be used to get/set carrier-grid related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1643,7 +1706,7 @@ var confCommonSettingCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf commonsetting can be used to get/set common-setting related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1657,7 +1720,7 @@ var confCss0Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf css0 can be used to get/set Common search space(CSS0) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1671,7 +1734,7 @@ var confCoreset1Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf coreset1 can be used to get/set CORESET1 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1685,7 +1748,7 @@ var confUssCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf uss can be used to get/set UE-specific search space related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1699,7 +1762,7 @@ var confDci10Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci10 can be used to get/set DCI 1_0 (scheduling SIB1/Msg2/Msg4) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1713,7 +1776,7 @@ var confDci11Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci11 can be used to get/set DCI 1_1(scheduling PDSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1727,7 +1790,7 @@ var confMsg3Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf msg3 can be used to get/set Msg3(scheduled by UL grant in RAR) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1741,7 +1804,7 @@ var confDci01Cmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dci01 can be used to get/set DCI 0_1(scheduling PUSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1755,7 +1818,7 @@ var confBwpCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf bwp can be used to get/set generic BWP related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1769,7 +1832,7 @@ var confRachCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf rach can be used to get/set random access related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1783,7 +1846,7 @@ var confDmrsCommonCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrscommon can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1797,7 +1860,7 @@ var confDmrsPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrspdsch can be used to get/set DMRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1811,7 +1874,7 @@ var confPtrsPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ptrspdsch can be used to get/set PTRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1825,7 +1888,7 @@ var confDmrsPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf dmrspusch can be used to get/set DMRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1839,7 +1902,7 @@ var confPtrsPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf ptrspusch can be used to get/set PTRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1853,7 +1916,7 @@ var confPdschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pdsch can be used to get/set PDSCH-config or PDSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 	    laPrint(cmd, args)
@@ -1867,7 +1930,7 @@ var confPuschCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pusch can be used to get/set PUSCH-config or PUSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1881,7 +1944,7 @@ var confNzpCsiRsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf nzpcsirs can be used to get/set NZP-CSI-RS resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1895,7 +1958,7 @@ var confTrsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf trs can be used to get/set TRS resources related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1909,7 +1972,7 @@ var confCsiImCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf csiim can be used to get/set CSI-IM resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1923,7 +1986,7 @@ var confCsiReportCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf csireport can be used to get/set CSI-ResourceConfig and CSI-ReportConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1937,7 +2000,7 @@ var confSrsCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf srs can be used to get/set SRS-Resource and SRS-ResourceSet related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1951,7 +2014,7 @@ var confPucchCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -1965,7 +2028,7 @@ var confAdvancedCmd = &cobra.Command{
 	Short: "",
 	Long: `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -2984,7 +3047,7 @@ func initConfAdvancedCmd() {
 	viper.BindPFlag("nrrg.advanced.dsrRes", confAdvancedCmd.Flags().Lookup("dsrRes"))
 }
 
-func loadFlags() {
+func loadNrrgFlags() {
 	flags.freqBand.opBand = viper.GetString("nrrg.freqBand.opBand")
 	flags.freqBand._duplexMode = viper.GetString("nrrg.freqBand._duplexMode")
 	flags.freqBand._maxDlFreq = viper.GetInt("nrrg.freqBand._maxDlFreq")
