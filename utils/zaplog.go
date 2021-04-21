@@ -31,10 +31,12 @@ func NewZapLogger(path string) *zap.Logger {
 		MessageKey:     "msg",
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		//EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
 		EncodeTime:     zapcore.ISO8601TimeEncoder,
 		EncodeDuration: zapcore.StringDurationEncoder,
-		EncodeCaller:   zapcore.FullCallerEncoder,
+		//EncodeCaller:   zapcore.FullCallerEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
 	atom := zap.NewAtomicLevelAt(zap.DebugLevel)
@@ -45,11 +47,13 @@ func NewZapLogger(path string) *zap.Logger {
 		//DisableCaller: false,
 		//DisableStacktrace: false,
 		//Sampling: nil,
-		Encoding:         "json",
+		//Encoding:         "json",
+		Encoding:         "console",
 		EncoderConfig:    encoderConfig,
 		OutputPaths:      []string{path},
 		ErrorOutputPaths: []string{"stderr"},
-		InitialFields:    map[string]interface{}{"serviceName": "ngapp"},
+		//InitialFields:    map[string]interface{}{"serviceName": "ngapp"},
+		InitialFields:    map[string]interface{}{},
 	}
 
 	logger, err := config.Build()
