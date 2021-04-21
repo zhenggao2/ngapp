@@ -32,18 +32,14 @@ var (
 // ttiCmd represents the tti command
 var ttiCmd = &cobra.Command{
 	Use:   "tti",
-	Short: "",
+	Short: "L2 TTI trace tool",
 	Long:  `tti parses and aggregates MAC TTI trace of LTE/NR.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		loadTtiFlags()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(dir) == 0 {
-			cmd.Flags().Set("dir", viper.GetString("tti.dir"))
-		} else {
-			viper.WriteConfig()
-		}
-
-		// fmt.Println(dir)
-		// fmt.Println(pattern)
-		// fmt.Println(viper.Get("tti_dir"))
+		laPrint(cmd, args)
+		viper.WriteConfig()
 
 		tti := new(ttitrace.TtiParser)
 		tti.Init(Logger, dir, pattern, rat, scs, debug)
@@ -51,6 +47,15 @@ var ttiCmd = &cobra.Command{
 	},
 }
 
+// from <Effective Go>
+/*
+The init function
+
+Finally, each source file can define its own niladic init function to set up whatever state is required. (Actually each file can have multiple init functions.)
+And finally means finally: init is called after all the variable declarations in the package have evaluated their initializers, and those are evaluated only after all the imported packages have been initialized.
+
+Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
+*/
 func init() {
 	rootCmd.AddCommand(ttiCmd)
 
@@ -63,11 +68,22 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	//ttiCmd.Flags().StringP("dir", "d", "", "directory containing tti files")
-	//ttiCmd.Flags().StringP("pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVarP(&dir, "dir", "d", "./data", "directory containing tti files")
 	ttiCmd.Flags().StringVarP(&pattern, "pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of MAC TTI traces[nr]")
 	ttiCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
 	ttiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("tti.dir", ttiCmd.Flags().Lookup("dir"))
+	viper.BindPFlag("tti.pattern", ttiCmd.Flags().Lookup("pattern"))
+	viper.BindPFlag("tti.rat", ttiCmd.Flags().Lookup("rat"))
+	viper.BindPFlag("tti.scs", ttiCmd.Flags().Lookup("scs"))
+	viper.BindPFlag("tti.debug", ttiCmd.Flags().Lookup("debug"))
+}
+
+func loadTtiFlags() {
+	dir = viper.GetString("tti.dir")
+	pattern = viper.GetString("tti.pattern")
+	rat = viper.GetString("tti.rat")
+	scs = viper.GetString("tti.scs")
+	debug = viper.GetBool("tti.debug")
 }

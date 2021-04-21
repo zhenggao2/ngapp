@@ -41,7 +41,7 @@ func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs string, debug b
 	p.ttiScs = scs
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("initializing tti parser...(working dir: %v)", p.ttiDir))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing tti parser...(working dir: %v)", p.ttiDir))
 
 	fileInfo, err := ioutil.ReadDir(p.ttiDir)
 	if err != nil {
