@@ -273,6 +273,10 @@ const (
 	INI_UL_BWP int = 2
 	DED_UL_BWP int = 3
 	N_SC_RB int = 12
+	DMRS_SIB1 int = 0
+	DMRS_MSG2 int = 1
+	DMRS_MSG4 int = 2
+	DMRS_MSG3 int = 3
 )
 
 // random access
@@ -1246,7 +1250,7 @@ func updateDci10Tbs(i int) error {
 	}
 
 	dmrsOh := (2 * flags.dmrsCommon._cdmGroupsWoData[i]) * len(dmrs)
-	fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
+	fmt.Printf("PDSCH(%v) DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dci10._rnti[i], flags.dmrsCommon._cdmGroupsWoData[i], key2, dmrs)
 
 	tbs, err := getTbs("PDSCH", false, flags.dci10._rnti[i], "qam64", td, fd, mcs, 1, dmrsOh, 0, 1)
 	if err != nil {
@@ -1477,7 +1481,7 @@ func validatePdschAntPorts() error {
 
 
 	dmrsOh := (2 * flags.dmrsPdsch._cdmGroupsWoData) * len(dmrs)
-	fmt.Printf("DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsPdsch._cdmGroupsWoData, key, dmrs)
+	fmt.Printf("PDSCH(C-RNTI) DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsPdsch._cdmGroupsWoData, key, dmrs)
 
 	xoh, _ := strconv.Atoi(flags.pdsch.pdschXOh[3:])
 	if flags.dci11.dci11McsCw0 >= 0 {
@@ -1508,7 +1512,106 @@ updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
  */
 func updateMsg3PuschTbs() error {
 	fmt.Printf("\n-->%s\n", "calling updateMsg3PuschTbs")
-	//TODO
+
+	td := flags.msg3._tdNumSymbs
+	fd := flags.msg3.msg3FdNumRbs
+
+	// update 'cdm groups without data' of DMRS for Msg3 PUSCH
+	if td <= 2 && flags.rach.msg3Tp == "disabled" {
+		flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3] = 1
+	} else {
+		flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3] = 2
+	}
+
+	// calculate DMRS overhead
+	mappingType := flags.msg3._tdMappingType
+	freqHop := flags.msg3.msg3FdFreqHop
+	var v1, v2, v []int
+	var e1, e2, e bool
+	var key1, key2, key string
+	// refer to 3GPP TS 38.214 vfb0: 6.2.2	UE DM-RS transmission procedure
+	// If frequency hopping is disabled:
+	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH duration, or
+	// If frequency hopping is enabled:
+	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos1' and up to one additional DM-RS can be transmitted according to PUSCH duration.
+	if freqHop == "enabled" {
+		// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
+		// -	ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used.
+		// -	if the higher-layer parameter dmrs-AdditionalPosition is not set to 'pos0' and intra-slot frequency hopping is enabled according to clause 7.3.1.1.2 in [4, TS 38.212] and by higher layer, Tables 6.4.1.1.3-6 shall be used assuming dmrs-AdditionalPosition is equal to 'pos1' for each hop.
+
+		// refer to 3GPP TS 38.214 vfb0: 6.3	UE PUSCH frequency hopping procedure
+		// In case of intra-slot frequency hopping,
+		// -	The number of symbols in the first hop is given by floor(N_PUSCH,s_symb/2) , the number of symbols in the second hop is given by N_PUSCH,s_symb - floor(N_PUSCH,s_symb/2) , where N_PUSCH,s_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
+		ld1 := utils.FloorInt(float64(td) / 2)
+		ld2 := td - ld1
+		var strDmrsTypeAPos string
+		var strDmrsMsg3AddPos string
+		if mappingType == "typeA" {
+			strDmrsTypeAPos = flags.mib.dmrsTypeAPos[3:]
+		} else {
+			strDmrsTypeAPos = "0"
+		}
+		if flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] != "pos0" {
+			strDmrsMsg3AddPos = "pos1"
+		} else {
+			strDmrsMsg3AddPos = "pos0"
+		}
+
+		key1 = fmt.Sprintf("%v_%v_%v_%v_1st", ld1, mappingType, strDmrsTypeAPos, strDmrsMsg3AddPos)
+		key2 = fmt.Sprintf("%v_%v_%v_%v_2nd", ld2, mappingType, strDmrsTypeAPos, strDmrsMsg3AddPos)
+		v1, e1 = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key1]
+		v2, e2 = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key2]
+		if !e1 || v1 == nil || !e2 || v2 == nil {
+			return errors.New(fmt.Sprintf("Invalid key(key_1stHop=\"%v\", key_2ndHop=\"%v\") when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key1, key2))
+		}
+	} else {
+		// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
+		// -	ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// -	ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		var ld int
+		if mappingType == "typeA" {
+			ld = flags.msg3._tdStartSymb + td
+		} else {
+			ld = td
+		}
+		key = fmt.Sprintf("%v_%v_%v", ld, mappingType, flags.dmrsCommon._dmrsAddPos[DMRS_MSG3])
+		v, e = nrgrid.DmrsPuschPosOneSymbWoIntraSlotFh[key]
+		if !e || v == nil {
+			return errors.New(fmt.Sprintf("Invalid key(=\"%v\") when referring DmrsPuschPosOneSymbWoIntraSlotFh!", key))
+		}
+	}
+
+	// refer to 3GPP TS 38.214 vfb0: 6.2.2	UE DM-RS transmission procedure
+	// When transmitted PUSCH is neither scheduled by DCI format 0_1 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and...
+	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
+	// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	// For PUSCH mapping type A, ld = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	//
+	// Rationale: dmrsAddPos of Msg3 is either 'pos1' or 'pos2', so restriction #1 is not relevant. Table 6.4.1.1.3-4 is for double symbols front-loaded DMRS, so restriction #2 is not relevant.
+
+	var dmrsOh int
+	if freqHop == "enabled" {
+		dmrsOh = (2 * flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3]) * (len(v1) + len(v2))
+		fmt.Printf("Msg3 DMRS overhead: cdmGroupsWoData=%v, key1=\"%v\", val1=%v, key2=\"%v\", val2=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key1, v1, key2, v2)
+	} else {
+		dmrsOh = (2 * flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3]) * len(v)
+		fmt.Printf("Msg3 DMRS overhead: cdmGroupsWoData=%v, key=\"%v\", val=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key, v)
+	}
+
+	var tp bool
+	if flags.rach.msg3Tp == "enabled" {
+		tp = true
+	} else {
+		tp = false
+	}
+
+	tbs, err := getTbs("PUSCH", tp, "MSG3", "qam64", td, fd, flags.msg3.msg3McsCw0, 1, dmrsOh, 0, 1)
+	if err != nil {
+		return err
+	} else {
+		fmt.Printf("CW0 TBS=%v bits\n", tbs)
+		flags.msg3._tbs = tbs
+	}
 
 	return nil
 }
