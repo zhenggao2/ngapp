@@ -399,3 +399,93 @@ func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
 
 	return p
 }
+
+type TtiCsiSrReportData struct {
+	TtiEventHeader
+	UlChannel string
+	Dtx string
+	PucchFormat string
+	Cqi string
+	PmiRank1 string
+	PmiRank2 string
+	Ri string
+	Cri string
+	Li string
+	Sr string
+}
+
+type TtiCsiSrReportDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosUlChannel int
+	PosDtx int
+	PosPucchFormat int
+	PosCqi int
+	PosPmiRank1 int
+	PosPmiRank2 int
+	PosRi int
+	PosCri int
+	PosLi int
+	PosSr int
+}
+
+func FindTtiCsiSrReportDataPos(tokens []string) TtiCsiSrReportDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 10
+	p := TtiCsiSrReportDataPos{
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosUlChannel:      -1,
+		PosDtx:      -1,
+		PosPucchFormat:      -1,
+		PosCqi:      -1,
+		PosPmiRank1:      -1,
+		PosPmiRank2:      -1,
+		PosRi:      -1,
+		PosCri:      -1,
+		PosLi:      -1,
+		PosSr:      -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "ulchannel" && p.PosUlChannel < 0 {
+			p.PosUlChannel = pos
+			i += 1
+		} else if strings.ToLower(item) == "dtx" && p.PosDtx < 0 {
+			p.PosDtx = pos
+			i += 1
+		} else if strings.ToLower(item) == "pucchformat" && p.PosPucchFormat < 0 {
+			p.PosPucchFormat = pos
+			i += 1
+		} else if strings.ToLower(item) == "cqi" && p.PosCqi < 0 {
+			p.PosCqi = pos
+			i += 1
+		} else if strings.ToLower(item) == "pmirank1" && p.PosPmiRank1 < 0 {
+			p.PosPmiRank1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "pmirank2" && p.PosPmiRank2 < 0 {
+			p.PosPmiRank2 = pos
+			i += 1
+		} else if strings.ToLower(item) == "ri" && p.PosRi < 0 {
+			p.PosRi = pos
+			i += 1
+		} else if strings.ToLower(item) == "cri" && p.PosCri < 0 {
+			p.PosCri = pos
+			i += 1
+		} else if strings.ToLower(item) == "li" && p.PosLi < 0 {
+			p.PosLi = pos
+			i += 1
+		} else if strings.ToLower(item) == "sr" && p.PosSr < 0 {
+			p.PosSr = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}

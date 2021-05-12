@@ -80,6 +80,7 @@ func (p *TtiParser) Exec() {
 	var posDlFdSched TtiDlFdSchedDataPos
 	var posDlHarq TtiDlHarqRxDataPos
 	var posDlLaAvgCqi TtiDlLaAverageCqiPos
+	var posCsiSrReport TtiCsiSrReportDataPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -87,6 +88,7 @@ func (p *TtiParser) Exec() {
 		"dlFdSchedData":        utils.NewOrderedMap(),
 		"dlHarqRxData":         utils.NewOrderedMap(),
 		"dlLaAverageCqi":       utils.NewOrderedMap(),
+		"csiSrReportData":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
 	var dlPerBearerProcessed bool
@@ -514,6 +516,39 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "csiSrReportData" {
+							// TODO - event aggregation - csiSrReportData
+							if posCsiSrReport.Ready == false {
+								posCsiSrReport = FindTtiCsiSrReportDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posCsiSrReport=%v", posCsiSrReport))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posCsiSrReport.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posCsiSrReport.PosEventHeader.PosSlot]))
+							v := TtiCsiSrReportData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posCsiSrReport.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posCsiSrReport.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posCsiSrReport.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posCsiSrReport.PosEventHeader.PosPhysCellId],
+								},
+
+								UlChannel: tokens[valStart+posCsiSrReport.PosUlChannel],
+								Dtx:   tokens[valStart+posCsiSrReport.PosDtx],
+								PucchFormat:   tokens[valStart+posCsiSrReport.PosPucchFormat],
+								Cqi:   tokens[valStart+posCsiSrReport.PosCqi],
+								PmiRank1:   tokens[valStart+posCsiSrReport.PosPmiRank1],
+								PmiRank2: tokens[valStart+posCsiSrReport.PosPmiRank2],
+								Ri: tokens[valStart+posCsiSrReport.PosRi],
+								Cri: tokens[valStart+posCsiSrReport.PosCri],
+								Li: tokens[valStart+posCsiSrReport.PosLi],
+								Sr: tokens[valStart+posCsiSrReport.PosSr],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
 						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
@@ -527,30 +562,43 @@ func (p *TtiParser) Exec() {
 		fin.Close()
 	}
 
+	/*
+	if p.debug {
+		for _, k := range mapEventRecord["csiSrReportData"].Keys() {
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("k=%v, v=%v\n", k, mapEventRecord["csiSrReportData"].Val(k)))
+		}
+	}
+	 */
+
 	// update dlSchedAggFields
 	// TODO - dlSchedAggFields
 	p.writeLog(zapcore.InfoLevel, "updating fields for dlSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
 	if mapEventRecord["dlBeamData"].Len() > 0 {
 		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"currentBestBeamId", "current2ndBeamId", "selectedBestBeamId", "selected2ndBeamid"}, ",")
+		dlSchedAggFields += strings.Join([]string{"dlBeam.currentBestBeamId", "dlBeam.current2ndBeamId", "dlBeam.selectedBestBeamId", "dlBeam.selected2ndBeamid"}, ",")
 	}
 
 	if mapEventRecord["dlPreSchedData"].Len() > 0 {
 		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"csListEvent", "highestClassPriority", "prachPreambleIndex"}, ",")
+		dlSchedAggFields += strings.Join([]string{"dlPreSched.csListEvent", "dlPreSched.highestClassPriority", "dlPreSched.prachPreambleIndex"}, ",")
 	}
 
 	if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
-		dlSchedAggFields += ",cs2List"
+		dlSchedAggFields += ",dlTdSchedSubcell.cs2List"
 	}
 
 	if mapEventRecord["dlHarqRxData"].Len() > 0 {
-		dlSchedAggFields += ",AckNack,dlHarqProcessIndex,pucchFormat"
+		dlSchedAggFields += ",dlHarqRx.AckNack,dlHarqRx.dlHarqProcessIndex,dlHarqRx.pucchFormat"
+	}
+
+	if mapEventRecord["csiSrReportData"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
 	}
 
 	if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
 		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"rrmInstCqi", "rank", "rrmAvgCqi", "mcs", "rrmDeltaCqi"}, ",")
+		dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
 	}
 
 	dlSchedAggFields += "\n"
@@ -582,12 +630,12 @@ func (p *TtiParser) Exec() {
 
 			// aggregate dlPreSchedData
 			if mapEventRecord["dlPreSchedData"].Len() > 0 {
-				p3 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
-				if p3 >= 0 {
-					k3 := mapEventRecord["dlPreSchedData"].Keys()[p3].(int)
-					v3 := mapEventRecord["dlPreSchedData"].Val(k3).(*TtiDlPreSchedData)
+				p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlPreSchedData"].Keys()[p2].(int)
+					v2 := mapEventRecord["dlPreSchedData"].Val(k2).(*TtiDlPreSchedData)
 
-					v1.AllFields = append(v1.AllFields, []string{v3.CsListEvent, v3.HighestClassPriority, v3.PrachPreambleIndex}...)
+					v1.AllFields = append(v1.AllFields, []string{v2.CsListEvent, v2.HighestClassPriority, v2.PrachPreambleIndex}...)
 				} else {
 					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-"}...)
 				}
@@ -595,12 +643,12 @@ func (p *TtiParser) Exec() {
 
 			// aggregate dlTdSchedSubcellData
 			if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
-				p4 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
-				if p4 >= 0 {
-					k4 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p4].(int)
-					v4 := mapEventRecord["dlTdSchedSubcellData"].Val(k4).(*TtiDlTdSchedSubcellData)
+				p2 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p2].(int)
+					v2 := mapEventRecord["dlTdSchedSubcellData"].Val(k2).(*TtiDlTdSchedSubcellData)
 
-					v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v4.Cs2List), strings.Join(v4.Cs2List, ";")))
+					v1.AllFields = append(v1.AllFields, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";")))
 				} else {
 					v1.AllFields = append(v1.AllFields, "-")
 				}
@@ -608,25 +656,38 @@ func (p *TtiParser) Exec() {
 
 			// aggregate dlHarqRxData
 			if mapEventRecord["dlHarqRxData"].Len() > 0 {
-				p5 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
-				if p5 >= 0 {
-					k5 := mapEventRecord["dlHarqRxData"].Keys()[p5].(string)
-					v5 := mapEventRecord["dlHarqRxData"].Val(k5).(*TtiDlHarqRxData)
+				p2 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlHarqRxData"].Keys()[p2].(string)
+					v2 := mapEventRecord["dlHarqRxData"].Val(k2).(*TtiDlHarqRxData)
 
-					v1.AllFields = append(v1.AllFields, []string{v5.AckNack, v5.DlHarqProcessIndex, v5.PucchFormat}...)
+					v1.AllFields = append(v1.AllFields, []string{v2.AckNack, v2.DlHarqProcessIndex, v2.PucchFormat}...)
 				} else {
 					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-"}...)
 				}
 			}
 
+			// aggregate csiSrReportData
+			if mapEventRecord["csiSrReportData"].Len() > 0 {
+				p2 := p.findCsiSrReport(mapEventRecord["dlFdSchedData"], mapEventRecord["csiSrReportData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["csiSrReportData"].Keys()[p2].(int)
+					v2 := mapEventRecord["csiSrReportData"].Val(k2).(*TtiCsiSrReportData)
+
+					v1.AllFields = append(v1.AllFields, []string{v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
+				} else {
+					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+				}
+			}
+
 			// aggregate dlLaAverageCqi
 			if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
-				p6 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
-				if p6 >= 0 {
-					k6 := mapEventRecord["dlLaAverageCqi"].Keys()[p6].(int)
-					v6 := mapEventRecord["dlLaAverageCqi"].Val(k6).(*TtiDlLaAverageCqi)
+				p2 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlLaAverageCqi"].Keys()[p2].(int)
+					v2 := mapEventRecord["dlLaAverageCqi"].Val(k2).(*TtiDlLaAverageCqi)
 
-					v1.AllFields = append(v1.AllFields, []string{v6.RrmInstCqi, v6.Rank, v6.RrmAvgCqi, v6.Mcs, v6.RrmDeltaCqi}...)
+					v1.AllFields = append(v1.AllFields, []string{v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
 				} else {
 					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 				}
@@ -641,7 +702,7 @@ func (p *TtiParser) Exec() {
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
 		}
 	}
-	*/
+	 */
 
 	// output aggregated event: dlSchedAgg
 	p.writeLog(zapcore.InfoLevel, "outputing aggregated dlSchedAgg...")
@@ -783,6 +844,27 @@ func (p *TtiParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 
 		if k2 <= k1 {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiCsiSrReportData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
 		} else {
