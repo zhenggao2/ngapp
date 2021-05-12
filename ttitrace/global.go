@@ -21,6 +21,7 @@ type TtiEventHeaderPos struct {
 }
 
 func FindTtiEventHeaderPos(tokens []string) TtiEventHeaderPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiEventHeaderPos{
 		PosHsfn: -1,
@@ -76,6 +77,7 @@ type TtiDlBeamDataPos struct {
 
 
 func FindTtiDlBeamDataPos(tokens []string) TtiDlBeamDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiDlBeamDataPos{
 		Ready: false,
@@ -119,6 +121,7 @@ type TtiDlPreSchedData struct {
 	TtiEventHeader
 	CsListEvent string
 	HighestClassPriority string
+	PrachPreambleIndex string
 }
 
 type TtiDlPreSchedDataPos struct {
@@ -126,15 +129,18 @@ type TtiDlPreSchedDataPos struct {
 	PosEventHeader TtiEventHeaderPos
 	PosCsListEvent int
 	PosHighestClassPriority int
+	PosPrachPreambleIndex int
 }
 
 func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
-	n := 2
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 3
 	p := TtiDlPreSchedDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosCsListEvent: -1,
 		PosHighestClassPriority: -1,
+		PosPrachPreambleIndex: -1,
 	}
 
 	i := 0
@@ -144,6 +150,9 @@ func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 			i += 1
 		} else if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
 			p.PosHighestClassPriority = pos
+			i += 1
+		} else if strings.ToLower(item) == "prachpreambleindex" && p.PosPrachPreambleIndex< 0 {
+			p.PosPrachPreambleIndex= pos
 			i += 1
 		}
 
@@ -215,6 +224,7 @@ type TtiDlFdSchedDataPos struct {
 }
 
 func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 9
 	p := TtiDlFdSchedDataPos{
 		Ready: false,
@@ -275,6 +285,7 @@ type TtiDlHarqRxData struct {
 	HarqSubcellId string
 	AckNack string
 	DlHarqProcessIndex string
+	PucchFormat string
 }
 
 type TtiDlHarqRxDataPos struct {
@@ -283,16 +294,19 @@ type TtiDlHarqRxDataPos struct {
 	PosHarqSubcellId int
 	PosAckNack int
 	PosDlHarqProcessIndex int
+	PosPucchFormat int
 }
 
 func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
-	n := 3
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 4
 	p := TtiDlHarqRxDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosHarqSubcellId: -1,
 		PosAckNack: -1,
 		PosDlHarqProcessIndex: -1,
+		PosPucchFormat: -1,
 	}
 
 	i := 0
@@ -305,6 +319,9 @@ func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 			i += 1
 		} else if strings.ToLower(item) == "dlharqprocessindex" && p.PosDlHarqProcessIndex < 0 {
 			p.PosDlHarqProcessIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "pucchformat" && p.PosPucchFormat < 0 {
+			p.PosPucchFormat = pos
 			i += 1
 		}
 
@@ -320,25 +337,35 @@ func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 type TtiDlLaAverageCqi struct {
 	TtiEventHeader
 	CellDbIndex string
+	RrmInstCqi string
+	Rank string
 	RrmAvgCqi string
+	Mcs string
 	RrmDeltaCqi string
 }
 
 type TtiDlLaAverageCqiPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
+	PosRrmInstCqi int
+	PosRank int
 	PosCellDbIndex int
 	PosRrmAvgCqi int
+	PosMcs int
 	PosRrmDeltaCqi int
 }
 
 func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
-	n := 3
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 6
 	p := TtiDlLaAverageCqiPos{
 		Ready:                 false,
 		PosEventHeader:        FindTtiEventHeaderPos(tokens),
 		PosCellDbIndex:      -1,
+		PosRrmInstCqi: -1,
+		PosRank: -1,
 		PosRrmAvgCqi:            -1,
+		PosMcs: -1,
 		PosRrmDeltaCqi: -1,
 	}
 
@@ -347,8 +374,17 @@ func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
 		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
 			p.PosCellDbIndex = pos
 			i += 1
+		} else if strings.ToLower(item) == "rrminstcqi" && p.PosRrmInstCqi < 0 {
+			p.PosRrmInstCqi = pos
+			i += 1
+		} else if strings.ToLower(item) == "rank" && p.PosRank < 0 {
+			p.PosRank = pos
+			i += 1
 		} else if strings.ToLower(item) == "rrmavgcqi" && p.PosRrmAvgCqi < 0 {
 			p.PosRrmAvgCqi = pos
+			i += 1
+		} else if strings.ToLower(item) == "mcs" && p.PosMcs < 0 {
+			p.PosMcs = pos
 			i += 1
 		} else if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
 			p.PosRrmDeltaCqi = pos
