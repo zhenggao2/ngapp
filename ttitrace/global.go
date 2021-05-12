@@ -348,9 +348,9 @@ type TtiDlLaAverageCqi struct {
 type TtiDlLaAverageCqiPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
+	PosCellDbIndex int
 	PosRrmInstCqi int
 	PosRank int
-	PosCellDbIndex int
 	PosRrmAvgCqi int
 	PosMcs int
 	PosRrmDeltaCqi int
@@ -539,6 +539,72 @@ func FindTtiDlFlowControlDataPos(tokens []string) TtiDlFlowControlDataPos {
 			i += 1
 		} else if strings.ToLower(item) == "ethscaled" && p.PosEthScaled < 0 {
 			p.PosEthScaled = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiDlLaDeltaCqi struct {
+	TtiEventHeader
+	CellDbIndex string
+	IsDeltaCqiCalculated string
+	RrmPauseUeInDlScheduling string
+	HarqFb string
+	RrmDeltaCqi string
+	RrmRemainingBucketLevel string
+}
+
+type TtiDlLaDeltaCqiPos struct {
+	Ready                       bool
+	PosEventHeader              TtiEventHeaderPos
+	PosCellDbIndex              int
+	PosIsDeltaCqiCalculated     int
+	PosRrmPauseUeInDlScheduling int
+	PosHarqFb                   int
+	PosRrmDeltaCqi              int
+	PosRrmRemainingBucketLevel  int
+}
+
+func FindTtiDlLaDeltaCqiPos(tokens []string) TtiDlLaDeltaCqiPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 6
+	p := TtiDlLaDeltaCqiPos{
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:              -1,
+		PosIsDeltaCqiCalculated:     -1,
+		PosRrmPauseUeInDlScheduling: -1,
+		PosHarqFb:                   -1,
+		PosRrmDeltaCqi:              -1,
+		PosRrmRemainingBucketLevel:  -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "isdeltacqicalculated" && p.PosIsDeltaCqiCalculated < 0 {
+			p.PosIsDeltaCqiCalculated = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmpauseueindlscheduling" && p.PosRrmPauseUeInDlScheduling < 0 {
+			p.PosRrmPauseUeInDlScheduling = pos
+			i += 1
+		} else if strings.ToLower(item) == "harqfb" && p.PosHarqFb < 0 {
+			p.PosHarqFb = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
+			p.PosRrmDeltaCqi= pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmremainingbucketlevel" && p.PosRrmRemainingBucketLevel < 0 {
+			p.PosRrmRemainingBucketLevel = pos
 			i += 1
 		}
 

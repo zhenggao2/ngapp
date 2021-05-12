@@ -82,6 +82,7 @@ func (p *TtiParser) Exec() {
 	var posDlLaAvgCqi TtiDlLaAverageCqiPos
 	var posCsiSrReport TtiCsiSrReportDataPos
 	var posDlFlowControl TtiDlFlowControlDataPos
+	var posDlLaDeltaCqi TtiDlLaDeltaCqiPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -91,6 +92,7 @@ func (p *TtiParser) Exec() {
 		"dlLaAverageCqi":       utils.NewOrderedMap(),
 		"csiSrReportData":       utils.NewOrderedMap(),
 		"dlFlowControlData":       utils.NewOrderedMap(),
+		"dlLaDeltaCqi":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
 	var dlPerBearerProcessed bool
@@ -461,7 +463,7 @@ func (p *TtiParser) Exec() {
 									PucchFormat: tokens[valStart+posDlHarq.PosPucchFormat],
 								}
 
-								mapEventRecord[eventName].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
+								mapEventRecord["dlHarqRxData"].Add(strconv.Itoa(k)+"_"+v.DlHarqProcessIndex, &v)
 							} else {
 								maxNumHarq := 32	// max 32 HARQ feedbacks per dlHarqRxDataArray
 								sizeDlHarqRecord := 14
@@ -581,6 +583,73 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "dlLaDeltaCqiArray" {
+							// TODO - event aggregation - dlLaDeltaCqiArray
+							if posDlLaDeltaCqi.Ready == false {
+								posDlLaDeltaCqi = FindTtiDlLaDeltaCqiPos(tokens)
+
+								if eventName == "dlLaDeltaCqiArray" {
+									posDlLaDeltaCqi.PosEventHeader.PosRnti += 2
+									posDlLaDeltaCqi.PosEventHeader.PosPhysCellId += 2
+								}
+
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlLaDeltaCqi=%v", posDlLaDeltaCqi))
+								}
+							}
+
+							if eventName == "dlLaDeltaCqi" {
+								k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot]))
+								v := TtiDlLaDeltaCqi{
+									// event header
+									TtiEventHeader: TtiEventHeader{
+										Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+										Sfn:        tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn],
+										Slot:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot],
+										Rnti:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti],
+										PhysCellId: tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosPhysCellId],
+									},
+
+									CellDbIndex:      tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex],
+									IsDeltaCqiCalculated:            tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated],
+									RrmPauseUeInDlScheduling: tokens[valStart+posDlLaDeltaCqi.PosRrmPauseUeInDlScheduling],
+									HarqFb: tokens[valStart+posDlLaDeltaCqi.PosHarqFb],
+									RrmDeltaCqi: tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi],
+									RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel],
+								}
+
+								mapEventRecord["dlLaDeltaCqi"].Add(k, &v)
+							} else {
+								maxNumDlOlqc := 64	// max 64 DL LA deltaCqi records per dlHarqRxDataArray
+								sizeDlOlqcRecord := 8
+								for ih := 0; ih < maxNumDlOlqc; ih += 1 {
+									posRnti := valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti+ih*sizeDlOlqcRecord
+									if posRnti >= len(tokens) || len(tokens[posRnti]) == 0 {
+										break
+									}
+
+									k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot]))
+									v := TtiDlLaDeltaCqi{
+										// event header
+										TtiEventHeader: TtiEventHeader{
+											Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+											Sfn:        tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn],
+											Slot:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot],
+											Rnti:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti+ih*sizeDlOlqcRecord],
+											PhysCellId: tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosPhysCellId+ih*sizeDlOlqcRecord],
+										},
+
+										CellDbIndex:      tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex+ih*sizeDlOlqcRecord],
+										IsDeltaCqiCalculated:            tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated+ih*sizeDlOlqcRecord],
+										RrmPauseUeInDlScheduling: tokens[valStart+posDlLaDeltaCqi.PosRrmPauseUeInDlScheduling+ih*sizeDlOlqcRecord],
+										HarqFb: tokens[valStart+posDlLaDeltaCqi.PosHarqFb+ih*sizeDlOlqcRecord],
+										RrmDeltaCqi: tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi+ih*sizeDlOlqcRecord],
+										RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel+ih*sizeDlOlqcRecord],
+									}
+
+									mapEventRecord["dlLaDeltaCqi"].Add(k, &v)
+								}
+							}
 						}
 					} else {
 						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
@@ -626,6 +695,11 @@ func (p *TtiParser) Exec() {
 	if mapEventRecord["csiSrReportData"].Len() > 0 {
 		dlSchedAggFields += ","
 		dlSchedAggFields += strings.Join([]string{"csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
+	}
+
+	if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"dlLaDeltaCqi.isDeltaCqiCalculated", "dlLaDeltaCqi.rrmPauseUeInDlScheduling", "dlLaDeltaCqi.harqFb", "dlLaDeltaCqi.rrmDeltaCqi", "dlLaDeltaCqi.rrmRemainingBucketLevel"}, ",")
 	}
 
 	if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
@@ -714,6 +788,19 @@ func (p *TtiParser) Exec() {
 					v1.AllFields = append(v1.AllFields, []string{v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
 				} else {
 					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+				}
+			}
+
+			// aggregate dlLaDeltaCqi
+			if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
+				p2 := p.findDlLaDeltaCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaDeltaCqi"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlLaDeltaCqi"].Keys()[p2].(int)
+					v2 := mapEventRecord["dlLaDeltaCqi"].Val(k2).(*TtiDlLaDeltaCqi)
+
+					v1.AllFields = append(v1.AllFields, []string{v2.IsDeltaCqiCalculated, v2.RrmPauseUeInDlScheduling, v2.HarqFb, v2.RrmDeltaCqi, v2.RrmRemainingBucketLevel}...)
+				} else {
+					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
 				}
 			}
 
@@ -936,6 +1023,27 @@ func (p *TtiParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
 
 		if k2 <= k1 {
 			if v1.Rnti == v2.Rnti && p.contains(v1.LcIdList, v2.LchId) {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlLaDeltaCqi)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
 		} else {
