@@ -616,3 +616,127 @@ func FindTtiDlLaDeltaCqiPos(tokens []string) TtiDlLaDeltaCqiPos {
 
 	return p
 }
+
+type TtiUlBsrRxData struct {
+	TtiEventHeader
+	UlHarqProcessIndex string
+	BsrFormat string
+	BufferSizeList []string
+}
+
+type TtiUlBsrRxDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosUlHarqProcessIndex int
+	PosBsrFormat int
+}
+
+
+func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos{
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 2
+	p := TtiUlBsrRxDataPos{
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosUlHarqProcessIndex:              -1,
+		PosBsrFormat:     -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "ulharqprocessindex" && p.PosUlHarqProcessIndex < 0 {
+			p.PosUlHarqProcessIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "bsrformat" && p.PosBsrFormat < 0 {
+			p.PosBsrFormat = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+
+type TtiUlFdSchedData struct {
+	TtiEventHeader
+	CellDbIndex        string
+	TxNumber           string
+	UlHarqProcessIndex string
+	K2                 string
+	AllFields          []string
+}
+
+type TtiUlFdSchedDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosCellDbIndex int
+	PosTxNumber int
+	PosUlHarqProcessIndex int
+	PosK2 int
+
+	// additional position for RIV/SLIV/AntPort/per-Bearer post-processing
+	PosNumOfPrb int
+	PosStartPrb int
+	PosSliv int
+	PosAntPort int
+}
+
+func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 8
+	p := TtiUlFdSchedDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosTxNumber: -1,
+		PosUlHarqProcessIndex: -1,
+		PosK2: -1,
+		PosNumOfPrb: -1,
+		PosStartPrb: -1,
+		PosSliv: -1,
+		PosAntPort: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
+			p.PosTxNumber = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulharqprocessindex" && p.PosUlHarqProcessIndex < 0 {
+			p.PosUlHarqProcessIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "k2" && p.PosK2 < 0 {
+			p.PosK2 = pos
+			i += 1
+		} else if strings.ToLower(item) == "numofprb" && p.PosNumOfPrb < 0 {
+			p.PosNumOfPrb= pos
+			i += 1
+		} else if strings.ToLower(item) == "startprb" && p.PosStartPrb < 0 {
+			p.PosStartPrb = pos
+			i += 1
+		} else if strings.ToLower(item) == "sliv" && p.PosSliv < 0 {
+			p.PosSliv = pos
+			i += 1
+		} else if strings.ToLower(item) == "antport" && p.PosAntPort < 0 {
+			p.PosAntPort = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+

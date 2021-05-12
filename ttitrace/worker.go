@@ -83,6 +83,8 @@ func (p *TtiParser) Exec() {
 	var posCsiSrReport TtiCsiSrReportDataPos
 	var posDlFlowControl TtiDlFlowControlDataPos
 	var posDlLaDeltaCqi TtiDlLaDeltaCqiPos
+	var posUlBsr TtiUlBsrRxDataPos
+	var posUlFdSched TtiUlFdSchedDataPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -93,10 +95,39 @@ func (p *TtiParser) Exec() {
 		"csiSrReportData":       utils.NewOrderedMap(),
 		"dlFlowControlData":       utils.NewOrderedMap(),
 		"dlLaDeltaCqi":       utils.NewOrderedMap(),
+		"ulBsrRxData":       utils.NewOrderedMap(),
+		"ulFdSchedData":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
+	var ulSchedAggFields string
 	var dlPerBearerProcessed bool
 	var mapPdschSliv map[string][]int = p.initPdschSliv()
+	var mapPuschSliv map[string][]int = p.initPuschSliv()
+
+	mapAntPort := map[int]string {
+		32768: "0",
+		16384: "1",
+		8192: "2",
+		4096: "3",
+		49152: "0;1",
+		12288: "2;3",
+		57344: "0;1;2",
+		61440: "0;1;2;3",
+		40960: "0;2",
+		2048: "4",
+		1024: "5",
+		512: "6",
+		256: "7",
+		3072: "4;5",
+		768: "6;7",
+		34816: "0;4",
+		8704: "2;6",
+		51200: "0;1;4",
+		12800: "2;3;6",
+		52224: "0;1;4;5",
+		13056: "2;3;6;7",
+		43520: "0;2;4;6",
+	}
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing tti files...(%d in total)", len(p.ttiFiles)))
 	for _, fn := range p.ttiFiles {
@@ -184,6 +215,11 @@ func (p *TtiParser) Exec() {
 							// update dlSchedAggFields
 							if len(dlSchedAggFields) == 0 && eventName == "dlFdSchedData" {
 								dlSchedAggFields = "hsfn," + row
+							}
+
+							// update ulSchedAggFields
+							if len(ulSchedAggFields) == 0 && eventName == "ulFdSchedData" {
+								ulSchedAggFields = "hsfn," + row
 							}
 						} else {
 							curSfn, _ := strconv.Atoi(tokens[valStart+posSfn])
@@ -344,51 +380,9 @@ func (p *TtiParser) Exec() {
 
 							v.AllFields[posDlFdSched.PosSliv] += slivStr
 
-							// update RIV field
-							rivStr := "(RIV="
-							numPrb := p.unsafeAtoi(tokens[valStart+posDlFdSched.PosNumOfPrb])
-							startPrb := p.unsafeAtoi(tokens[valStart+posDlFdSched.PosStartPrb])
-							// refer to:
-							//  12	Bandwidth part operation of 3GPP 38.213
-							//  5.1.2.2.2	Downlink resource allocation type 1 of 3GPP 38.214
-							bwpSize := 275
-							riv, err := p.makeRiv(numPrb, startPrb, bwpSize)
-							if err == nil {
-								rivStr += strconv.Itoa(riv)
-							} else {
-								rivStr += "-1"
-							}
-							rivStr += ")"
-
-							v.AllFields[posDlFdSched.PosStartPrb] += rivStr
-
 							// update AntPort field
-							mapPdschDmrsType1AntPort := map[int]string {
-								32768: "0",
-								16384: "1",
-								8192: "2",
-								4096: "3",
-								49152: "0;1",
-								12288: "2;3",
-								57344: "0;1;2",
-								61440: "0;1;2;3",
-								40960: "0;2",
-								2048: "4",
-								1024: "5",
-								512: "6",
-								256: "7",
-								3072: "4;5",
-								768: "6;7",
-								34816: "0;4",
-								8704: "2;6",
-								51200: "0;1;4",
-								12800: "2;3;6",
-								52224: "0;1;4;5",
-								13056: "2;3;6;7",
-								43520: "0;2;4;6",
-							}
-							antPortStr := "("
-							if ports, exist := mapPdschDmrsType1AntPort[p.unsafeAtoi(tokens[valStart+posDlFdSched.PosAntPort])]; exist {
+							antPortStr := "(1000+"
+							if ports, exist := mapAntPort[p.unsafeAtoi(tokens[valStart+posDlFdSched.PosAntPort])]; exist {
 								antPortStr += ports
 							}
 							antPortStr += ")"
@@ -650,6 +644,92 @@ func (p *TtiParser) Exec() {
 									mapEventRecord["dlLaDeltaCqi"].Add(k, &v)
 								}
 							}
+						} else if eventName == "ulBsrRxData" {
+							// TODO - event aggregation - ulBsrRxData
+							if posUlBsr.Ready == false {
+								posUlBsr = FindTtiUlBsrRxDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlBsr=%v", posUlBsr))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlBsr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlBsr.PosEventHeader.PosSlot]))
+							v := TtiUlBsrRxData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlBsr.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlBsr.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlBsr.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlBsr.PosEventHeader.PosPhysCellId],
+								},
+
+								UlHarqProcessIndex: tokens[valStart+posUlBsr.PosUlHarqProcessIndex],
+								BsrFormat:   tokens[valStart+posUlBsr.PosBsrFormat],
+								BufferSizeList: make([]string, 0),
+							}
+
+							numLcg := 8  // for LCG 0~7
+							for i := 0; i < numLcg; i += 1 {
+								// TODO convert bufferSize to a readable string as specified in TS 38.321
+								v.BufferSizeList = append(v.BufferSizeList, tokens[valStart+posUlBsr.PosBsrFormat+1+i])
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulFdSchedData" {
+							// TODO - event aggregation - ulFdSchedData
+							if posUlFdSched.Ready == false {
+								posUlFdSched = FindTtiUlFdSchedDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlFdSched=%v", posUlFdSched))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlFdSched.PosEventHeader.PosSlot]))
+							v := TtiUlFdSchedData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlFdSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlFdSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlFdSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlFdSched.PosEventHeader.PosPhysCellId],
+								},
+
+								CellDbIndex:        tokens[valStart+posUlFdSched.PosCellDbIndex],
+								TxNumber:           tokens[valStart+posUlFdSched.PosTxNumber],
+								UlHarqProcessIndex: tokens[valStart+posUlFdSched.PosUlHarqProcessIndex],
+								K2:                 tokens[valStart+posUlFdSched.PosK2],
+								AllFields:          make([]string, len(tokens)-valStart),
+							}
+							copy(v.AllFields, tokens[valStart:])
+
+							// update SLIV field
+							slivStr := "("
+							// PUSCH mapping type A and normal CP
+							sliv := fmt.Sprintf("00_%s", tokens[valStart+posUlFdSched.PosSliv])
+							if SL, exist := mapPuschSliv[sliv]; exist {
+								slivStr += fmt.Sprintf("TypeA[S=%d;L=%d]", SL[0], SL[1])
+							}
+							// PDSCH mapping type B and normal CP
+							sliv = fmt.Sprintf("10_%s", tokens[valStart+posUlFdSched.PosSliv])
+							if SL, exist := mapPuschSliv[sliv]; exist {
+								slivStr += fmt.Sprintf(";TypeB[S=%d;L=%d]", SL[0], SL[1])
+							}
+							slivStr += ")"
+
+							v.AllFields[posUlFdSched.PosSliv] += slivStr
+
+							// update AntPort field
+							antPortStr := "("
+							if ports, exist := mapAntPort[p.unsafeAtoi(tokens[valStart+posUlFdSched.PosAntPort])]; exist {
+								antPortStr += ports
+							}
+							antPortStr += ")"
+
+							v.AllFields[posUlFdSched.PosAntPort] += antPortStr
+
+							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
 						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
@@ -713,6 +793,7 @@ func (p *TtiParser) Exec() {
 	}
 
 	dlSchedAggFields += "\n"
+
 
 	// perform event aggregation
 	// TODO - event aggregation with dlFdSchedData
@@ -833,6 +914,43 @@ func (p *TtiParser) Exec() {
 	}
 	wg.Wait()
 
+	// update ulSchedAggFields
+	// TODO - ulSchedAggFields
+	p.writeLog(zapcore.InfoLevel, "updating fields for ulSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
+	if mapEventRecord["ulBsrRxData"].Len() > 0 {
+		ulSchedAggFields += ","
+		ulSchedAggFields += strings.Join([]string{"ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
+	}
+
+	ulSchedAggFields += "\n"
+
+	// TODO - event aggregation with ulFdSchedData
+	p.writeLog(zapcore.InfoLevel, "performing event aggregation for ulSchedAgg...[Time-consuming ops which may cause 100% CPU utilization!]")
+	wg2 := &sync.WaitGroup{}
+	for p1 := 0; p1 < mapEventRecord["ulFdSchedData"].Len(); p1 += 1 {
+		wg2.Add(1)
+		go func(p1 int) {
+			defer wg2.Done()
+
+			k1 := mapEventRecord["ulFdSchedData"].Keys()[p1].(int)
+			v1 := mapEventRecord["ulFdSchedData"].Val(k1).(*TtiUlFdSchedData)
+
+			// aggregate ulBsrRxData
+			if mapEventRecord["ulBsrRxData"].Len() > 0 {
+				p2 := p.findUlBsr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulBsrRxData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["ulBsrRxData"].Keys()[p2].(int)
+					v2 := mapEventRecord["ulBsrRxData"].Val(k2).(*TtiUlBsrRxData)
+
+					v1.AllFields = append(v1.AllFields, []string{v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
+				} else {
+					v1.AllFields = append(v1.AllFields, []string{"-", "-"}...)
+				}
+			}
+		} (p1)
+	}
+	wg2.Wait()
+
 	/*
 	if p.debug {
 		for k, v := range mapEventRecord {
@@ -842,13 +960,13 @@ func (p *TtiParser) Exec() {
 	 */
 
 	// output aggregated event: dlSchedAgg
-	p.writeLog(zapcore.InfoLevel, "outputing aggregated dlSchedAgg...")
+	p.writeLog(zapcore.InfoLevel, "outputting aggregated dlSchedAgg...")
 	headerWritten := make(map[string]bool)
 	for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
 		data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
 
 		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
-		fout3, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		//defer fout3.Close()
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
@@ -856,15 +974,36 @@ func (p *TtiParser) Exec() {
 		}
 
 		if _, exist := headerWritten[outFn]; !exist {
-			fout3.WriteString(dlSchedAggFields)
+			fout.WriteString(dlSchedAggFields)
 			headerWritten[outFn] = true
 		}
 
-		fout3.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
-		fout3.Close()
+		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+		fout.Close()
 	}
 
-	// p.widget.Accept()
+	// output aggregated event: ulSchedAgg
+	p.writeLog(zapcore.InfoLevel, "outputting aggregated ulSchedAgg...")
+	headerWritten2 := make(map[string]bool)
+	for _, k := range mapEventRecord["ulFdSchedData"].Keys() {
+		data := mapEventRecord["ulFdSchedData"].Val(k).(*TtiUlFdSchedData)
+
+		outFn := path.Join(outPath, fmt.Sprintf("ulSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
+		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		//defer fout3.Close()
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
+			break
+		}
+
+		if _, exist := headerWritten2[outFn]; !exist {
+			fout.WriteString(ulSchedAggFields)
+			headerWritten2[outFn] = true
+		}
+
+		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+		fout.Close()
+	}
 }
 
 func (p *TtiParser) makeTimeStamp(hsfn, sfn, slot int) int {
@@ -1054,6 +1193,27 @@ func (p *TtiParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
+func (p *TtiParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlBsrRxData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
 func (p *TtiParser) contains(a []string, b string) bool {
 	for _, s := range a {
 		if s == b {
@@ -1115,6 +1275,44 @@ func (p *TtiParser) initPdschSliv() map[string][]int {
 	}
 
 	return pdschFromSliv
+}
+
+func (p *TtiParser) initPuschSliv() map[string][]int {
+	// prefix
+	// "00": mapping type A + normal cp
+	// "10": mapping type B + normal cp
+	puschFromSliv := make(map[string][]int)
+	var prefix string
+
+	// case #1: prefix="00"
+	prefix = "00"
+	for _, S := range utils.PyRange(0, 1, 1) {
+		for _, L := range utils.PyRange(4, 15, 1) {
+			if S+L >= 4 && S+L < 15 {
+				sliv, err := p.makeSliv(S, L)
+				if err == nil {
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #3: prefix="10"
+	prefix = "10"
+	for _, S := range utils.PyRange(0, 14, 1) {
+		for _, L := range utils.PyRange(1, 15, 1) {
+			if S+L >= 1 && S+L < 15 {
+				sliv, err := p.makeSliv(S, L)
+				if err == nil {
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	return puschFromSliv
 }
 
 func (p *TtiParser) makeSliv(S, L int) (int, error) {
