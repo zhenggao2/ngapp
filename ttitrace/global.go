@@ -200,11 +200,12 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 
 type TtiDlFdSchedData struct {
 	TtiEventHeader
-	CellDbIndex string
-	TxNumber string
+	CellDbIndex        string
+	TxNumber           string
 	DlHarqProcessIndex string
-	K1 string
-	AllFields []string
+	K1                 string
+	LcIdList           []string
+	AllFields          []string
 }
 
 type TtiDlFdSchedDataPos struct {
@@ -478,6 +479,66 @@ func FindTtiCsiSrReportDataPos(tokens []string) TtiCsiSrReportDataPos {
 			i += 1
 		} else if strings.ToLower(item) == "sr" && p.PosSr < 0 {
 			p.PosSr = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiDlFlowControlData struct {
+	TtiEventHeader
+	LchId string
+	ReportType string
+	ScheduledBytes string
+	EthAvg string
+	EthScaled string
+}
+
+type TtiDlFlowControlDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosLchId int
+	PosReportType int
+	PosScheduledBytes int
+	PosEthAvg int
+	PosEthScaled int
+}
+
+func FindTtiDlFlowControlDataPos(tokens []string) TtiDlFlowControlDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 5
+	p := TtiDlFlowControlDataPos{
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosLchId:      -1,
+		PosReportType:      -1,
+		PosScheduledBytes:      -1,
+		PosEthAvg:      -1,
+		PosEthScaled:      -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "lchid" && p.PosLchId < 0 {
+			p.PosLchId = pos
+			i += 1
+		} else if strings.ToLower(item) == "reporttype" && p.PosReportType < 0 {
+			p.PosReportType = pos
+			i += 1
+		} else if strings.ToLower(item) == "scheduledbytes" && p.PosScheduledBytes < 0 {
+			p.PosScheduledBytes = pos
+			i += 1
+		} else if strings.ToLower(item) == "ethavg" && p.PosEthAvg < 0 {
+			p.PosEthAvg = pos
+			i += 1
+		} else if strings.ToLower(item) == "ethscaled" && p.PosEthScaled < 0 {
+			p.PosEthScaled = pos
 			i += 1
 		}
 

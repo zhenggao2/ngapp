@@ -81,6 +81,7 @@ func (p *TtiParser) Exec() {
 	var posDlHarq TtiDlHarqRxDataPos
 	var posDlLaAvgCqi TtiDlLaAverageCqiPos
 	var posCsiSrReport TtiCsiSrReportDataPos
+	var posDlFlowControl TtiDlFlowControlDataPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -89,6 +90,7 @@ func (p *TtiParser) Exec() {
 		"dlHarqRxData":         utils.NewOrderedMap(),
 		"dlLaAverageCqi":       utils.NewOrderedMap(),
 		"csiSrReportData":       utils.NewOrderedMap(),
+		"dlFlowControlData":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
 	var dlPerBearerProcessed bool
@@ -412,6 +414,8 @@ func (p *TtiParser) Exec() {
 								}
 							}
 
+							v.LcIdList = lcId
+
 							perBearerInfo := []string{fmt.Sprintf("[%s]", strings.Join(lcId, ";")), fmt.Sprintf("[%s]", strings.Join(schedBytes, ";")), fmt.Sprintf("[%s]", strings.Join(remainBytes, ";")),
 								fmt.Sprintf("[%s]", strings.Join(bsrSfn, ";")), fmt.Sprintf("[%s]", strings.Join(bsrSlot, ";"))}
 							v.AllFields = append(append(v.AllFields[:posDlFdSched.PosLcId], perBearerInfo...), v.AllFields[posDlFdSched.PosLcId+sizeSchedBearerRecord*maxNumBearerPerUe:]...)
@@ -549,6 +553,34 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "dlFlowControlData" {
+							// TODO - event aggregation - dlFlowControlData
+							if posDlFlowControl.Ready == false {
+								posDlFlowControl = FindTtiDlFlowControlDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posDlFlowControl=%v", posDlFlowControl))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlFlowControl.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlFlowControl.PosEventHeader.PosSlot]))
+							v := TtiDlFlowControlData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posDlFlowControl.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posDlFlowControl.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posDlFlowControl.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posDlFlowControl.PosEventHeader.PosPhysCellId],
+								},
+
+								LchId: tokens[valStart+posDlFlowControl.PosLchId],
+								ReportType:   tokens[valStart+posDlFlowControl.PosReportType],
+								ScheduledBytes:   tokens[valStart+posDlFlowControl.PosScheduledBytes],
+								EthAvg:   tokens[valStart+posDlFlowControl.PosEthAvg],
+								EthScaled:   tokens[valStart+posDlFlowControl.PosEthScaled],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
 						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
@@ -599,6 +631,11 @@ func (p *TtiParser) Exec() {
 	if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
 		dlSchedAggFields += ","
 		dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
+	}
+
+	if mapEventRecord["dlFlowControlData"].Len() > 0 {
+		dlSchedAggFields += ","
+		dlSchedAggFields += strings.Join([]string{"dlFlowControl.lchId", "dlFlowControl.reportType", "dlFlowControl.scheduledBytes", "dlFlowControl.ethAvg", "dlFlowControl.ethScaled"}, ",")
 	}
 
 	dlSchedAggFields += "\n"
@@ -689,7 +726,20 @@ func (p *TtiParser) Exec() {
 
 					v1.AllFields = append(v1.AllFields, []string{v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
 				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
+				}
+			}
+
+			// aggregate dlFlowControlData
+			if mapEventRecord["dlFlowControlData"].Len() > 0 {
+				p2 := p.findDlFlowControl(mapEventRecord["dlFdSchedData"], mapEventRecord["dlFlowControlData"], p1)
+				if p2 >= 0 {
+					k2 := mapEventRecord["dlFlowControlData"].Keys()[p2].(int)
+					v2 := mapEventRecord["dlFlowControlData"].Val(k2).(*TtiDlFlowControlData)
+
+					v1.AllFields = append(v1.AllFields, []string{v2.LchId, v2.ReportType, v2.ScheduledBytes, v2.EthAvg, v2.EthScaled}...)
+				} else {
+					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
 				}
 			}
 		} (p1)
@@ -865,6 +915,27 @@ func (p *TtiParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
 
 		if k2 <= k1 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiDlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiDlFlowControlData)
+
+		if k2 <= k1 {
+			if v1.Rnti == v2.Rnti && p.contains(v1.LcIdList, v2.LchId) {
 				p2 = i
 			}
 		} else {
