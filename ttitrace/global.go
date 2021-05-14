@@ -201,6 +201,7 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 type TtiDlFdSchedData struct {
 	TtiEventHeader
 	CellDbIndex        string
+	SubcellId string
 	TxNumber           string
 	DlHarqProcessIndex string
 	K1                 string
@@ -212,6 +213,7 @@ type TtiDlFdSchedDataPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
 	PosCellDbIndex int
+	PosSubcellId int
 	PosTxNumber int
 	PosDlHarqProcessIndex int
 	PosK1 int
@@ -226,11 +228,12 @@ type TtiDlFdSchedDataPos struct {
 
 func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
-	n := 9
+	n := 10
 	p := TtiDlFdSchedDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosCellDbIndex: -1,
+		PosSubcellId: -1,
 		PosTxNumber: -1,
 		PosDlHarqProcessIndex: -1,
 		PosK1: -1,
@@ -245,6 +248,9 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 	for pos, item := range tokens {
 		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
 			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
 			i += 1
 		} else if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
 			p.PosTxNumber = pos
@@ -631,7 +637,7 @@ type TtiUlBsrRxDataPos struct {
 	PosBsrFormat int
 }
 
-func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos{
+func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 2
 	p := TtiUlBsrRxDataPos{
@@ -663,6 +669,7 @@ func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos{
 type TtiUlFdSchedData struct {
 	TtiEventHeader
 	CellDbIndex        string
+	SubcellId	string
 	TxNumber           string
 	UlHarqProcessIndex string
 	K2                 string
@@ -673,6 +680,7 @@ type TtiUlFdSchedDataPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
 	PosCellDbIndex int
+	PosSubcellId int
 	PosTxNumber int
 	PosUlHarqProcessIndex int
 	PosK2 int
@@ -686,11 +694,12 @@ type TtiUlFdSchedDataPos struct {
 
 func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
-	n := 8
+	n := 9
 	p := TtiUlFdSchedDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosCellDbIndex: -1,
+		PosSubcellId: -1,
 		PosTxNumber: -1,
 		PosUlHarqProcessIndex: -1,
 		PosK2: -1,
@@ -704,6 +713,9 @@ func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 	for pos, item := range tokens {
 		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
 			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
 			i += 1
 		} else if strings.ToLower(item) == "txnumber" && p.PosTxNumber < 0 {
 			p.PosTxNumber = pos
@@ -1025,6 +1037,238 @@ func FindTtiUlLaPhrPos(tokens []string) TtiUlLaPhrPos {
 
 	return p
 }
+
+type TtiUlPucchReceiveRespPsData struct {
+	TtiEventHeader
+	PucchFormat string
+	StartPrb string
+	Rssi string
+	SinrLayer0 string //sinr_[0]
+	SinrLayer1 string //sinr_[1]
+	Dtx string
+	SrBit string
+	SubcellId string
+}
+
+type TtiUlPucchReceiveRespPsDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosPucchFormat int
+	PosStartPrb int
+	PosRssi int
+	PosSinrLayer0 int
+	PosSinrLayer1 int
+	PosDtx int
+	PosSrBit int
+	PosSubcellId int
+}
+
+func FindTtiUlPucchReceiveRespPsDataPos(tokens []string) TtiUlPucchReceiveRespPsDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 8
+	p := TtiUlPucchReceiveRespPsDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosPucchFormat: -1,
+		PosStartPrb: -1,
+		PosRssi: -1,
+		PosSinrLayer0: -1,
+		PosSinrLayer1: -1,
+		PosDtx: -1,
+		PosSrBit: -1,
+		PosSubcellId: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "pucchformat" && p.PosPucchFormat < 0 {
+			p.PosPucchFormat = pos
+			i += 1
+		} else if strings.ToLower(item) == "startprb" && p.PosStartPrb < 0 {
+			p.PosStartPrb = pos
+			i += 1
+		} else if strings.ToLower(item) == "rssi" && p.PosRssi < 0 {
+			p.PosRssi = pos
+			i += 1
+		} else if strings.ToLower(item) == "sinr_[0]" && p.PosSinrLayer0 < 0 {
+			p.PosSinrLayer0 = pos
+			i += 1
+		} else if strings.ToLower(item) == "sinr_[1]" && p.PosSinrLayer1 < 0 {
+			p.PosSinrLayer1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "dtx" && p.PosDtx < 0 {
+			p.PosDtx = pos
+			i += 1
+		} else if strings.ToLower(item) == "srbit" && p.PosSrBit < 0 {
+			p.PosSrBit = pos
+			i += 1
+		} else if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlPuschReceiveRespPsData struct {
+	TtiEventHeader
+	Rssi string
+	SinrLayer0 string // sinr_[0]
+	SinrLayer1 string // sinr_[1]
+	Dtx string
+	UlRank string
+	UlPmiRank1 string
+	UlPmiRank1Sinr string
+	UlPmiRank2 string
+	UlPmiRank2SinrLayer0 string //ulPmiRank2Sinr_[0]
+	UlPmiRank2SinrLayer1 string //ulPmiRank2Sinr_[1]
+	LongTermRank string
+}
+
+type TtiUlPuschReceiveRespPsDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosRssi int
+	PosSinrLayer0 int
+	PosSinrLayer1 int
+	PosDtx int
+	PosUlRank int
+	PosUlPmiRank1 int
+	PosUlPmiRank1Sinr int
+	PosUlPmiRank2 int
+	PosUlPmiRank2SinrLayer0 int
+	PosUlPmiRank2SinrLayer1 int
+	PosLongTermRank int
+}
+
+func FindTtiUlPuschReceiveRespPsDataPos(tokens []string) TtiUlPuschReceiveRespPsDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 11
+	p := TtiUlPuschReceiveRespPsDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosRssi: -1,
+		PosSinrLayer0: -1,
+		PosSinrLayer1: -1,
+		PosDtx: -1,
+		PosUlRank: -1,
+		PosUlPmiRank1: -1,
+		PosUlPmiRank1Sinr: -1,
+		PosUlPmiRank2: -1,
+		PosUlPmiRank2SinrLayer0: -1,
+		PosUlPmiRank2SinrLayer1: -1,
+		PosLongTermRank: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "rssi" && p.PosRssi < 0 {
+			p.PosRssi = pos
+			i += 1
+		} else if strings.ToLower(item) == "sinr_[0]" && p.PosSinrLayer0 < 0 {
+			p.PosSinrLayer0 = pos
+			i += 1
+		} else if strings.ToLower(item) == "sinr_[1]" && p.PosSinrLayer1 < 0 {
+			p.PosSinrLayer1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "dtx" && p.PosDtx < 0 {
+			p.PosDtx = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulrank" && p.PosUlRank < 0 {
+			p.PosUlRank = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulpmirank1" && p.PosUlPmiRank1 < 0 {
+			p.PosUlPmiRank1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulpmirank1sinr" && p.PosUlPmiRank1Sinr < 0 {
+			p.PosUlPmiRank1Sinr = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulpmirank2" && p.PosUlPmiRank2 < 0 {
+			p.PosUlPmiRank2 = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulpmirank2sinr_[0]" && p.PosUlPmiRank2SinrLayer0 < 0 {
+			p.PosUlPmiRank2SinrLayer0 = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulpmirank2sinr_[1]" && p.PosUlPmiRank2SinrLayer1 < 0 {
+			p.PosUlPmiRank2SinrLayer1 = pos
+			i += 1
+		} else if strings.ToLower(item) == "longtermrank" && p.PosLongTermRank < 0 {
+			p.PosLongTermRank = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlPduDemuxData struct {
+	TtiEventHeader
+	HarqId        string
+	IsUlCcchData  string
+	IsTcpTraffic  string
+	TempCrnti     string
+	LcIdList      []string
+	RcvdBytesList []string
+}
+
+type TtiUlPduDemuxDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosHarqId int
+	PosIsUlCcchData int
+	PosIsTcpTraffic int
+	PosTempCrnti int
+}
+
+func FindTtiUlPduDemuxDataPos(tokens []string) TtiUlPduDemuxDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 4
+	p := TtiUlPduDemuxDataPos{
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosHarqId:              -1,
+		PosIsUlCcchData:     -1,
+		PosIsTcpTraffic:     -1,
+		PosTempCrnti:     -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "harqid" && p.PosHarqId< 0 {
+			p.PosHarqId = pos
+			i += 1
+		} else if strings.ToLower(item) == "isulccchdata" && p.PosIsUlCcchData < 0 {
+			p.PosIsUlCcchData = pos
+			i += 1
+		} else if strings.ToLower(item) == "istcptraffic" && p.PosIsTcpTraffic < 0 {
+			p.PosIsTcpTraffic = pos
+			i += 1
+		} else if strings.ToLower(item) == "tempcrnti" && p.PosTempCrnti < 0 {
+			p.PosTempCrnti = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+
 
 
 

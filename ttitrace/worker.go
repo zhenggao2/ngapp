@@ -92,6 +92,9 @@ func (p *TtiParser) Exec() {
 	var posUlLaDeltaSinr TtiUlLaDeltaSinrPos
 	var posUlLaAvgSinr TtiUlLaAverageSinrPos
 	var posUlLaPhr TtiUlLaPhrPos
+	var posUlPucch TtiUlPucchReceiveRespPsDataPos
+	var posUlPusch TtiUlPuschReceiveRespPsDataPos
+	var posUlPduDemux TtiUlPduDemuxDataPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -109,6 +112,9 @@ func (p *TtiParser) Exec() {
 		"ulLaDeltaSinr":       utils.NewOrderedMap(),
 		"ulLaAverageSinr":       utils.NewOrderedMap(),
 		"ulLaPhr":       utils.NewOrderedMap(),
+		"ulPucchReceiveRespPsData":       utils.NewOrderedMap(),
+		"ulPuschReceiveRespPsData":       utils.NewOrderedMap(),
+		"ulPduDemuxData":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
 	var ulSchedAggFields string
@@ -369,6 +375,7 @@ func (p *TtiParser) Exec() {
 								},
 
 								CellDbIndex:        tokens[valStart+posDlFdSched.PosCellDbIndex],
+								SubcellId:        tokens[valStart+posDlFdSched.PosSubcellId],
 								TxNumber:           tokens[valStart+posDlFdSched.PosTxNumber],
 								DlHarqProcessIndex: tokens[valStart+posDlFdSched.PosDlHarqProcessIndex],
 								K1:                 tokens[valStart+posDlFdSched.PosK1],
@@ -477,7 +484,7 @@ func (p *TtiParser) Exec() {
 									PucchFormat: tokens[valStart+posDlHarq.PosPucchFormat],
 								}
 
-								mapEventRecord["dlHarqRxData"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
+								mapEventRecord["dlHarqRxData"].Add(strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId, v.TtiEventHeader.Rnti, v.DlHarqProcessIndex}, "_") , &v)
 							} else {
 								maxNumHarq := 32	// max 32 HARQ feedbacks per dlHarqRxDataArray
 								sizeDlHarqRecord := 14
@@ -504,7 +511,7 @@ func (p *TtiParser) Exec() {
 										PucchFormat: tokens[valStart+posDlHarq.PosPucchFormat+ih*sizeDlHarqRecord],
 									}
 
-									mapEventRecord["dlHarqRxData"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
+									mapEventRecord["dlHarqRxData"].Add(strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId, v.TtiEventHeader.Rnti, v.DlHarqProcessIndex}, "_") , &v)
 								}
 							}
 						} else if eventName == "dlLaAverageCqi" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
@@ -632,7 +639,7 @@ func (p *TtiParser) Exec() {
 									RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel],
 								}
 
-								mapEventRecord["dlLaDeltaCqi"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
+								mapEventRecord["dlLaDeltaCqi"].Add(strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId, v.TtiEventHeader.Rnti}, "_") , &v)
 							} else {
 								maxNumDlOlqc := 64	// max 64 DL LA deltaCqi records per dlHarqRxDataArray
 								sizeDlOlqcRecord := 8
@@ -661,7 +668,7 @@ func (p *TtiParser) Exec() {
 										RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel+ih*sizeDlOlqcRecord],
 									}
 
-									mapEventRecord["dlLaDeltaCqi"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
+									mapEventRecord["dlLaDeltaCqi"].Add(strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId, v.TtiEventHeader.Rnti}, "_") , &v)
 								}
 							}
 						} else if eventName == "ulBsrRxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
@@ -689,7 +696,7 @@ func (p *TtiParser) Exec() {
 								BufferSizeList: make([]string, 0),
 							}
 
-							numLcg := 8  // for LCG 0~7
+							numLcg := 8  // for LCG 0~7 and maxLCG-ID = 7
 							for i := 0; i < numLcg; i += 1 {
 								// TODO convert bufferSize to a readable string as specified in TS 38.321
 								v.BufferSizeList = append(v.BufferSizeList, tokens[valStart+posUlBsr.PosBsrFormat+1+i])
@@ -717,6 +724,7 @@ func (p *TtiParser) Exec() {
 								},
 
 								CellDbIndex:        tokens[valStart+posUlFdSched.PosCellDbIndex],
+								SubcellId:        tokens[valStart+posUlFdSched.PosSubcellId],
 								TxNumber:           tokens[valStart+posUlFdSched.PosTxNumber],
 								UlHarqProcessIndex: tokens[valStart+posUlFdSched.PosUlHarqProcessIndex],
 								K2:                 tokens[valStart+posUlFdSched.PosK2],
@@ -893,6 +901,110 @@ func (p *TtiParser) Exec() {
 								Phr: tokens[valStart+posUlLaPhr.PosPhr],
 								RrmNumPuschPrb: tokens[valStart+posUlLaPhr.PosRrmNumPuschPrb],
 								RrmPhrScaled: tokens[valStart+posUlLaPhr.PosRrmPhrScaled],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulPucchReceiveRespPsData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulPucchReceiveRespPsData
+							if posUlPucch.Ready == false {
+								posUlPucch = FindTtiUlPucchReceiveRespPsDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlPucch=%v", posUlPucch))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPucch.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPucch.PosEventHeader.PosSlot]))
+							v := TtiUlPucchReceiveRespPsData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlPucch.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlPucch.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlPucch.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlPucch.PosEventHeader.PosPhysCellId],
+								},
+
+								PucchFormat: tokens[valStart+posUlPucch.PosPucchFormat],
+								StartPrb: tokens[valStart+posUlPucch.PosStartPrb],
+								Rssi: tokens[valStart+posUlPucch.PosRssi],
+								SinrLayer0: tokens[valStart+posUlPucch.PosSinrLayer0],
+								SinrLayer1: tokens[valStart+posUlPucch.PosSinrLayer1],
+								Dtx: tokens[valStart+posUlPucch.PosDtx],
+								SrBit: tokens[valStart+posUlPucch.PosSrBit],
+								SubcellId: tokens[valStart+posUlPucch.PosSubcellId],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulPuschReceiveRespPsData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulPuschReceiveRespPsData
+							if posUlPusch.Ready == false {
+								posUlPusch = FindTtiUlPuschReceiveRespPsDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlPusch=%v", posUlPusch))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPusch.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPusch.PosEventHeader.PosSlot]))
+							v := TtiUlPuschReceiveRespPsData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlPusch.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlPusch.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlPusch.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlPusch.PosEventHeader.PosPhysCellId],
+								},
+
+								Rssi: tokens[valStart+posUlPusch.PosRssi],
+								SinrLayer0: tokens[valStart+posUlPusch.PosSinrLayer0],
+								SinrLayer1: tokens[valStart+posUlPusch.PosSinrLayer1],
+								Dtx: tokens[valStart+posUlPusch.PosDtx],
+								UlRank: tokens[valStart+posUlPusch.PosUlRank],
+								UlPmiRank1: tokens[valStart+posUlPusch.PosUlPmiRank1],
+								UlPmiRank1Sinr: tokens[valStart+posUlPusch.PosUlPmiRank1Sinr],
+								UlPmiRank2: tokens[valStart+posUlPusch.PosUlPmiRank2],
+								UlPmiRank2SinrLayer0: tokens[valStart+posUlPusch.PosUlPmiRank2SinrLayer0],
+								UlPmiRank2SinrLayer1: tokens[valStart+posUlPusch.PosUlPmiRank2SinrLayer1],
+								LongTermRank: tokens[valStart+posUlPusch.PosLongTermRank],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulPduDemuxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulPduDemuxData
+							if posUlPduDemux.Ready == false {
+								posUlPduDemux = FindTtiUlPduDemuxDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlPduDemux=%v", posUlPduDemux))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPduDemux.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPduDemux.PosEventHeader.PosSlot]))
+							v := TtiUlPduDemuxData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlPduDemux.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlPduDemux.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlPduDemux.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlPduDemux.PosEventHeader.PosPhysCellId],
+								},
+
+								HarqId:        tokens[valStart+posUlPduDemux.PosHarqId],
+								IsUlCcchData:  tokens[valStart+posUlPduDemux.PosIsUlCcchData],
+								IsTcpTraffic:  tokens[valStart+posUlPduDemux.PosIsTcpTraffic],
+								TempCrnti:     tokens[valStart+posUlPduDemux.PosTempCrnti],
+								LcIdList:      make([]string, 0),
+								RcvdBytesList: make([]string, 0),
+							}
+
+							numLcId := 32  // for LC 1~32 and maxLC-ID = 32
+							for i := 0; i < numLcId; i += 1 {
+								posLcId := valStart+posUlPduDemux.PosTempCrnti+1+2*i
+								if posLcId >= len(tokens) || len(tokens[posLcId]) == 0 {
+									break
+								}
+								v.LcIdList = append(v.LcIdList, tokens[posLcId])
+								v.RcvdBytesList = append(v.RcvdBytesList, tokens[posLcId+1])
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
@@ -1158,6 +1270,20 @@ func (p *TtiParser) Exec() {
 			ulSchedAggFields += strings.Join([]string{"ulLaPhr.hsfn", "ulLaPhr.sfn", "ulLaPhr.slot", "ulLaPhr.isRrmPhrScaledCalculated", "ulLaPhr.phr", "ulLaPhr.rrmNumPuschPrb", "ulLaPhr.rrmPhrScaled"}, ",")
 		}
 
+		if mapEventRecord["ulPucchReceiveRespPsData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulPucch.hsfn", "ulPucch.sfn", "ulPucch.slot", "ulPucch.pucchFormat", "ulPucch.startPrb", "ulPucch.rssi", "ulPucch.sinrLayer0", "ulPucch.sinrLayer1", "ulPucch.dtx", "ulPucch.srBit"}, ",")
+		}
+
+		if mapEventRecord["ulPuschReceiveRespPsData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulPusch.hsfn", "ulPusch.sfn", "ulPusch.slot", "ulPusch.rssi", "ulPusch.sinrLayer0", "ulPusch.sinrLayer1", "ulPusch.dtx", "ulPusch.ulRank", "ulPusch.ulPmiRank1", "ulPusch.ulPmiRank1Sinr",  "ulPusch.ulPmiRank2", "ulPusch.ulPmiRank2SinrLayer0", "ulPusch.ulPmiRank2SinrLayer1", "ulPusch.longTermRank"}, ",")
+		}
+
+		if mapEventRecord["ulPduDemuxData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulPduDemux.hsfn", "ulPduDemux.sfn", "ulPduDemux.slot", "ulPduDemux.harqId", "ulPduDemux.isUlCcchData", "ulPduDemux.isTcpTraffic", "ulPduDemux.tempCrnti", "ulPduDemux.lcId", "ulPduDemux.rcvdBytes"}, ",")
+		}
 
 		ulSchedAggFields += "\n"
 
@@ -1249,6 +1375,45 @@ func (p *TtiParser) Exec() {
 						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
 					}
 				}
+
+				// aggregate ulPucchReceiveRespPsData
+				if mapEventRecord["ulPucchReceiveRespPsData"].Len() > 0 {
+					p2 := p.findUlPucch(mapEventRecord["ulFdSchedData"], mapEventRecord["ulPucchReceiveRespPsData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulPucchReceiveRespPsData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulPucchReceiveRespPsData"].Val(k2).(*TtiUlPucchReceiveRespPsData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.PucchFormat, v2.StartPrb, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.SrBit}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulPuschReceiveRespPsData
+				if mapEventRecord["ulPuschReceiveRespPsData"].Len() > 0 {
+					p2 := p.findUlPusch(mapEventRecord["ulFdSchedData"], mapEventRecord["ulPuschReceiveRespPsData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulPuschReceiveRespPsData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulPuschReceiveRespPsData"].Val(k2).(*TtiUlPuschReceiveRespPsData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.UlRank, v2.UlPmiRank1, v2.UlPmiRank1Sinr, v2.UlPmiRank2, v2.UlPmiRank2SinrLayer0, v2.UlPmiRank2SinrLayer1, v2.LongTermRank}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulPduDemuxData
+				if mapEventRecord["ulPduDemuxData"].Len() > 0 {
+					p2 := p.findUlPduDemux(mapEventRecord["ulFdSchedData"], mapEventRecord["ulPduDemuxData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulPduDemuxData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulPduDemuxData"].Val(k2).(*TtiUlPduDemuxData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.HarqId, v2.IsUlCcchData, v2.IsTcpTraffic, v2.TempCrnti, fmt.Sprintf("[%s]", strings.Join(v2.LcIdList, ";")), fmt.Sprintf("[%s]", strings.Join(v2.RcvdBytesList, ";"))}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
 			} (p1)
 		}
 		wg2.Wait()
@@ -1304,7 +1469,7 @@ func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlBeamData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+			if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
 				p2 = i
 			}
 		} else {
@@ -1346,7 +1511,7 @@ func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.CellDbIndex == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
 			}
 		} else {
@@ -1371,7 +1536,7 @@ func (p *TtiParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlHarqRxData)
 
 		if k2ts == harq {
-			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId && v1.DlHarqProcessIndex == v2.DlHarqProcessIndex {
+			if v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId+v2.DlHarqProcessIndex {
 				p2 = i
 				break
 			}
@@ -1496,7 +1661,7 @@ func (p *TtiParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
-		if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.CellDbIndex+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId+v2.UlHarqProcessIndex {
+		if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId+v2.UlHarqProcessIndex {
 			p2 = i
 			break
 		}
@@ -1600,6 +1765,69 @@ func (p *TtiParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
 
 		if k2 <= k1 {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlPucch(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlPucchReceiveRespPsData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlPusch(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlPuschReceiveRespPsData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlPduDemuxData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqId {
 				p2 = i
 			}
 		} else {
