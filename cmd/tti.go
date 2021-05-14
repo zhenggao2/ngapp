@@ -26,6 +26,7 @@ var (
 	pattern string
 	rat     string
 	scs     string
+	filter string
 	debug   bool
 )
 
@@ -42,7 +43,7 @@ var ttiCmd = &cobra.Command{
 		viper.WriteConfig()
 
 		tti := new(ttitrace.TtiParser)
-		tti.Init(Logger, dir, pattern, rat, scs, debug)
+		tti.Init(Logger, dir, pattern, rat, scs, filter, debug)
 		tti.Exec()
 	},
 }
@@ -72,11 +73,13 @@ func init() {
 	ttiCmd.Flags().StringVarP(&pattern, "pattern", "p", ".csv", "pattern of tti files")
 	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of MAC TTI traces[nr]")
 	ttiCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
+	ttiCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
 	ttiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("tti.dir", ttiCmd.Flags().Lookup("dir"))
 	viper.BindPFlag("tti.pattern", ttiCmd.Flags().Lookup("pattern"))
 	viper.BindPFlag("tti.rat", ttiCmd.Flags().Lookup("rat"))
 	viper.BindPFlag("tti.scs", ttiCmd.Flags().Lookup("scs"))
+	viper.BindPFlag("tti.filter", ttiCmd.Flags().Lookup("filter"))
 	viper.BindPFlag("tti.debug", ttiCmd.Flags().Lookup("debug"))
 }
 
@@ -85,5 +88,6 @@ func loadTtiFlags() {
 	pattern = viper.GetString("tti.pattern")
 	rat = viper.GetString("tti.rat")
 	scs = viper.GetString("tti.scs")
+	filter = viper.GetString("tti.filter")
 	debug = viper.GetBool("tti.debug")
 }
