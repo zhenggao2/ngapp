@@ -631,7 +631,6 @@ type TtiUlBsrRxDataPos struct {
 	PosBsrFormat int
 }
 
-
 func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos{
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 2
@@ -660,7 +659,6 @@ func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos{
 
 	return p
 }
-
 
 type TtiUlFdSchedData struct {
 	TtiEventHeader
@@ -738,5 +736,108 @@ func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 
 	return p
 }
+
+type TtiUlHarqRxData struct {
+	TtiEventHeader
+	SubcellId string
+	Dtx string
+	CrcResult string
+	UlHarqProcessIndex string
+}
+
+type TtiUlHarqRxDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosSubcellId int
+	PosDtx int
+	PosCrcResult int
+	PosUlHarqProcessIndex int
+}
+
+func FindTtiUlHarqRxDataPos(tokens []string) TtiUlHarqRxDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 4
+	p := TtiUlHarqRxDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosSubcellId: -1,
+		PosDtx: -1,
+		PosCrcResult: -1,
+		PosUlHarqProcessIndex: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
+			i += 1
+		} else if strings.ToLower(item) == "dtx" && p.PosDtx < 0 {
+			p.PosDtx = pos
+			i += 1
+		} else if strings.ToLower(item) == "crcresult" && p.PosCrcResult < 0 {
+			p.PosCrcResult = pos
+			i += 1
+		} else if strings.ToLower(item) == "ulharqprocessindex" && p.PosUlHarqProcessIndex < 0 {
+			p.PosUlHarqProcessIndex = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlIntraDlToUlDtxSyncDlData struct {
+	TtiEventHeader
+	DrxEnabled string
+	DlDrxOnDurationTimerOn string
+	DlDrxInactivityTimerOn string
+}
+
+type TtiUlIntraDlToUlDrxSyncDlDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosDrxEnabled int
+	PosDlDrxOnDurationTimerOn int
+	PosDlDrxInactivityTimerOn int
+}
+
+func FindTtiUlIntraDlToUlDrxSyncDlDataPos(tokens []string) TtiUlIntraDlToUlDrxSyncDlDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 3
+	p := TtiUlIntraDlToUlDrxSyncDlDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosDrxEnabled: -1,
+		PosDlDrxOnDurationTimerOn: -1,
+		PosDlDrxInactivityTimerOn: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "drxenabled" && p.PosDrxEnabled< 0 {
+			p.PosDrxEnabled = pos
+			i += 1
+		} else if strings.ToLower(item) == "dldrxondurationtimeron" && p.PosDlDrxOnDurationTimerOn < 0 {
+			p.PosDlDrxOnDurationTimerOn = pos
+			i += 1
+		} else if strings.ToLower(item) == "dldrxinactivitytimeron" && p.PosDlDrxInactivityTimerOn < 0 {
+			p.PosDlDrxInactivityTimerOn = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
 
 
