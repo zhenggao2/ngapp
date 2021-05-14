@@ -1283,7 +1283,7 @@ type TtiUlPreSchedDataPos struct {
 
 func FindTtiUlPreSchedDataPos(tokens []string) TtiUlPreSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
-	n := 3
+	n := 2
 	p := TtiUlPreSchedDataPos{
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
@@ -1342,12 +1342,3 @@ func FindTtiUlTdSchedSubcellDataPos(tokens []string) TtiUlTdSchedSubcellDataPos 
 	p.Ready = true
 	return p
 }
-
-
-
-
-
-
-
-
-

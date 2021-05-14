@@ -1976,7 +1976,6 @@ func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 func (p *TtiParser) findUlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
-
 	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
 	dci := p.makeTimeStamp(hsfn, sfn, slot)
 
@@ -2016,20 +2015,21 @@ func (p *TtiParser) findUlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
 		}
 	}
 
-
 	return p3
 }
 
 func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
+	dci := p.makeTimeStamp(hsfn, sfn, slot)
 
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
 
-		if k2 <= k1 {
+		if k2 <= dci {
 			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
