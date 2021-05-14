@@ -839,5 +839,195 @@ func FindTtiUlIntraDlToUlDrxSyncDlDataPos(tokens []string) TtiUlIntraDlToUlDrxSy
 	return p
 }
 
+type TtiUlLaDeltaSinr struct {
+	TtiEventHeader
+	CellDbIndex string
+	IsDeltaSinrCalculated string
+	RrmPauseUeInUlScheduling string
+	CrcFb string
+	RrmDeltaSinr string
+}
+
+type TtiUlLaDeltaSinrPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosCellDbIndex int
+	PosIsDeltaSinrCalculated int
+	PosRrmPauseUeInUlScheduling int
+	PosCrcFb int
+	PosRrmDeltaSinr int
+}
+
+
+func FindTtiUlLaDeltaSinrPos(tokens []string) TtiUlLaDeltaSinrPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 5
+	p := TtiUlLaDeltaSinrPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosIsDeltaSinrCalculated: -1,
+		PosRrmPauseUeInUlScheduling: -1,
+		PosCrcFb: -1,
+		PosRrmDeltaSinr: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "isdeltasinrcalculated" && p.PosIsDeltaSinrCalculated < 0 {
+			p.PosIsDeltaSinrCalculated = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmpauseueinulscheduling" && p.PosRrmPauseUeInUlScheduling < 0 {
+			p.PosRrmPauseUeInUlScheduling = pos
+			i += 1
+		} else if strings.ToLower(item) == "crcfb" && p.PosCrcFb < 0 {
+			p.PosCrcFb = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmdeltasinr" && p.PosRrmDeltaSinr < 0 {
+			p.PosRrmDeltaSinr = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlLaAverageSinr struct {
+	TtiEventHeader
+	CellDbIndex string
+	RrmInstSinrRank string
+	RrmNumOfSinrMeasurements string
+	RrmInstSinr string
+	RrmAvgSinrUl string
+	RrmSinrCorrection string
+}
+
+type TtiUlLaAverageSinrPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosCellDbIndex int
+	PosRrmInstSinrRank int
+	PosRrmNumOfSinrMeasurements int
+	PosRrmInstSinr int
+	PosRrmAvgSinrUl int
+	PosRrmSinrCorrection int
+}
+
+func FindTtiUlLaAverageSinrPos(tokens []string) TtiUlLaAverageSinrPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 6
+	p := TtiUlLaAverageSinrPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosRrmInstSinrRank: -1,
+		PosRrmNumOfSinrMeasurements: -1,
+		PosRrmInstSinr: -1,
+		PosRrmAvgSinrUl: -1,
+		PosRrmSinrCorrection: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrminstsinrrank" && p.PosRrmInstSinrRank < 0 {
+			p.PosRrmInstSinrRank = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmnumofsinrmeasurements" && p.PosRrmNumOfSinrMeasurements < 0 {
+			p.PosRrmNumOfSinrMeasurements = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrminstsinr" && p.PosRrmInstSinr < 0 {
+			p.PosRrmInstSinr = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmavgsinrul" && p.PosRrmAvgSinrUl < 0 {
+			p.PosRrmAvgSinrUl = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmsinrcorrection" && p.PosRrmSinrCorrection < 0 {
+			p.PosRrmSinrCorrection = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlLaPhr struct {
+	TtiEventHeader
+	CellDbIndex string
+	IsRrmPhrScaledCalculated string
+	Phr string
+	RrmNumPuschPrb string
+	RrmPhrScaled string
+}
+
+type TtiUlLaPhrPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosCellDbIndex int
+	PosIsRrmPhrScaledCalculated int
+	PosPhr int
+	PosRrmNumPuschPrb int
+	PosRrmPhrScaled int
+}
+
+func FindTtiUlLaPhrPos(tokens []string) TtiUlLaPhrPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 5
+	p := TtiUlLaPhrPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosIsRrmPhrScaledCalculated: -1,
+		PosPhr: -1,
+		PosRrmNumPuschPrb: -1,
+		PosRrmPhrScaled: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "celldbindex" && p.PosCellDbIndex < 0 {
+			p.PosCellDbIndex = pos
+			i += 1
+		} else if strings.ToLower(item) == "isrrmphrscaledcalculated" && p.PosIsRrmPhrScaledCalculated < 0 {
+			p.PosIsRrmPhrScaledCalculated = pos
+			i += 1
+		} else if strings.ToLower(item) == "phr" && p.PosPhr < 0 {
+			p.PosPhr = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmnumpuschprb" && p.PosRrmNumPuschPrb < 0 {
+			p.PosRrmNumPuschPrb = pos
+			i += 1
+		} else if strings.ToLower(item) == "rrmphrscaled" && p.PosRrmPhrScaled < 0 {
+			p.PosRrmPhrScaled = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+
+
+
 
 

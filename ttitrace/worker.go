@@ -22,6 +22,7 @@ type TtiParser struct {
 	ttiPattern string
 	ttiRat string
 	ttiScs string
+	ttiFilter string
 	debug bool
 
 	slotsPerRf int
@@ -33,12 +34,13 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs string, debug bool) {
+func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, debug bool) {
 	p.log = log
 	p.ttiDir = dir
-	p.ttiPattern = pattern
-	p.ttiRat = rat
-	p.ttiScs = scs
+	p.ttiPattern = strings.ToLower(pattern)
+	p.ttiRat = strings.ToLower(rat)
+	p.ttiScs = strings.ToLower(scs)
+	p.ttiFilter = strings.ToLower(filter)
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing tti parser...(working dir: %v)", p.ttiDir))
@@ -87,6 +89,9 @@ func (p *TtiParser) Exec() {
 	var posUlFdSched TtiUlFdSchedDataPos
 	var posUlHarq TtiUlHarqRxDataPos
 	var posDrx TtiUlIntraDlToUlDrxSyncDlDataPos
+	var posUlLaDeltaSinr TtiUlLaDeltaSinrPos
+	var posUlLaAvgSinr TtiUlLaAverageSinrPos
+	var posUlLaPhr TtiUlLaPhrPos
 	var mapEventRecord = map[string]*utils.OrderedMap{
 		"dlBeamData":           utils.NewOrderedMap(),
 		"dlPreSchedData":       utils.NewOrderedMap(),
@@ -101,6 +106,9 @@ func (p *TtiParser) Exec() {
 		"ulFdSchedData":       utils.NewOrderedMap(),
 		"ulHarqRxData":       utils.NewOrderedMap(),
 		"ulIntraDlToUlDrxSyncDlData":       utils.NewOrderedMap(),
+		"ulLaDeltaSinr":       utils.NewOrderedMap(),
+		"ulLaAverageSinr":       utils.NewOrderedMap(),
+		"ulLaPhr":       utils.NewOrderedMap(),
 	}
 	var dlSchedAggFields string
 	var ulSchedAggFields string
@@ -250,7 +258,7 @@ func (p *TtiParser) Exec() {
 						fout2.Close()
 
 						// Step-3: aggregate events
-						if eventName == "dlBeamData" {
+						if eventName == "dlBeamData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlBeamData
 							if posDlBeam.Ready == false {
 								posDlBeam = FindTtiDlBeamDataPos(tokens)
@@ -278,7 +286,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlPreSchedData" {
+						} else if eventName == "dlPreSchedData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlPreSchedData
 							if posDlPreSched.Ready == false {
 								posDlPreSched = FindTtiDlPreSchedDataPos(tokens)
@@ -304,7 +312,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlTdSchedSubcellData" {
+						} else if eventName == "dlTdSchedSubcellData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlTdSchedSubcellData
 							if posDlTdSched.Ready == false {
 								posDlTdSched = FindTtiDlTdSchedSubcellDataPos(tokens)
@@ -340,7 +348,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlFdSchedData" {
+						} else if eventName == "dlFdSchedData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlFdSchedData
 							if posDlFdSched.Ready == false {
 								posDlFdSched = FindTtiDlFdSchedDataPos(tokens)
@@ -436,7 +444,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlHarqRxData" || eventName == "dlHarqRxDataArray" {
+						} else if (eventName == "dlHarqRxData" || eventName == "dlHarqRxDataArray") && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlHarqRxData/dlHarqRxDataArray
 							if posDlHarq.Ready == false {
 								posDlHarq = FindTtiDlHarqRxDataPos(tokens)
@@ -499,7 +507,7 @@ func (p *TtiParser) Exec() {
 									mapEventRecord["dlHarqRxData"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
 								}
 							}
-						} else if eventName == "dlLaAverageCqi" {
+						} else if eventName == "dlLaAverageCqi" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlLaAverageCqi
 							if posDlLaAvgCqi.Ready == false {
 								posDlLaAvgCqi = FindTtiDlLaAverageCqiPos(tokens)
@@ -528,7 +536,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "csiSrReportData" {
+						} else if eventName == "csiSrReportData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - csiSrReportData
 							if posCsiSrReport.Ready == false {
 								posCsiSrReport = FindTtiCsiSrReportDataPos(tokens)
@@ -561,7 +569,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlFlowControlData" {
+						} else if eventName == "dlFlowControlData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlFlowControlData
 							if posDlFlowControl.Ready == false {
 								posDlFlowControl = FindTtiDlFlowControlDataPos(tokens)
@@ -589,7 +597,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "dlLaDeltaCqiArray" {
+						} else if eventName == "dlLaDeltaCqiArray" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlLaDeltaCqiArray
 							if posDlLaDeltaCqi.Ready == false {
 								posDlLaDeltaCqi = FindTtiDlLaDeltaCqiPos(tokens)
@@ -656,7 +664,7 @@ func (p *TtiParser) Exec() {
 									mapEventRecord["dlLaDeltaCqi"].Add(strconv.Itoa(k) + "_" + v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti, &v)
 								}
 							}
-						} else if eventName == "ulBsrRxData" {
+						} else if eventName == "ulBsrRxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulBsrRxData
 							if posUlBsr.Ready == false {
 								posUlBsr = FindTtiUlBsrRxDataPos(tokens)
@@ -688,7 +696,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "ulFdSchedData" {
+						} else if eventName == "ulFdSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulFdSchedData
 							if posUlFdSched.Ready == false {
 								posUlFdSched = FindTtiUlFdSchedDataPos(tokens)
@@ -750,7 +758,7 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
-						} else if eventName == "ulHarqRxData" {
+						} else if eventName == "ulHarqRxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulHarqRxData
 							if posUlHarq.Ready == false {
 								posUlHarq = FindTtiUlHarqRxDataPos(tokens)
@@ -803,6 +811,91 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulLaDeltaSinr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulLaDeltaSinr
+							if posUlLaDeltaSinr.Ready == false {
+								posUlLaDeltaSinr = FindTtiUlLaDeltaSinrPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlLaDeltaSinr=%v", posUlLaDeltaSinr))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSlot]))
+							v := TtiUlLaDeltaSinr{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosPhysCellId],
+								},
+
+								CellDbIndex: tokens[valStart+posUlLaDeltaSinr.PosCellDbIndex],
+								IsDeltaSinrCalculated: tokens[valStart+posUlLaDeltaSinr.PosIsDeltaSinrCalculated],
+								RrmPauseUeInUlScheduling: tokens[valStart+posUlLaDeltaSinr.PosRrmPauseUeInUlScheduling],
+								CrcFb: tokens[valStart+posUlLaDeltaSinr.PosCrcFb],
+								RrmDeltaSinr: tokens[valStart+posUlLaDeltaSinr.PosRrmDeltaSinr],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulLaAverageSinr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulLaAverageSinr
+							if posUlLaAvgSinr.Ready == false {
+								posUlLaAvgSinr = FindTtiUlLaAverageSinrPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlLaAvgSinr=%v", posUlLaAvgSinr))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSlot]))
+							v := TtiUlLaAverageSinr{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosPhysCellId],
+								},
+
+								CellDbIndex: tokens[valStart+posUlLaAvgSinr.PosCellDbIndex],
+								RrmInstSinrRank: tokens[valStart+posUlLaAvgSinr.PosRrmInstSinrRank],
+								RrmNumOfSinrMeasurements: tokens[valStart+posUlLaAvgSinr.PosRrmNumOfSinrMeasurements],
+								RrmInstSinr: tokens[valStart+posUlLaAvgSinr.PosRrmInstSinr],
+								RrmAvgSinrUl: tokens[valStart+posUlLaAvgSinr.PosRrmAvgSinrUl],
+								RrmSinrCorrection: tokens[valStart+posUlLaAvgSinr.PosRrmSinrCorrection],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulLaPhr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulLaPhr
+							if posUlLaPhr.Ready == false {
+								posUlLaPhr = FindTtiUlLaPhrPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlLaPhr=%v", posUlLaPhr))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaPhr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaPhr.PosEventHeader.PosSlot]))
+							v := TtiUlLaPhr{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlLaPhr.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlLaPhr.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlLaPhr.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlLaPhr.PosEventHeader.PosPhysCellId],
+								},
+
+								CellDbIndex: tokens[valStart+posUlLaPhr.PosCellDbIndex],
+								IsRrmPhrScaledCalculated: tokens[valStart+posUlLaPhr.PosIsRrmPhrScaledCalculated],
+								Phr: tokens[valStart+posUlLaPhr.PosPhr],
+								RrmNumPuschPrb: tokens[valStart+posUlLaPhr.PosRrmNumPuschPrb],
+								RrmPhrScaled: tokens[valStart+posUlLaPhr.PosRrmPhrScaled],
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
 						}
 					} else {
 						p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid event record detected: %s", line))
@@ -824,314 +917,364 @@ func (p *TtiParser) Exec() {
 	}
 	 */
 
-	// update dlSchedAggFields
-	// TODO - dlSchedAggFields
-	p.writeLog(zapcore.InfoLevel, "updating fields for dlSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
-	if mapEventRecord["dlBeamData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlBeam.hsfn", "dlBeam.sfn", "dlBeam.slot", "dlBeam.currentBestBeamId", "dlBeam.current2ndBeamId", "dlBeam.selectedBestBeamId", "dlBeam.selected2ndBeamid"}, ",")
-	}
-
-	if mapEventRecord["dlPreSchedData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlPreSched.hsfn", "dlPreSched.sfn", "dlPreSched.slot", "dlPreSched.csListEvent", "dlPreSched.highestClassPriority", "dlPreSched.prachPreambleIndex"}, ",")
-	}
-
-	if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlTdSched.hsfn", "dlTdSched.sfn", "dlTdSched.slot", "dlTdSched.cs2List"}, ",")
-	}
-
-	if mapEventRecord["dlHarqRxData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlHarq.hsfn", "dlHarq.sfn", "dlHarq.slot", "dlHarq.AckNack", "dlHarq.dlHarqProcessIndex", "dlHarq.pucchFormat"}, ",")
-	}
-
-	if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
-	}
-
-	if mapEventRecord["csiSrReportData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"csiSrReport.hsfn", "csiSrReport.sfn", "csiSrReport.slot", "csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
-	}
-
-	if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlLaDeltaCqi.hsfn", "dlLaDeltaCqi.sfn", "dlLaDeltaCqi.slot", "dlLaDeltaCqi.isDeltaCqiCalculated", "dlLaDeltaCqi.rrmPauseUeInDlScheduling", "dlLaDeltaCqi.harqFb", "dlLaDeltaCqi.rrmDeltaCqi", "dlLaDeltaCqi.rrmRemainingBucketLevel"}, ",")
-	}
-
-	if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.hsfn", "dlLaAvgCqi.sfn", "dlLaAvgCqi.slot", "dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
-	}
-
-	if mapEventRecord["dlFlowControlData"].Len() > 0 {
-		dlSchedAggFields += ","
-		dlSchedAggFields += strings.Join([]string{"dlFlowControl.hsfn", "dlFlowControl.sfn", "dlFlowControl.slot", "dlFlowControl.lchId", "dlFlowControl.reportType", "dlFlowControl.scheduledBytes", "dlFlowControl.ethAvg", "dlFlowControl.ethScaled"}, ",")
-	}
-
-	dlSchedAggFields += "\n"
-
-
-	// perform event aggregation
-	// TODO - event aggregation with dlFdSchedData
-	p.writeLog(zapcore.InfoLevel, "performing event aggregation for dlSchedAgg...[Time-consuming ops which may cause 100% CPU utilization!]")
-	wg := &sync.WaitGroup{}
-	for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
-		wg.Add(1)
-		go func(p1 int) {
-			defer wg.Done()
-
-			k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
-			v1 := mapEventRecord["dlFdSchedData"].Val(k1).(*TtiDlFdSchedData)
-
-			// aggregate dlBeamData
-			if mapEventRecord["dlBeamData"].Len() > 0 {
-				p2 := p.findDlBeam(mapEventRecord["dlFdSchedData"], mapEventRecord["dlBeamData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlBeamData"].Keys()[p2].(int)
-					v2 := mapEventRecord["dlBeamData"].Val(k2).(*TtiDlBeamData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlPreSchedData
-			if mapEventRecord["dlPreSchedData"].Len() > 0 {
-				p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlPreSchedData"].Keys()[p2].(int)
-					v2 := mapEventRecord["dlPreSchedData"].Val(k2).(*TtiDlPreSchedData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority, v2.PrachPreambleIndex}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlTdSchedSubcellData
-			if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
-				p2 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p2].(int)
-					v2 := mapEventRecord["dlTdSchedSubcellData"].Val(k2).(*TtiDlTdSchedSubcellData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlHarqRxData
-			if mapEventRecord["dlHarqRxData"].Len() > 0 {
-				p2 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlHarqRxData"].Keys()[p2].(string)
-					v2 := mapEventRecord["dlHarqRxData"].Val(k2).(*TtiDlHarqRxData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.AckNack, v2.DlHarqProcessIndex, v2.PucchFormat}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate ulIntraDlToUlDrxSyncDlData
-			if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
-				p2 := p.findDlDrx(mapEventRecord["dlFdSchedData"], mapEventRecord["ulIntraDlToUlDrxSyncDlData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Keys()[p2].(int)
-					v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate csiSrReportData
-			if mapEventRecord["csiSrReportData"].Len() > 0 {
-				p2 := p.findCsiSrReport(mapEventRecord["dlFdSchedData"], mapEventRecord["csiSrReportData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["csiSrReportData"].Keys()[p2].(int)
-					v2 := mapEventRecord["csiSrReportData"].Val(k2).(*TtiCsiSrReportData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlLaDeltaCqi
-			if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
-				p2 := p.findDlLaDeltaCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaDeltaCqi"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlLaDeltaCqi"].Keys()[p2].(string)
-					v2 := mapEventRecord["dlLaDeltaCqi"].Val(k2).(*TtiDlLaDeltaCqi)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaCqiCalculated, v2.RrmPauseUeInDlScheduling, v2.HarqFb, v2.RrmDeltaCqi, v2.RrmRemainingBucketLevel}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlLaAverageCqi
-			if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
-				p2 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlLaAverageCqi"].Keys()[p2].(int)
-					v2 := mapEventRecord["dlLaAverageCqi"].Val(k2).(*TtiDlLaAverageCqi)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-
-			// aggregate dlFlowControlData
-			if mapEventRecord["dlFlowControlData"].Len() > 0 {
-				p2 := p.findDlFlowControl(mapEventRecord["dlFdSchedData"], mapEventRecord["dlFlowControlData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["dlFlowControlData"].Keys()[p2].(int)
-					v2 := mapEventRecord["dlFlowControlData"].Val(k2).(*TtiDlFlowControlData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.LchId, v2.ReportType, v2.ScheduledBytes, v2.EthAvg, v2.EthScaled}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
-				}
-			}
-		} (p1)
-	}
-	wg.Wait()
-
-	// output aggregated event: dlSchedAgg
-	p.writeLog(zapcore.InfoLevel, "outputting aggregated dlSchedAgg...")
-	headerWritten := make(map[string]bool)
-	for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
-		data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
-
-		outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
-		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-		//defer fout3.Close()
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
-			break
+	if p.ttiFilter == "dl" || p.ttiFilter == "both" {
+		// update dlSchedAggFields
+		// TODO - dlSchedAggFields
+		p.writeLog(zapcore.InfoLevel, "updating fields for dlSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
+		if mapEventRecord["dlBeamData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlBeam.hsfn", "dlBeam.sfn", "dlBeam.slot", "dlBeam.currentBestBeamId", "dlBeam.current2ndBeamId", "dlBeam.selectedBestBeamId", "dlBeam.selected2ndBeamid"}, ",")
 		}
 
-		if _, exist := headerWritten[outFn]; !exist {
-			fout.WriteString(dlSchedAggFields)
-			headerWritten[outFn] = true
+		if mapEventRecord["dlPreSchedData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlPreSched.hsfn", "dlPreSched.sfn", "dlPreSched.slot", "dlPreSched.csListEvent", "dlPreSched.highestClassPriority", "dlPreSched.prachPreambleIndex"}, ",")
 		}
 
-		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
-		fout.Close()
-	}
+		if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlTdSched.hsfn", "dlTdSched.sfn", "dlTdSched.slot", "dlTdSched.cs2List"}, ",")
+		}
 
-	// update ulSchedAggFields
-	// TODO - ulSchedAggFields
-	p.writeLog(zapcore.InfoLevel, "updating fields for ulSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
-	if mapEventRecord["ulBsrRxData"].Len() > 0 {
-		ulSchedAggFields += ","
-		ulSchedAggFields += strings.Join([]string{"ulBsr.hsfn", "ulBsr.sfn", "ulBsr.slot", "ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
-	}
+		if mapEventRecord["dlHarqRxData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlHarq.hsfn", "dlHarq.sfn", "dlHarq.slot", "dlHarq.AckNack", "dlHarq.dlHarqProcessIndex", "dlHarq.pucchFormat"}, ",")
+		}
 
-	if mapEventRecord["ulHarqRxData"].Len() > 0 {
-		ulSchedAggFields += ","
-		ulSchedAggFields += strings.Join([]string{"ulHarq.hsfn", "ulHarq.sfn", "ulHarq.slot", "ulHarq.dtx", "ulHarq.crcResult", "ulHarq.ulHarqProcessIndex"}, ",")
-	}
+		if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
+		}
 
-	if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
-		ulSchedAggFields += ","
-		ulSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
-	}
+		if mapEventRecord["csiSrReportData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"csiSrReport.hsfn", "csiSrReport.sfn", "csiSrReport.slot", "csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
+		}
 
-	ulSchedAggFields += "\n"
+		if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlLaDeltaCqi.hsfn", "dlLaDeltaCqi.sfn", "dlLaDeltaCqi.slot", "dlLaDeltaCqi.isDeltaCqiCalculated", "dlLaDeltaCqi.rrmPauseUeInDlScheduling", "dlLaDeltaCqi.harqFb", "dlLaDeltaCqi.rrmDeltaCqi", "dlLaDeltaCqi.rrmRemainingBucketLevel"}, ",")
+		}
 
-	// TODO - event aggregation with ulFdSchedData
-	p.writeLog(zapcore.InfoLevel, "performing event aggregation for ulSchedAgg...[Time-consuming ops which may cause 100% CPU utilization!]")
-	wg2 := &sync.WaitGroup{}
-	for p1 := 0; p1 < mapEventRecord["ulFdSchedData"].Len(); p1 += 1 {
-		wg2.Add(1)
-		go func(p1 int) {
-			defer wg2.Done()
+		if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.hsfn", "dlLaAvgCqi.sfn", "dlLaAvgCqi.slot", "dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
+		}
 
-			k1 := mapEventRecord["ulFdSchedData"].Keys()[p1].(int)
-			v1 := mapEventRecord["ulFdSchedData"].Val(k1).(*TtiUlFdSchedData)
+		if mapEventRecord["dlFlowControlData"].Len() > 0 {
+			dlSchedAggFields += ","
+			dlSchedAggFields += strings.Join([]string{"dlFlowControl.hsfn", "dlFlowControl.sfn", "dlFlowControl.slot", "dlFlowControl.lchId", "dlFlowControl.reportType", "dlFlowControl.scheduledBytes", "dlFlowControl.ethAvg", "dlFlowControl.ethScaled"}, ",")
+		}
 
-			// aggregate ulBsrRxData
-			if mapEventRecord["ulBsrRxData"].Len() > 0 {
-				p2 := p.findUlBsr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulBsrRxData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["ulBsrRxData"].Keys()[p2].(int)
-					v2 := mapEventRecord["ulBsrRxData"].Val(k2).(*TtiUlBsrRxData)
+		dlSchedAggFields += "\n"
 
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
+		// perform event aggregation
+		// TODO - event aggregation with dlFdSchedData
+		p.writeLog(zapcore.InfoLevel, "performing event aggregation for dlSchedAgg...[Time-consuming ops which may cause 100% CPU utilization!]")
+		wg := &sync.WaitGroup{}
+		for p1 := 0; p1 < mapEventRecord["dlFdSchedData"].Len(); p1 += 1 {
+			wg.Add(1)
+			go func(p1 int) {
+				defer wg.Done()
+
+				k1 := mapEventRecord["dlFdSchedData"].Keys()[p1].(int)
+				v1 := mapEventRecord["dlFdSchedData"].Val(k1).(*TtiDlFdSchedData)
+
+				// aggregate dlBeamData
+				if mapEventRecord["dlBeamData"].Len() > 0 {
+					p2 := p.findDlBeam(mapEventRecord["dlFdSchedData"], mapEventRecord["dlBeamData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlBeamData"].Keys()[p2].(int)
+						v2 := mapEventRecord["dlBeamData"].Val(k2).(*TtiDlBeamData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
+					}
 				}
+
+				// aggregate dlPreSchedData
+				if mapEventRecord["dlPreSchedData"].Len() > 0 {
+					p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlPreSchedData"].Keys()[p2].(int)
+						v2 := mapEventRecord["dlPreSchedData"].Val(k2).(*TtiDlPreSchedData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority, v2.PrachPreambleIndex}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate dlTdSchedSubcellData
+				if mapEventRecord["dlTdSchedSubcellData"].Len() > 0 {
+					p2 := p.findDlTdSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlTdSchedSubcellData"].Keys()[p2].(int)
+						v2 := mapEventRecord["dlTdSchedSubcellData"].Val(k2).(*TtiDlTdSchedSubcellData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate dlHarqRxData
+				if mapEventRecord["dlHarqRxData"].Len() > 0 {
+					p2 := p.findDlHarq(mapEventRecord["dlFdSchedData"], mapEventRecord["dlHarqRxData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlHarqRxData"].Keys()[p2].(string)
+						v2 := mapEventRecord["dlHarqRxData"].Val(k2).(*TtiDlHarqRxData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.AckNack, v2.DlHarqProcessIndex, v2.PucchFormat}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulIntraDlToUlDrxSyncDlData
+				if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
+					p2 := p.findDlDrx(mapEventRecord["dlFdSchedData"], mapEventRecord["ulIntraDlToUlDrxSyncDlData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate csiSrReportData
+				if mapEventRecord["csiSrReportData"].Len() > 0 {
+					p2 := p.findCsiSrReport(mapEventRecord["dlFdSchedData"], mapEventRecord["csiSrReportData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["csiSrReportData"].Keys()[p2].(int)
+						v2 := mapEventRecord["csiSrReportData"].Val(k2).(*TtiCsiSrReportData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate dlLaDeltaCqi
+				if mapEventRecord["dlLaDeltaCqi"].Len() > 0 {
+					p2 := p.findDlLaDeltaCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaDeltaCqi"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlLaDeltaCqi"].Keys()[p2].(string)
+						v2 := mapEventRecord["dlLaDeltaCqi"].Val(k2).(*TtiDlLaDeltaCqi)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaCqiCalculated, v2.RrmPauseUeInDlScheduling, v2.HarqFb, v2.RrmDeltaCqi, v2.RrmRemainingBucketLevel}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate dlLaAverageCqi
+				if mapEventRecord["dlLaAverageCqi"].Len() > 0 {
+					p2 := p.findDlLaAvgCqi(mapEventRecord["dlFdSchedData"], mapEventRecord["dlLaAverageCqi"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlLaAverageCqi"].Keys()[p2].(int)
+						v2 := mapEventRecord["dlLaAverageCqi"].Val(k2).(*TtiDlLaAverageCqi)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate dlFlowControlData
+				if mapEventRecord["dlFlowControlData"].Len() > 0 {
+					p2 := p.findDlFlowControl(mapEventRecord["dlFdSchedData"], mapEventRecord["dlFlowControlData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["dlFlowControlData"].Keys()[p2].(int)
+						v2 := mapEventRecord["dlFlowControlData"].Val(k2).(*TtiDlFlowControlData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.LchId, v2.ReportType, v2.ScheduledBytes, v2.EthAvg, v2.EthScaled}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+			} (p1)
+		}
+		wg.Wait()
+
+		// output aggregated event: dlSchedAgg
+		p.writeLog(zapcore.InfoLevel, "outputting aggregated dlSchedAgg...")
+		headerWritten := make(map[string]bool)
+		for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
+			data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
+
+			outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
+			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+			//defer fout3.Close()
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
+				break
 			}
 
-			// aggregate ulHarqRxData
-			if mapEventRecord["ulHarqRxData"].Len() > 0 {
-				p2 := p.findUlHarq(mapEventRecord["ulFdSchedData"], mapEventRecord["ulHarqRxData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["ulHarqRxData"].Keys()[p2].(int)
-					v2 := mapEventRecord["ulHarqRxData"].Val(k2).(*TtiUlHarqRxData)
-
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Dtx, v2.CrcResult, v2.UlHarqProcessIndex}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
-				}
+			if _, exist := headerWritten[outFn]; !exist {
+				fout.WriteString(dlSchedAggFields)
+				headerWritten[outFn] = true
 			}
 
-			// aggregate ulIntraDlToUlDrxSyncDlData
-			if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
-				p2 := p.findUlDrx(mapEventRecord["ulFdSchedData"], mapEventRecord["ulIntraDlToUlDrxSyncDlData"], p1)
-				if p2 >= 0 {
-					k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Keys()[p2].(int)
-					v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
+			fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+			fout.Close()
+		}
+	}
 
-					v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
-				} else {
-					v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+	if p.ttiFilter == "ul" || p.ttiFilter == "both" {
+		// update ulSchedAggFields
+		// TODO - ulSchedAggFields
+		p.writeLog(zapcore.InfoLevel, "updating fields for ulSchedAgg...") //core.QCoreApplication_Instance().ProcessEvents(0)
+		if mapEventRecord["ulBsrRxData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulBsr.hsfn", "ulBsr.sfn", "ulBsr.slot", "ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
+		}
+
+		if mapEventRecord["ulHarqRxData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulHarq.hsfn", "ulHarq.sfn", "ulHarq.slot", "ulHarq.dtx", "ulHarq.crcResult", "ulHarq.ulHarqProcessIndex"}, ",")
+		}
+
+		if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
+		}
+
+		if mapEventRecord["ulLaDeltaSinr"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulLaDeltaSinr.hsfn", "ulLaDeltaSinr.sfn", "ulLaDeltaSinr.slot", "ulLaDeltaSinr.isDeltaSinrCalculated", "ulLaDeltaSinr.rrmPauseUeInUlScheduling", "ulLaDeltaSinr.crcFb", "ulLaDeltaSinr.rrmDeltaSinr"}, ",")
+		}
+
+		if mapEventRecord["ulLaAverageSinr"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulLaAvgSinr.hsfn", "ulLaAvgSinr.sfn", "ulLaAvgSinr.slot", "ulLaAvgSinr.rrmInstSinrRank", "ulLaAvgSinr.rrmNumOfSinrMeasurements", "ulLaAvgSinr.rrmInstSinr", "ulLaAvgSinr.rrmAvgSinrUl", "ulLaAvgSinr.rrmSinrCorrection"}, ",")
+		}
+
+		if mapEventRecord["ulLaPhr"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulLaPhr.hsfn", "ulLaPhr.sfn", "ulLaPhr.slot", "ulLaPhr.isRrmPhrScaledCalculated", "ulLaPhr.phr", "ulLaPhr.rrmNumPuschPrb", "ulLaPhr.rrmPhrScaled"}, ",")
+		}
+
+
+		ulSchedAggFields += "\n"
+
+		// TODO - event aggregation with ulFdSchedData
+		p.writeLog(zapcore.InfoLevel, "performing event aggregation for ulSchedAgg...[Time-consuming ops which may cause 100% CPU utilization!]")
+		wg2 := &sync.WaitGroup{}
+		for p1 := 0; p1 < mapEventRecord["ulFdSchedData"].Len(); p1 += 1 {
+			wg2.Add(1)
+			go func(p1 int) {
+				defer wg2.Done()
+
+				k1 := mapEventRecord["ulFdSchedData"].Keys()[p1].(int)
+				v1 := mapEventRecord["ulFdSchedData"].Val(k1).(*TtiUlFdSchedData)
+
+				// aggregate ulBsrRxData
+				if mapEventRecord["ulBsrRxData"].Len() > 0 {
+					p2 := p.findUlBsr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulBsrRxData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulBsrRxData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulBsrRxData"].Val(k2).(*TtiUlBsrRxData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
+					}
 				}
+
+				// aggregate ulHarqRxData
+				if mapEventRecord["ulHarqRxData"].Len() > 0 {
+					p2 := p.findUlHarq(mapEventRecord["ulFdSchedData"], mapEventRecord["ulHarqRxData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulHarqRxData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulHarqRxData"].Val(k2).(*TtiUlHarqRxData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Dtx, v2.CrcResult, v2.UlHarqProcessIndex}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulIntraDlToUlDrxSyncDlData
+				if mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Len() > 0 {
+					p2 := p.findUlDrx(mapEventRecord["ulFdSchedData"], mapEventRecord["ulIntraDlToUlDrxSyncDlData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulLaDeltaSinr
+				if mapEventRecord["ulLaDeltaSinr"].Len() > 0 {
+					p2 := p.findUlLaDeltaSinr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulLaDeltaSinr"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulLaDeltaSinr"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulLaDeltaSinr"].Val(k2).(*TtiUlLaDeltaSinr)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaSinrCalculated, v2.RrmPauseUeInUlScheduling, v2.CrcFb, v2.RrmDeltaSinr}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulLaAverageSinr
+				if mapEventRecord["ulLaAverageSinr"].Len() > 0 {
+					p2 := p.findUlLaAvgSinr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulLaAverageSinr"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulLaAverageSinr"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulLaAverageSinr"].Val(k2).(*TtiUlLaAverageSinr)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstSinrRank, v2.RrmNumOfSinrMeasurements, v2.RrmInstSinr, v2.RrmAvgSinrUl, v2.RrmSinrCorrection}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulLaPhr
+				if mapEventRecord["ulLaPhr"].Len() > 0 {
+					p2 := p.findUlLaPhr(mapEventRecord["ulFdSchedData"], mapEventRecord["ulLaPhr"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulLaPhr"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulLaPhr"].Val(k2).(*TtiUlLaPhr)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsRrmPhrScaledCalculated, v2.Phr, v2.RrmNumPuschPrb, v2.RrmPhrScaled}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
+					}
+				}
+			} (p1)
+		}
+		wg2.Wait()
+
+		// output aggregated event: ulSchedAgg
+		p.writeLog(zapcore.InfoLevel, "outputting aggregated ulSchedAgg...")
+		headerWritten2 := make(map[string]bool)
+		for _, k := range mapEventRecord["ulFdSchedData"].Keys() {
+			data := mapEventRecord["ulFdSchedData"].Val(k).(*TtiUlFdSchedData)
+
+			outFn := path.Join(outPath, fmt.Sprintf("ulSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
+			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+			//defer fout3.Close()
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
+				break
 			}
-		} (p1)
-	}
-	wg2.Wait()
 
-	/*
-	if p.debug {
-		for k, v := range mapEventRecord {
-			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Event=%q, EventData=%v\n", k, v))
+			if _, exist := headerWritten2[outFn]; !exist {
+				fout.WriteString(ulSchedAggFields)
+				headerWritten2[outFn] = true
+			}
+
+			fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+			fout.Close()
 		}
-	}
-	 */
-
-	// output aggregated event: ulSchedAgg
-	p.writeLog(zapcore.InfoLevel, "outputting aggregated ulSchedAgg...")
-	headerWritten2 := make(map[string]bool)
-	for _, k := range mapEventRecord["ulFdSchedData"].Keys() {
-		data := mapEventRecord["ulFdSchedData"].Val(k).(*TtiUlFdSchedData)
-
-		outFn := path.Join(outPath, fmt.Sprintf("ulSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
-		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-		//defer fout3.Close()
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
-			break
-		}
-
-		if _, exist := headerWritten2[outFn]; !exist {
-			fout.WriteString(ulSchedAggFields)
-			headerWritten2[outFn] = true
-		}
-
-		fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
-		fout.Close()
 	}
 }
 
@@ -1394,6 +1537,69 @@ func (p *TtiParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 
 		if k2 <= k1 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlLaDeltaSinr)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlLaAverageSinr)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
+func (p *TtiParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlLaPhr)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
 		} else {
