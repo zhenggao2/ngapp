@@ -86,6 +86,8 @@ func (p *TtiParser) Exec() {
 	var posDlFlowControl TtiDlFlowControlDataPos
 	var posDlLaDeltaCqi TtiDlLaDeltaCqiPos
 	var posUlBsr TtiUlBsrRxDataPos
+	var posUlPreSched TtiUlPreSchedDataPos
+	var posUlTdSched TtiUlTdSchedSubcellDataPos
 	var posUlFdSched TtiUlFdSchedDataPos
 	var posUlHarq TtiUlHarqRxDataPos
 	var posDrx TtiUlIntraDlToUlDrxSyncDlDataPos
@@ -106,6 +108,8 @@ func (p *TtiParser) Exec() {
 		"dlFlowControlData":       utils.NewOrderedMap(),
 		"dlLaDeltaCqi":       utils.NewOrderedMap(),
 		"ulBsrRxData":       utils.NewOrderedMap(),
+		"ulPreSchedData":       utils.NewOrderedMap(),
+		"ulTdSchedSubcellData": utils.NewOrderedMap(),
 		"ulFdSchedData":       utils.NewOrderedMap(),
 		"ulHarqRxData":       utils.NewOrderedMap(),
 		"ulIntraDlToUlDrxSyncDlData":       utils.NewOrderedMap(),
@@ -213,7 +217,7 @@ func (p *TtiParser) Exec() {
 							copy(mapFieldName[key], tokens[:valStart])
 
 							sfn, _ := strconv.Atoi(tokens[valStart+posSfn])
-							mapSfnInfo[key] = SfnInfo{sfn, 0}
+							mapSfnInfo[key] = SfnInfo{sfn, 1} // assume HSFN start with 1
 
 							// Step-1: write event header only once
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
@@ -703,6 +707,67 @@ func (p *TtiParser) Exec() {
 							}
 
 							mapEventRecord[eventName].Add(k, &v)
+						}  else if eventName == "ulPreSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulPreSchedData
+							if posUlPreSched.Ready == false {
+								posUlPreSched = FindTtiUlPreSchedDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlPreSched=%v", posUlPreSched))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPreSched.PosEventHeader.PosSlot]))
+							v := TtiUlPreSchedData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlPreSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlPreSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlPreSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlPreSched.PosEventHeader.PosPhysCellId],
+								},
+
+								CsListEvent:          tokens[valStart+posUlPreSched.PosCsListEvent],
+								HighestClassPriority: p.ttiUlPreSchedClassPriority(tokens[valStart+posUlPreSched.PosHighestClassPriority]),
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
+						} else if eventName == "ulTdSchedSubcellData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+							// TODO - event aggregation - ulTdSchedSubcellData
+							if posUlTdSched.Ready == false {
+								posUlTdSched = FindTtiUlTdSchedSubcellDataPos(tokens)
+								if p.debug {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("posUlTdSched=%v", posUlTdSched))
+								}
+							}
+
+							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlTdSched.PosEventHeader.PosSlot]))
+							v := TtiUlTdSchedSubcellData{
+								// event header
+								TtiEventHeader: TtiEventHeader{
+									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									Sfn:        tokens[valStart+posUlTdSched.PosEventHeader.PosSfn],
+									Slot:       tokens[valStart+posUlTdSched.PosEventHeader.PosSlot],
+									Rnti:       tokens[valStart+posUlTdSched.PosEventHeader.PosRnti],
+									PhysCellId: tokens[valStart+posUlTdSched.PosEventHeader.PosPhysCellId],
+								},
+
+								SubcellId: tokens[valStart+posUlTdSched.PosSubcellId],
+								Cs2List:   make([]string, 0),
+							}
+
+							for _, rsn := range posUlTdSched.PosRecordSequenceNumber {
+								n := 10 // Per UE in CS2 is statically defined for 10UEs
+								for k := 0; k < n; k += 1 {
+									posRnti := valStart + rsn + 1 + 3*k
+									if posRnti > len(tokens) || len(tokens[posRnti]) == 0 {
+										break
+									}
+									v.Cs2List = append(v.Cs2List, tokens[posRnti])
+								}
+							}
+
+							mapEventRecord[eventName].Add(k, &v)
 						} else if eventName == "ulFdSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulFdSchedData
 							if posUlFdSched.Ready == false {
@@ -1107,7 +1172,7 @@ func (p *TtiParser) Exec() {
 
 				// aggregate dlPreSchedData
 				if mapEventRecord["dlPreSchedData"].Len() > 0 {
-					p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlPreSchedData"], p1)
+					p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"], mapEventRecord["dlTdSchedSubcellData"], mapEventRecord["dlPreSchedData"], p1)
 					if p2 >= 0 {
 						k2 := mapEventRecord["dlPreSchedData"].Keys()[p2].(int)
 						v2 := mapEventRecord["dlPreSchedData"].Val(k2).(*TtiDlPreSchedData)
@@ -1245,6 +1310,16 @@ func (p *TtiParser) Exec() {
 			ulSchedAggFields += strings.Join([]string{"ulBsr.hsfn", "ulBsr.sfn", "ulBsr.slot", "ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
 		}
 
+		if mapEventRecord["ulPreSchedData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulPreSched.hsfn", "ulPreSched.sfn", "ulPreSched.slot", "ulPreSched.csListEvent", "ulPreSched.highestClassPriority"}, ",")
+		}
+
+		if mapEventRecord["ulTdSchedSubcellData"].Len() > 0 {
+			ulSchedAggFields += ","
+			ulSchedAggFields += strings.Join([]string{"ulTdSched.hsfn", "ulTdSched.sfn", "ulTdSched.slot", "ulTdSched.cs2List"}, ",")
+		}
+
 		if mapEventRecord["ulHarqRxData"].Len() > 0 {
 			ulSchedAggFields += ","
 			ulSchedAggFields += strings.Join([]string{"ulHarq.hsfn", "ulHarq.sfn", "ulHarq.slot", "ulHarq.dtx", "ulHarq.crcResult", "ulHarq.ulHarqProcessIndex"}, ",")
@@ -1308,6 +1383,32 @@ func (p *TtiParser) Exec() {
 						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
 					} else {
 						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulPreSchedData
+				if mapEventRecord["ulPreSchedData"].Len() > 0 {
+					p2 := p.findUlPreSched(mapEventRecord["ulFdSchedData"], mapEventRecord["ulTdSchedSubcellData"], mapEventRecord["ulPreSchedData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulPreSchedData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulPreSchedData"].Val(k2).(*TtiUlPreSchedData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
+					}
+				}
+
+				// aggregate ulTdSchedSubcellData
+				if mapEventRecord["ulTdSchedSubcellData"].Len() > 0 {
+					p2 := p.findUlTdSched(mapEventRecord["ulFdSchedData"], mapEventRecord["ulTdSchedSubcellData"], p1)
+					if p2 >= 0 {
+						k2 := mapEventRecord["ulTdSchedSubcellData"].Keys()[p2].(int)
+						v2 := mapEventRecord["ulTdSchedSubcellData"].Val(k2).(*TtiUlTdSchedSubcellData)
+
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
+					} else {
+						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
 					}
 				}
 
@@ -1459,6 +1560,13 @@ func (p *TtiParser) ttiDlPreSchedClassPriority(cp string) string {
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
+func (p *TtiParser) ttiUlPreSchedClassPriority(cp string) string {
+	// TODO fix classPriority for 5G21A
+	classPriority := []string {"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "ulProSched", "lastUnUsed", "unknown"}
+
+	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
+}
+
 func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
@@ -1469,7 +1577,8 @@ func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlBeamData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+			//if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
 		} else {
@@ -1480,17 +1589,19 @@ func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findDlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
+	// find possible TD-scheduling opportunity
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
-		v2 := m2.Val(k2).(*TtiDlPreSchedData)
+		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
 			}
 		} else {
@@ -1498,7 +1609,27 @@ func (p *TtiParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		}
 	}
 
-	return p2
+	if p2 < 0 {
+		return p2
+	}
+
+	// find possible Pre-scheduling opportunity
+	k1 = m2.Keys()[p2].(int)
+	p3 := -1
+	for i := 0; i < m3.Len(); i += 1 {
+		k2 := m3.Keys()[i].(int)
+		v2 := m3.Val(k2).(*TtiDlPreSchedData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p3 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p3
 }
 
 func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
@@ -1511,7 +1642,8 @@ func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
 			}
 		} else {
@@ -1536,7 +1668,8 @@ func (p *TtiParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiDlHarqRxData)
 
 		if k2ts == harq {
-			if v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId+v2.DlHarqProcessIndex {
+			//if v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId+v2.DlHarqProcessIndex {
+			if v1.PhysCellId+v1.Rnti+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.DlHarqProcessIndex {
 				p2 = i
 				break
 			}
@@ -1661,7 +1794,8 @@ func (p *TtiParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
-		if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId+v2.UlHarqProcessIndex {
+		//if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId+v2.UlHarqProcessIndex {
+		if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 			p2 = i
 			break
 		}
@@ -1785,7 +1919,8 @@ func (p *TtiParser) findUlPucch(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlPucchReceiveRespPsData)
 
 		if k2 <= k1 {
-			if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+			//if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
 		} else {
@@ -1838,6 +1973,75 @@ func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
+func (p *TtiParser) findUlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
+	dci := p.makeTimeStamp(hsfn, sfn, slot)
+
+	// find possible TD-scheduling opportunity
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
+
+		if k2 <= dci {
+			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	if p2 < 0 {
+		return p2
+	}
+
+	// find possible Pre-scheduling opportunity
+	k1 = m2.Keys()[p2].(int)
+	p3 := -1
+	for i := 0; i < m3.Len(); i += 1 {
+		k2 := m3.Keys()[i].(int)
+		v2 := m3.Val(k2).(*TtiUlPreSchedData)
+
+		if k2 <= k1 {
+			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
+				p3 = i
+			}
+		} else {
+			break
+		}
+	}
+
+
+	return p3
+}
+
+func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+	k1 := m1.Keys()[p1].(int)
+	v1 := m1.Val(k1).(*TtiUlFdSchedData)
+
+	p2 := -1
+	for i := 0; i < m2.Len(); i += 1 {
+		k2 := m2.Keys()[i].(int)
+		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
+
+		if k2 <= k1 {
+			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
+				p2 = i
+			}
+		} else {
+			break
+		}
+	}
+
+	return p2
+}
+
 func (p *TtiParser) contains(a []string, b string) bool {
 	for _, s := range a {
 		if s == b {
@@ -1858,6 +2062,21 @@ func (p *TtiParser) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	if sfn >= 1024 {
 		sfn %= 1024
 		hsfn += 1
+	}
+
+	return hsfn, sfn, slot
+}
+
+func (p *TtiParser) decSlot(hsfn, sfn, slot, n int) (int, int, int) {
+	slot -= n
+	if slot < 0 {
+		slot += p.slotsPerRf
+		sfn -= 1
+	}
+
+	if sfn < 0 {
+		sfn += 1024
+		hsfn -= 1
 	}
 
 	return hsfn, sfn, slot

@@ -1268,6 +1268,82 @@ func FindTtiUlPduDemuxDataPos(tokens []string) TtiUlPduDemuxDataPos {
 	return p
 }
 
+type TtiUlPreSchedData struct {
+	TtiEventHeader
+	CsListEvent string
+	HighestClassPriority string
+}
+
+type TtiUlPreSchedDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosCsListEvent int
+	PosHighestClassPriority int
+}
+
+func FindTtiUlPreSchedDataPos(tokens []string) TtiUlPreSchedDataPos {
+	// n is the total number of interested fields, make sure to update n if any field is added or removed.
+	n := 3
+	p := TtiUlPreSchedDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCsListEvent: -1,
+		PosHighestClassPriority: -1,
+	}
+
+	i := 0
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "cslistevent" && p.PosCsListEvent < 0 {
+			p.PosCsListEvent = pos
+			i += 1
+		} else if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
+			p.PosHighestClassPriority = pos
+			i += 1
+		}
+
+		if i >= n {
+			p.Ready = true
+			break
+		}
+	}
+
+	return p
+}
+
+type TtiUlTdSchedSubcellData struct {
+	TtiEventHeader
+	SubcellId string
+	Cs2List []string
+}
+
+type TtiUlTdSchedSubcellDataPos struct {
+	Ready bool
+	PosEventHeader TtiEventHeaderPos
+	PosSubcellId int
+	PosRecordSequenceNumber []int
+}
+
+func FindTtiUlTdSchedSubcellDataPos(tokens []string) TtiUlTdSchedSubcellDataPos {
+	p := TtiUlTdSchedSubcellDataPos{
+		Ready: false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosSubcellId: -1,
+		PosRecordSequenceNumber: make([]int, 0),
+	}
+
+	for pos, item := range tokens {
+		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
+			p.PosSubcellId = pos
+		} else if strings.ToLower(item) == "recordsequencenumber" {
+			p.PosRecordSequenceNumber = append(p.PosRecordSequenceNumber, pos)
+		}
+	}
+
+	p.Ready = true
+	return p
+}
+
+
 
 
 
