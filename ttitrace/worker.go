@@ -1388,7 +1388,7 @@ func (p *TtiParser) Exec() {
 
 				// aggregate ulPreSchedData
 				if mapEventRecord["ulPreSchedData"].Len() > 0 {
-					p2 := p.findUlPreSched(mapEventRecord["ulFdSchedData"], mapEventRecord["ulTdSchedSubcellData"], mapEventRecord["ulPreSchedData"], p1)
+					p2 := p.findUlPreSched(mapEventRecord["ulFdSchedData"], mapEventRecord["ulPreSchedData"], p1)
 					if p2 >= 0 {
 						k2 := mapEventRecord["ulPreSchedData"].Keys()[p2].(int)
 						v2 := mapEventRecord["ulPreSchedData"].Val(k2).(*TtiUlPreSchedData)
@@ -1973,49 +1973,26 @@ func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
+func (p *TtiParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
 	dci := p.makeTimeStamp(hsfn, sfn, slot)
 
-	// find possible TD-scheduling opportunity
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
-		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
+		v2 := m2.Val(k2).(*TtiUlPreSchedData)
 
-		if k2 <= dci {
-			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
-			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
-				p2 = i
-			}
-		} else {
-			break
-		}
-	}
-
-	if p2 < 0 {
-		return p2
-	}
-
-	// find possible Pre-scheduling opportunity
-	k1 = m2.Keys()[p2].(int)
-	p3 := -1
-	for i := 0; i < m3.Len(); i += 1 {
-		k2 := m3.Keys()[i].(int)
-		v2 := m3.Val(k2).(*TtiUlPreSchedData)
-
-		if k2 <= k1 {
+		if k2 == dci {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
-				p3 = i
+				p2 = i
+				break
 			}
-		} else {
-			break
 		}
 	}
 
-	return p3
+	return p2
 }
 
 func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
@@ -2029,13 +2006,12 @@ func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
 
-		if k2 <= dci {
+		if k2 == dci {
 			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
+				break
 			}
-		} else {
-			break
 		}
 	}
 
