@@ -1337,7 +1337,7 @@ func (p *TtiParser) Exec() {
 
 		if mapEventRecord["ulLaAverageSinr"].Len() > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulLaAvgSinr.hsfn", "ulLaAvgSinr.sfn", "ulLaAvgSinr.slot", "ulLaAvgSinr.rrmInstSinrRank", "ulLaAvgSinr.rrmNumOfSinrMeasurements", "ulLaAvgSinr.rrmInstSinr", "ulLaAvgSinr.rrmAvgSinrUl", "ulLaAvgSinr.rrmSinrCorrection"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulLaAvgSinr.hsfn", "ulLaAvgSinr.sfn", "ulLaAvgSinr.slot", "ulLaAvgSinr.rrmInstSinrRank", "ulLaAvgSinr.rrmNumOfSinrMeasurements", "ulLaAvgSinr.rrmInstSinr", "ulLaAvgSinr.rrmSinrCorrection", "ulLaAvgSinr.rrmAvgSinrUl"}, ",")
 		}
 
 		if mapEventRecord["ulLaPhr"].Len() > 0 {
@@ -1458,7 +1458,7 @@ func (p *TtiParser) Exec() {
 						k2 := mapEventRecord["ulLaAverageSinr"].Keys()[p2].(int)
 						v2 := mapEventRecord["ulLaAverageSinr"].Val(k2).(*TtiUlLaAverageSinr)
 
-						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstSinrRank, v2.RrmNumOfSinrMeasurements, v2.RrmInstSinr, v2.RrmAvgSinrUl, v2.RrmSinrCorrection}...)
+						v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstSinrRank, v2.RrmNumOfSinrMeasurements, v2.RrmInstSinr, v2.RrmSinrCorrection, v2.RrmAvgSinrUl}...)
 					} else {
 						v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
 					}
