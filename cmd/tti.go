@@ -19,22 +19,28 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/zhenggao2/ngapp/ttitrace"
+	"github.com/zhenggao2/ngapp/l2trace"
 )
 
 var (
-	dir     string
+	tlog string
+	py2 string
+	tlda string
+	luashark string
+	tshark string
+	trace   string
 	pattern string
 	rat     string
 	scs     string
-	filter string
+	filter  string
 	debug   bool
 )
 
-// ttiCmd represents the tti command
-var ttiCmd = &cobra.Command{
-	Use:   "tti",
-	Short: "L2 TTI trace tool",
-	Long:  `tti parses and aggregates MAC TTI trace of LTE/NR.`,
+// logsCmd represents the logs command
+var logsCmd = &cobra.Command{
+	Use:   "logs",
+	Short: "L2TtiTrace/L2Trace/BIP log analysis tool",
+	Long:  `The logs module parses and aggregates L2TtiTrace/L2Trace/BIP log of Nokia gNB.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadTtiFlags()
 	},
@@ -42,9 +48,17 @@ var ttiCmd = &cobra.Command{
 		laPrint(cmd, args)
 		viper.WriteConfig()
 
-		tti := new(ttitrace.TtiParser)
-		tti.Init(Logger, dir, pattern, rat, scs, filter, debug)
-		tti.Exec()
+		if tlog == "l2tti" {
+			tti := new(ttitrace.L2TtiTraceParser)
+			tti.Init(Logger, trace, pattern, rat, scs, filter, debug)
+			tti.Exec()
+		} else if tlog == "l2trace" {
+			parser := new(l2trace.L2TraceParser)
+			parser.Init(Logger, py2, tlda, luashark, tshark, trace, pattern, debug)
+			parser.Exec()
+		} else if tlog == "bip" {
+			// TODO
+		}
 	},
 }
 
@@ -58,36 +72,51 @@ And finally means finally: init is called after all the variable declarations in
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 */
 func init() {
-	rootCmd.AddCommand(ttiCmd)
+	rootCmd.AddCommand(logsCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// ttiCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// logsCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	//ttiCmd.Flags().StringP("dir", "d", "", "directory containing tti files")
-	ttiCmd.Flags().StringVarP(&dir, "dir", "d", "./data", "directory containing tti files")
-	ttiCmd.Flags().StringVarP(&pattern, "pattern", "p", ".csv", "pattern of tti files")
-	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of MAC TTI traces[nr]")
-	ttiCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
-	ttiCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
-	ttiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
-	viper.BindPFlag("tti.dir", ttiCmd.Flags().Lookup("dir"))
-	viper.BindPFlag("tti.pattern", ttiCmd.Flags().Lookup("pattern"))
-	viper.BindPFlag("tti.rat", ttiCmd.Flags().Lookup("rat"))
-	viper.BindPFlag("tti.scs", ttiCmd.Flags().Lookup("scs"))
-	viper.BindPFlag("tti.filter", ttiCmd.Flags().Lookup("filter"))
-	viper.BindPFlag("tti.debug", ttiCmd.Flags().Lookup("debug"))
+	//logsCmd.Flags().StringP("trace", "d", "", "path containing tti files")
+	logsCmd.Flags().StringVar(&tlog, "tlog", "l2tti", "type of traces[l2tti,l2trace,bip] ")
+	logsCmd.Flags().StringVar(&py2, "py2", "C:/Python27", "path of Python2")
+	logsCmd.Flags().StringVar(&tlda, "tlda", "C:/TLDA", "path of TLDA")
+	logsCmd.Flags().StringVar(&luashark, "luashark", "C:/luashark", "path of luashark scripts")
+	logsCmd.Flags().StringVar(&tshark, "tshark", "C:/Program Files/Wireshark", "path of Tshark")
+	logsCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
+	logsCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat]")
+	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
+	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
+	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
+	logsCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
+	viper.BindPFlag("logs.tlog", logsCmd.Flags().Lookup("tlog"))
+	viper.BindPFlag("logs.py2", logsCmd.Flags().Lookup("py2"))
+	viper.BindPFlag("logs.tlda", logsCmd.Flags().Lookup("tlda"))
+	viper.BindPFlag("logs.luashark", logsCmd.Flags().Lookup("luashark"))
+	viper.BindPFlag("logs.tshark", logsCmd.Flags().Lookup("tshark"))
+	viper.BindPFlag("logs.trace", logsCmd.Flags().Lookup("trace"))
+	viper.BindPFlag("logs.pattern", logsCmd.Flags().Lookup("pattern"))
+	viper.BindPFlag("logs.rat", logsCmd.Flags().Lookup("rat"))
+	viper.BindPFlag("logs.scs", logsCmd.Flags().Lookup("scs"))
+	viper.BindPFlag("logs.filter", logsCmd.Flags().Lookup("filter"))
+	viper.BindPFlag("logs.debug", logsCmd.Flags().Lookup("debug"))
 }
 
 func loadTtiFlags() {
-	dir = viper.GetString("tti.dir")
-	pattern = viper.GetString("tti.pattern")
-	rat = viper.GetString("tti.rat")
-	scs = viper.GetString("tti.scs")
-	filter = viper.GetString("tti.filter")
-	debug = viper.GetBool("tti.debug")
+	tlog = viper.GetString("logs.tlog")
+	py2 = viper.GetString("logs.py2")
+	tlda = viper.GetString("logs.tlda")
+	luashark = viper.GetString("logs.luashark")
+	tshark = viper.GetString("logs.tshark")
+	trace = viper.GetString("logs.trace")
+	pattern = viper.GetString("logs.pattern")
+	rat = viper.GetString("logs.rat")
+	scs = viper.GetString("logs.scs")
+	filter = viper.GetString("logs.filter")
+	debug = viper.GetBool("logs.debug")
 }

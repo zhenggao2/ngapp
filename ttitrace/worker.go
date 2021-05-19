@@ -16,7 +16,7 @@ import (
 	"sync"
 )
 
-type TtiParser struct {
+type L2TtiTraceParser struct {
 	log *zap.Logger
 	ttiDir string
 	ttiPattern string
@@ -34,7 +34,7 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, debug bool) {
+func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, debug bool) {
 	p.log = log
 	p.ttiDir = dir
 	p.ttiPattern = strings.ToLower(pattern)
@@ -47,7 +47,7 @@ func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string,
 
 	fileInfo, err := ioutil.ReadDir(p.ttiDir)
 	if err != nil {
-		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", dir))
+		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.ttiDir))
 		return
 	}
 
@@ -58,8 +58,8 @@ func (p *TtiParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string,
 	}
 }
 
-// func (p *TtiParser) onOkBtnClicked(checked bool) {
-func (p *TtiParser) Exec() {
+// func (p *L2TtiTraceParser) onOkBtnClicked(checked bool) {
+func (p *L2TtiTraceParser) Exec() {
 	scs2nslots := map[string]int{"15khz": 10, "30khz": 20, "120khz": 80}
 	p.slotsPerRf = scs2nslots[strings.ToLower(p.ttiScs)]
 
@@ -1544,30 +1544,30 @@ func (p *TtiParser) Exec() {
 	}
 }
 
-func (p *TtiParser) makeTimeStamp(hsfn, sfn, slot int) int {
+func (p *L2TtiTraceParser) makeTimeStamp(hsfn, sfn, slot int) int {
 	return 1024 * p.slotsPerRf * hsfn + p.slotsPerRf * sfn + slot
 }
 
-func (p *TtiParser) unsafeAtoi(s string) int {
+func (p *L2TtiTraceParser) unsafeAtoi(s string) int {
 	v, _ := strconv.Atoi(s)
 	return v
 }
 
-func (p *TtiParser) ttiDlPreSchedClassPriority(cp string) string {
+func (p *L2TtiTraceParser) ttiDlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
 	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxVoip", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "voipTraffic", "drbTraffic", "deprioritizedVoip", "lastUnUsed"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
-func (p *TtiParser) ttiUlPreSchedClassPriority(cp string) string {
+func (p *L2TtiTraceParser) ttiUlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
 	classPriority := []string {"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "ulProSched", "lastUnUsed", "unknown"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
-func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1589,7 +1589,7 @@ func (p *TtiParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1632,7 +1632,7 @@ func (p *TtiParser) findDlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
 	return p3
 }
 
-func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1654,7 +1654,7 @@ func (p *TtiParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 	hsfn, sfn, slot := p.incSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
@@ -1679,7 +1679,7 @@ func (p *TtiParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1700,7 +1700,7 @@ func (p *TtiParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1721,7 +1721,7 @@ func (p *TtiParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1742,7 +1742,7 @@ func (p *TtiParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1764,7 +1764,7 @@ func (p *TtiParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1785,7 +1785,7 @@ func (p *TtiParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1804,7 +1804,7 @@ func (p *TtiParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1825,7 +1825,7 @@ func (p *TtiParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1846,7 +1846,7 @@ func (p *TtiParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1867,7 +1867,7 @@ func (p *TtiParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1888,7 +1888,7 @@ func (p *TtiParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1909,7 +1909,7 @@ func (p *TtiParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlPucch(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPucch(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1931,7 +1931,7 @@ func (p *TtiParser) findUlPucch(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlPusch(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPusch(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1952,7 +1952,7 @@ func (p *TtiParser) findUlPusch(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -1973,7 +1973,7 @@ func (p *TtiParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
@@ -1995,7 +1995,7 @@ func (p *TtiParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
@@ -2018,7 +2018,7 @@ func (p *TtiParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *TtiParser) contains(a []string, b string) bool {
+func (p *L2TtiTraceParser) contains(a []string, b string) bool {
 	for _, s := range a {
 		if s == b {
 			return true
@@ -2028,7 +2028,7 @@ func (p *TtiParser) contains(a []string, b string) bool {
 	return false
 }
 
-func (p *TtiParser) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
+func (p *L2TtiTraceParser) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	slot += n
 	if slot >= p.slotsPerRf {
 		slot %= p.slotsPerRf
@@ -2043,7 +2043,7 @@ func (p *TtiParser) incSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	return hsfn, sfn, slot
 }
 
-func (p *TtiParser) decSlot(hsfn, sfn, slot, n int) (int, int, int) {
+func (p *L2TtiTraceParser) decSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	slot -= n
 	if slot < 0 {
 		slot += p.slotsPerRf
@@ -2058,7 +2058,7 @@ func (p *TtiParser) decSlot(hsfn, sfn, slot, n int) (int, int, int) {
 	return hsfn, sfn, slot
 }
 
-func (p *TtiParser) initPdschSliv() map[string][]int {
+func (p *L2TtiTraceParser) initPdschSliv() map[string][]int {
 	// prefix
 	// "00": mapping type A + normal cp
 	// "10": mapping type B + normal cp
@@ -2096,7 +2096,7 @@ func (p *TtiParser) initPdschSliv() map[string][]int {
 	return pdschFromSliv
 }
 
-func (p *TtiParser) initPuschSliv() map[string][]int {
+func (p *L2TtiTraceParser) initPuschSliv() map[string][]int {
 	// prefix
 	// "00": mapping type A + normal cp
 	// "10": mapping type B + normal cp
@@ -2134,7 +2134,7 @@ func (p *TtiParser) initPuschSliv() map[string][]int {
 	return puschFromSliv
 }
 
-func (p *TtiParser) makeSliv(S, L int) (int, error) {
+func (p *L2TtiTraceParser) makeSliv(S, L int) (int, error) {
 	if L <= 0 || L > 14-S {
 		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
 	}
@@ -2149,7 +2149,7 @@ func (p *TtiParser) makeSliv(S, L int) (int, error) {
 	return sliv, nil
 }
 
-func (p *TtiParser) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
+func (p *L2TtiTraceParser) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
 	if numPrb < 1 || numPrb > (bwpSize-startPrb) {
 		return -1, errors.New(fmt.Sprintf("Invalid numPrb/startPrb combination: numPrb=%d, startPrb=%d", numPrb, startPrb))
 	}
@@ -2164,7 +2164,7 @@ func (p *TtiParser) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
 	return riv, nil
 }
 
-func (p *TtiParser) writeLog(level zapcore.Level, s string) {
+func (p *L2TtiTraceParser) writeLog(level zapcore.Level, s string) {
 	switch level {
 	case zapcore.DebugLevel:
 		p.log.Debug(s)
