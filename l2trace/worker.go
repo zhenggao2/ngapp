@@ -84,9 +84,10 @@ func (p *L2TraceParser) Exec() {
 			return
 		}
 
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing BIP trace using tshark..."))
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
+				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing BIP trace using tshark... [%s]", file.Name()))
+
 				mapEventHeader := make(map[string][]string)
 				mapEventHeaderOk := make(map[string]bool)
 				mapEventRecord := make(map[string]*utils.OrderedMap)
@@ -94,7 +95,7 @@ func (p *L2TraceParser) Exec() {
 				cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(p.l2TracePath, file.Name()), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 				cmd.Stdout = &stdOut
 				cmd.Stderr = &stdErr
-				p.writeLog(zapcore.InfoLevel, cmd.String())
+				p.writeLog(zapcore.DebugLevel, cmd.String())
 				err = cmd.Run()
 				if err != nil {
 					p.writeLog(zapcore.ErrorLevel, err.Error())
@@ -199,7 +200,7 @@ func (p *L2TraceParser) Exec() {
 		cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
 		cmd.Stdout = &stdOut
 		cmd.Stderr = &stdErr
-		p.writeLog(zapcore.InfoLevel, cmd.String())
+		p.writeLog(zapcore.DebugLevel, cmd.String())
 		err = cmd.Run()
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, err.Error())
@@ -222,7 +223,7 @@ func (p *L2TraceParser) Exec() {
 
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
-				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing L2Trace using text2pcap/tshark..."))
+				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing L2Trace using text2pcap/tshark... [%s]", file.Name()))
 
 				mapEventHeader := make(map[string][]string)
 				mapEventHeaderOk := make(map[string]bool)
@@ -231,7 +232,7 @@ func (p *L2TraceParser) Exec() {
 				cmd = exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP), "-u", "5678,0", path.Join(decodedDir, file.Name()), path.Join(outPath, file.Name()))
 				cmd.Stdout = &stdOut
 				cmd.Stderr = &stdErr
-				p.writeLog(zapcore.InfoLevel, cmd.String())
+				p.writeLog(zapcore.DebugLevel, cmd.String())
 				err = cmd.Run()
 				if err != nil {
 					p.writeLog(zapcore.ErrorLevel, err.Error())
@@ -248,7 +249,7 @@ func (p *L2TraceParser) Exec() {
 				cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(outPath, file.Name()), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 				cmd.Stdout = &stdOut
 				cmd.Stderr = &stdErr
-				p.writeLog(zapcore.InfoLevel, cmd.String())
+				p.writeLog(zapcore.DebugLevel, cmd.String())
 				err = cmd.Run()
 				if err != nil {
 					p.writeLog(zapcore.ErrorLevel, err.Error())
