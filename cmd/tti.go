@@ -23,17 +23,17 @@ import (
 )
 
 var (
-	tlog string
-	py2 string
-	tlda string
+	tlog     string
+	py2      string
+	tlda     string
 	luashark string
-	tshark string
-	trace   string
-	pattern string
-	rat     string
-	scs     string
-	filter  string
-	debug   bool
+	wshark   string
+	trace    string
+	pattern  string
+	rat      string
+	scs      string
+	filter   string
+	debug    bool
 )
 
 // logsCmd represents the logs command
@@ -54,7 +54,7 @@ var logsCmd = &cobra.Command{
 			tti.Exec()
 		} else if tlog == "l2trace" {
 			parser := new(l2trace.L2TraceParser)
-			parser.Init(Logger, py2, tlda, luashark, tshark, trace, pattern, debug)
+			parser.Init(Logger, py2, tlda, luashark, wshark, trace, pattern, debug)
 			parser.Exec()
 		} else if tlog == "bip" {
 			// TODO
@@ -87,7 +87,7 @@ func init() {
 	logsCmd.Flags().StringVar(&py2, "py2", "C:/Python27", "path of Python2")
 	logsCmd.Flags().StringVar(&tlda, "tlda", "C:/TLDA", "path of TLDA")
 	logsCmd.Flags().StringVar(&luashark, "luashark", "C:/luashark", "path of luashark scripts")
-	logsCmd.Flags().StringVar(&tshark, "tshark", "C:/Program Files/Wireshark", "path of Tshark")
+	logsCmd.Flags().StringVar(&wshark, "wshark", "C:/Program Files/Wireshark", "path of Tshark")
 	logsCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
 	logsCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat]")
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
@@ -98,7 +98,7 @@ func init() {
 	viper.BindPFlag("logs.py2", logsCmd.Flags().Lookup("py2"))
 	viper.BindPFlag("logs.tlda", logsCmd.Flags().Lookup("tlda"))
 	viper.BindPFlag("logs.luashark", logsCmd.Flags().Lookup("luashark"))
-	viper.BindPFlag("logs.tshark", logsCmd.Flags().Lookup("tshark"))
+	viper.BindPFlag("logs.wshark", logsCmd.Flags().Lookup("wshark"))
 	viper.BindPFlag("logs.trace", logsCmd.Flags().Lookup("trace"))
 	viper.BindPFlag("logs.pattern", logsCmd.Flags().Lookup("pattern"))
 	viper.BindPFlag("logs.rat", logsCmd.Flags().Lookup("rat"))
@@ -112,7 +112,7 @@ func loadTtiFlags() {
 	py2 = viper.GetString("logs.py2")
 	tlda = viper.GetString("logs.tlda")
 	luashark = viper.GetString("logs.luashark")
-	tshark = viper.GetString("logs.tshark")
+	wshark = viper.GetString("logs.wshark")
 	trace = viper.GetString("logs.trace")
 	pattern = viper.GetString("logs.pattern")
 	rat = viper.GetString("logs.rat")
