@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/zhenggao2/ngapp/ttitrace"
 	"github.com/zhenggao2/ngapp/l2trace"
+	"github.com/zhenggao2/ngapp/biptrace"
 )
 
 var (
@@ -39,8 +40,8 @@ var (
 // logsCmd represents the logs command
 var logsCmd = &cobra.Command{
 	Use:   "logs",
-	Short: "L2TtiTrace/L2Trace/BIP log analysis tool",
-	Long:  `The logs module parses and aggregates L2TtiTrace/L2Trace/BIP log of Nokia gNB.`,
+	Short: "L2TtiTrace/L2Trace/BIP analysis tool",
+	Long:  `The logs module parses L2TtiTrace/L2Trace/BIP.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadTtiFlags()
 	},
@@ -48,16 +49,23 @@ var logsCmd = &cobra.Command{
 		laPrint(cmd, args)
 		viper.WriteConfig()
 
-		if tlog == "l2tti" {
+		if tlog == "l2tti" && (pattern == ".csv" || pattern == ".bin") {
+			// .bin is raw L2TtiTrace from either Snapshot or gnb_logs
+			// .csv is output from L2TtiTrace EventDecoder
 			tti := new(ttitrace.L2TtiTraceParser)
 			tti.Init(Logger, trace, pattern, rat, scs, filter, debug)
 			tti.Exec()
-		} else if tlog == "l2trace" {
+		} else if tlog == "l2trace" && (pattern == ".dat" || pattern == ".pcap") {
+			// .dat is raw L2Trace from Snapshot
+			// .pcap is raw L2Trace from gnb_logs or DCAP
 			parser := new(l2trace.L2TraceParser)
 			parser.Init(Logger, py2, tlda, luashark, wshark, trace, pattern, debug)
 			parser.Exec()
-		} else if tlog == "bip" {
-			// TODO
+		} else if tlog == "bip" && pattern == ".pcap" {
+			// .pcap is raw BIP from gnb_logs
+			parser := new(biptrace.BipTraceParser)
+			parser.Init(Logger, luashark, wshark, trace, pattern, debug)
+			parser.Exec()
 		}
 	},
 }
@@ -82,7 +90,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	//logsCmd.Flags().StringP("trace", "d", "", "path containing tti files")
+	//logsCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
 	logsCmd.Flags().StringVar(&tlog, "tlog", "l2tti", "type of traces[l2tti,l2trace,bip] ")
 	logsCmd.Flags().StringVar(&py2, "py2", "C:/Python27", "path of Python2")
 	logsCmd.Flags().StringVar(&tlda, "tlda", "C:/TLDA", "path of TLDA")

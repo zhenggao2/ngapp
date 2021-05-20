@@ -86,7 +86,7 @@ func (p *L2TraceParser) Exec() {
 
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
-				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing BIP trace using tshark... [%s]", file.Name()))
+				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing L2Trace using tshark... [%s]", file.Name()))
 
 				mapEventHeader := make(map[string][]string)
 				mapEventHeaderOk := make(map[string]bool)
@@ -100,10 +100,13 @@ func (p *L2TraceParser) Exec() {
 				if err != nil {
 					p.writeLog(zapcore.ErrorLevel, err.Error())
 				}
+
 				if stdOut.Len() > 0 {
 					// TODO use bytes.Buffer.readString("\n") to postprocessing text files
-					p.writeLog(zapcore.InfoLevel, fmt.Sprintf("splitting BIP trace into csv..."))
+					p.writeLog(zapcore.InfoLevel, fmt.Sprintf("splitting L2Trace into csv..."))
 					icomRec := false
+					pduDump := false
+					payload := false
 					var ts string
 					var event string
 					var fields string
@@ -119,20 +122,12 @@ func (p *L2TraceParser) Exec() {
 						if len(line) > 0 {
 							if strings.Contains(line, "ICOM_5G") {
 								icomRec = false
+								pduDump = false
+								payload = false
 
 								if len(fields) > 0 {
 									mapEventRecord[event].Add(ts, fields)
 									mapEventHeaderOk[event] = true
-								}
-
-								tokens := strings.Split(line, "/")
-								event = strings.Replace(tokens[len(tokens)-1], ",", "_", -1)
-								if _, exist := mapEventHeader[event]; !exist {
-									mapEventHeader[event] = make([]string, 0)
-									mapEventHeaderOk[event] = false
-								}
-								if _, exist := mapEventRecord[event]; !exist {
-									mapEventRecord[event] = utils.NewOrderedMap()
 								}
 							}
 
@@ -142,18 +137,37 @@ func (p *L2TraceParser) Exec() {
 								sec, _ := strconv.ParseInt(tokens[0], 10, 64)
 								nsec, _ := strconv.ParseInt(tokens[1], 10, 64)
 								ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
-
-								if !mapEventHeaderOk[event] {
-									mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
-								}
-								fields = fmt.Sprintf("%s,%s", event, ts)
 							}
 
 							if line == "ICOM 5G Protocol" {
 								icomRec = true
 							}
 
-							if icomRec {
+							if line == "pduDump-Payload" {
+								pduDump = true
+							}
+
+							if line == "Event-Payload" {
+								payload = true
+
+								line, err := stdOut.ReadString('\n')
+								if err != nil {
+									break
+								}
+								line = strings.TrimSpace(line)
+								event = strings.Split(line, " ")[0]
+								if _, exist := mapEventHeader[event]; !exist {
+									mapEventHeader[event] = make([]string, 0)
+									mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
+									mapEventHeaderOk[event] = false
+								}
+								if _, exist := mapEventRecord[event]; !exist {
+									mapEventRecord[event] = utils.NewOrderedMap()
+								}
+								fields = fmt.Sprintf("%s,%s", event, ts)
+							}
+
+							if icomRec && !pduDump && payload {
 								tokens := strings.Split(line, ":")
 								if len(tokens) == 2 {
 									if !mapEventHeaderOk[event] {

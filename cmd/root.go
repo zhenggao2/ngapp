@@ -34,7 +34,7 @@ var Logger = utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Fo
 var rootCmd = &cobra.Command{
 	Use:   "ngapp",
 	Short: "",
-	Long: `Ngapp is a collection of useful applets for 4G and 5G NPO(Network Planning & Optimization).
+	Long: `ngapp is a collection of useful applets for 4G and 5G NPO.
 Author: zhengwei.gao@yahoo.com
 Blog: http://blog.csdn.net/jeffyko`,
 	Run: func(cmd *cobra.Command, args []string) {
