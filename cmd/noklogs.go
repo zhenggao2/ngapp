@@ -34,7 +34,6 @@ var (
 	rat      string
 	scs      string
 	filter   string
-	debug    bool
 )
 
 // logsCmd represents the logs command
@@ -43,7 +42,7 @@ var logsCmd = &cobra.Command{
 	Short: "L2TtiTrace/L2Trace/BIP analysis tool",
 	Long:  `The logs module parses L2TtiTrace/L2Trace/BIP.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		loadTtiFlags()
+		loadLogsFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
@@ -91,7 +90,7 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	//logsCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
-	logsCmd.Flags().StringVar(&tlog, "tlog", "l2tti", "type of traces[l2tti,l2trace,bip] ")
+	logsCmd.Flags().StringVar(&tlog, "tlog", "l2tti", "type of traces[l2tti,l2trace,bip]")
 	logsCmd.Flags().StringVar(&py2, "py2", "C:/Python27", "path of Python2")
 	logsCmd.Flags().StringVar(&tlda, "tlda", "C:/TLDA", "path of TLDA")
 	logsCmd.Flags().StringVar(&luashark, "luashark", "C:/luashark", "path of luashark scripts")
@@ -115,7 +114,7 @@ func init() {
 	viper.BindPFlag("logs.debug", logsCmd.Flags().Lookup("debug"))
 }
 
-func loadTtiFlags() {
+func loadLogsFlags() {
 	tlog = viper.GetString("logs.tlog")
 	py2 = viper.GetString("logs.py2")
 	tlda = viper.GetString("logs.tlda")

@@ -26,9 +26,11 @@ import (
 	"github.com/zhenggao2/ngapp/utils"
 )
 
-var cfgFile string
-var Logger = utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
-
+var (
+	Logger = utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
+	cfgFile string
+	debug    bool
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

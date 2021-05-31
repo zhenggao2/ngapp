@@ -26,6 +26,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"github.com/Knetic/govaluate"
 )
 
 var (
@@ -2152,6 +2153,31 @@ var nrrgSimCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("nrrg sim called")
 		viper.WriteConfig()
+
+		// Examples of 'expression evaluation'
+		// KPI = Formula
+		expression, err := govaluate.NewEvaluableExpression("(f1+f2-f3)/f4*f5/(f6+f7)/100")
+		fmt.Println(expression.Vars())
+		fmt.Println(expression.Tokens())
+		fmt.Println(expression.String())
+		sql, _ := expression.ToSQLQuery()
+		fmt.Println(sql)
+
+		parameters := make(map[string]interface{})
+		parameters["f1"] = 2
+		parameters["f2"] = 2
+		parameters["f3"] = 3
+		parameters["f4"] = 0
+		parameters["f5"] = 2
+		parameters["f6"] = 2
+		parameters["f7"] = 2
+
+		result, err := expression.Evaluate(parameters)
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Printf("result=%v", result)
+		}
 	},
 }
 

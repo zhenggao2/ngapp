@@ -16,12 +16,14 @@ limitations under the License.
 package main
 
 import (
-    // "fmt"
-	// "time"
+	"fmt"
 	"github.com/zhenggao2/ngapp/cmd"
-	// "github.com/zhenggao2/ngapp/utils"
+	"runtime"
 )
 
+var swVersion string = "v0.21.53100"
+
 func main() {
+	fmt.Printf("ngapp version: %s, built with: %s\n", swVersion, runtime.Version())
 	cmd.Execute()
 }
