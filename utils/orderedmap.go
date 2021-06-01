@@ -28,6 +28,12 @@ func (p *OrderedMap) RawMap() map[interface{}]interface{} {
 	return p.m
 }
 
+// Exist method checks whether key exists.
+func (p *OrderedMap) Exist(k interface{}) bool {
+	_, e := p.m[k]
+	return e
+}
+
 // Val method returns the value if key exists, and returns nil otherwise.
 func (p *OrderedMap) Val(k interface{}) interface{} {
 	v, e := p.m[k]
