@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/zhenggao2/ngapp/ttitrace"
@@ -65,6 +66,8 @@ var logsCmd = &cobra.Command{
 			parser := new(biptrace.BipTraceParser)
 			parser.Init(Logger, luashark, wshark, trace, pattern, debug)
 			parser.Exec()
+		} else {
+			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
 		}
 	},
 }

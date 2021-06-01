@@ -16,8 +16,15 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zhenggao2/ngapp/nokcm"
+	"io/ioutil"
+	"os"
+	"path"
+	"strings"
+	"sync"
 )
 
 var (
@@ -37,16 +44,66 @@ var cmCmd = &cobra.Command{
 		laPrint(cmd, args)
 		viper.WriteConfig()
 
-		if tcm == "scfc" {
+		if tcm == "scfc" || tcm == "vendor" || tcm == "freqhist" {
+			fileInfo, err := ioutil.ReadDir(cmp)
+			if err != nil {
+				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmp))
+				fmt.Printf("Fail to read directory: %s.\n", cmp)
+				return
+			}
 
-		} else if tcm == "vendor" {
+			parser := new(nokcm.XmlParser)
 
-		} else if tcm == "freqhist" {
+			// recreate output directory if necessary
+			out := path.Join(cmp, fmt.Sprintf("parsed_%s", tcm))
+			os.RemoveAll(out)
+			if err := os.MkdirAll(out, 0775); err != nil {
+				panic(fmt.Sprintf("Fail to create directory: %v", err))
+			}
 
+			parser.Init(Logger, out, debug)
+
+			wg := &sync.WaitGroup{}
+			for _, file := range fileInfo {
+				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".xml" {
+					xml := path.Join(cmp, file.Name())
+
+					wg.Add(1)
+					go func(fn string) {
+						defer wg.Done()
+						parser.Parse(fn, tcm)
+					} (xml)
+				}
+			}
+			wg.Wait()
 		} else if tcm == "ims2" {
+			fileInfo, err := ioutil.ReadDir(cmp)
+			if err != nil {
+				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmp))
+				fmt.Printf("Fail to read directory: %s.\n", cmp)
+				return
+			}
 
+			parser := new(nokcm.Ims2Parser)
+			parser.Init(Logger, debug)
+
+			wg := &sync.WaitGroup{}
+			for _, file := range fileInfo {
+				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".ims2" {
+					ims2 := path.Join(cmp, file.Name())
+
+					wg.Add(1)
+					go func(fn string) {
+						defer wg.Done()
+						parser.Parse(fn)
+					} (ims2)
+				}
+			}
+			wg.Wait()
 		} else if tcm == "cmcc" {
-
+			// TODO
+		} else {
+			fmt.Printf("Unsupported tcm[=%s].\n", tcm)
 		}
 	},
 }
