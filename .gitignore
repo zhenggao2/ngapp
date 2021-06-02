@@ -6,3 +6,4 @@ windows/
 logs/
 bin/
 *.exe
+*.zip

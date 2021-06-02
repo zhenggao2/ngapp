@@ -47,6 +47,7 @@ type BipTraceParser struct {
 	debug        bool
 
 	traceFiles []string
+	headerWritten map[string]bool
 }
 
 func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern string, maxgo int, debug bool) {
@@ -71,6 +72,8 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern strin
 			p.traceFiles = append(p.traceFiles, path.Join(p.bipTracePath, file.Name()))
 		}
 	}
+
+	p.headerWritten = make(map[string]bool)
 }
 
 func (p *BipTraceParser) Exec() {
@@ -153,6 +156,14 @@ func (p *BipTraceParser) parse(fn string) {
 					if len(fields) > 0 {
 						mapEventRecord[event].Add(ts, fields)
 						mapEventHeaderOk[event] = true
+
+						// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
+						if _, exist := p.headerWritten[event]; !exist {
+							mutex := &sync.Mutex{}
+							mutex.Lock()
+							p.headerWritten[event] = false
+							mutex.Unlock()
+						}
 					}
 
 					tokens := strings.Split(line, "/")
@@ -193,6 +204,17 @@ func (p *BipTraceParser) parse(fn string) {
 				}
 
 				if icomRec {
+					if strings.Contains(line, "padding") {
+						continue
+					}
+
+					if strings.Contains(line, "Structure") {
+						if !mapEventHeaderOk[event] {
+							mapEventHeader[event] = append(mapEventHeader[event], line)
+						}
+						fields = fields + ",|"
+					}
+
 					tokens := strings.Split(line, ":")
 					if len(tokens) == 2 {
 						if !mapEventHeaderOk[event] {
@@ -205,14 +227,22 @@ func (p *BipTraceParser) parse(fn string) {
 		}
 
 		for k1, v1 := range mapEventHeader {
-			outFn := path.Join(outPath, fmt.Sprintf("%s_%s.csv", path.Base(fn), k1))
-			fout, err := os.OpenFile(outFn, os.O_WRONLY|os.O_CREATE, 0664)
+			//outFn := path.Join(outPath, fmt.Sprintf("%s_%s.csv", path.Base(fn), k1))
+			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", k1))
+			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
 				break
 			}
 
-			fout.WriteString(strings.Join(v1, ",") + "\n")
+			if !p.headerWritten[k1] {
+				fout.WriteString(strings.Join(v1, ",") + "\n")
+				// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
+				mutex := &sync.Mutex{}
+				mutex.Lock()
+				p.headerWritten[k1] = true
+				mutex.Unlock()
+			}
 			for p := 0; p < mapEventRecord[k1].Len(); p += 1{
 				k2 := mapEventRecord[k1].Keys()[p].(string)
 				v2 := mapEventRecord[k1].Val(k2).(string)
