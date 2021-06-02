@@ -90,7 +90,7 @@ func (p *BipTraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
+			if !file.IsDir() && path.Ext(file.Name())[:len(".pcap")] == ".pcap" {
 				wg.Add(1)
 				go func(fn string) {
 					defer wg.Done()
