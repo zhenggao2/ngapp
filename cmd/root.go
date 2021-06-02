@@ -29,6 +29,8 @@ import (
 var (
 	Logger = utils.NewZapLogger(fmt.Sprintf("./logs/ngapp_%v.log", time.Now().Format("20060102_150406")))
 	cfgFile string
+	// maximum number of goroutines. Adjust maxgo in case ngapp has crashed with 'out of memory' error.
+	maxgo int
 	debug    bool
 )
 

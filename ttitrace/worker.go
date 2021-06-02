@@ -38,6 +38,7 @@ type L2TtiTraceParser struct {
 	ttiRat string
 	ttiScs string
 	ttiFilter string
+	maxgo int
 	debug bool
 
 	slotsPerRf int
@@ -49,13 +50,14 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, debug bool) {
+func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, maxgo int, debug bool) {
 	p.log = log
 	p.ttiDir = dir
 	p.ttiPattern = strings.ToLower(pattern)
 	p.ttiRat = strings.ToLower(rat)
 	p.ttiScs = strings.ToLower(scs)
 	p.ttiFilter = strings.ToLower(filter)
+	p.maxgo = maxgo
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing tti parser...(working dir: %v)", p.ttiDir))

@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,12 +48,13 @@ type L2TraceParser struct {
 	wsharkPath   string
 	l2TracePath  string
 	pattern      string
+	maxgo int
 	debug        bool
 
 	traceFiles []string
 }
 
-func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pattern string, debug bool) {
+func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pattern string, maxgo int, debug bool) {
 	p.log = log
 	p.py2Path = py2
 	p.tldaPath = tlda
@@ -60,6 +62,7 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 	p.wsharkPath = wshark
 	p.l2TracePath = trace
 	p.pattern = pattern
+	p.maxgo = maxgo
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2Trace parser...(working dir: %v)", p.l2TracePath))
@@ -98,6 +101,14 @@ func (p *L2TraceParser) Exec() {
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name())[:len(".pcap")] == ".pcap" {
+				for {
+					if runtime.NumGoroutine() >= p.maxgo {
+						time.Sleep(1 * time.Second)
+					} else {
+						break
+					}
+				}
+
 				wg.Add(1)
 				go func(fn string) {
 					defer wg.Done()
@@ -134,6 +145,14 @@ func (p *L2TraceParser) Exec() {
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
+				for {
+					if runtime.NumGoroutine() >= p.maxgo {
+						time.Sleep(1 * time.Second)
+					} else {
+						break
+					}
+				}
+
 				wg.Add(1)
 				go func(fn string) {
 					defer wg.Done()

@@ -21,9 +21,10 @@ import (
 	"runtime"
 )
 
-var swVersion string = "v0.21.060203"
+var swVersion = "v0.21.060204"
 
 func main() {
 	fmt.Printf("ngapp version: %s, built with: %s\n", swVersion, runtime.Version())
+	// runtime.GOMAXPROCS(runtime.NumCPU() / 2)
 	cmd.Execute()
 }

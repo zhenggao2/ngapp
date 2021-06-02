@@ -53,18 +53,18 @@ var logsCmd = &cobra.Command{
 			// .bin is raw L2TtiTrace from either Snapshot or gnb_logs
 			// .csv is output from L2TtiTrace EventDecoder
 			tti := new(ttitrace.L2TtiTraceParser)
-			tti.Init(Logger, trace, pattern, rat, scs, filter, debug)
+			tti.Init(Logger, trace, pattern, rat, scs, filter, maxgo, debug)
 			tti.Exec()
 		} else if tlog == "l2trace" && (pattern == ".dat" || pattern == ".pcap") {
 			// .dat is raw L2Trace from Snapshot
 			// .pcap is raw L2Trace from gnb_logs or DCAP
 			parser := new(l2trace.L2TraceParser)
-			parser.Init(Logger, py2, tlda, luashark, wshark, trace, pattern, debug)
+			parser.Init(Logger, py2, tlda, luashark, wshark, trace, pattern, maxgo, debug)
 			parser.Exec()
 		} else if tlog == "bip" && pattern == ".pcap" {
 			// .pcap is raw BIP from gnb_logs
 			parser := new(biptrace.BipTraceParser)
-			parser.Init(Logger, luashark, wshark, trace, pattern, debug)
+			parser.Init(Logger, luashark, wshark, trace, pattern, maxgo, debug)
 			parser.Exec()
 		} else {
 			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
@@ -103,6 +103,7 @@ func init() {
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
 	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
 	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
+	logsCmd.Flags().IntVar(&maxgo, "maxgo", 5, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	logsCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("logs.tlog", logsCmd.Flags().Lookup("tlog"))
 	viper.BindPFlag("logs.py2", logsCmd.Flags().Lookup("py2"))
@@ -114,6 +115,7 @@ func init() {
 	viper.BindPFlag("logs.rat", logsCmd.Flags().Lookup("rat"))
 	viper.BindPFlag("logs.scs", logsCmd.Flags().Lookup("scs"))
 	viper.BindPFlag("logs.filter", logsCmd.Flags().Lookup("filter"))
+	viper.BindPFlag("logs.maxgo", logsCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("logs.debug", logsCmd.Flags().Lookup("debug"))
 }
 
@@ -128,5 +130,6 @@ func loadLogsFlags() {
 	rat = viper.GetString("logs.rat")
 	scs = viper.GetString("logs.scs")
 	filter = viper.GetString("logs.filter")
+	maxgo = viper.GetInt("logs.maxgo")
 	debug = viper.GetBool("logs.debug")
 }

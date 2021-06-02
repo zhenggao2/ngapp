@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,17 +43,19 @@ type BipTraceParser struct {
 	luasharkPath string
 	bipTracePath string
 	pattern      string
+	maxgo int
 	debug        bool
 
 	traceFiles []string
 }
 
-func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern string, debug bool) {
+func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern string, maxgo int, debug bool) {
 	p.log = log
 	p.luasharkPath = lua
 	p.wsharkPath = wshark
 	p.bipTracePath = trace
 	p.pattern = pattern
+	p.maxgo = maxgo
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BipTrace parser...(working dir: %v)", p.bipTracePath))
@@ -91,6 +94,14 @@ func (p *BipTraceParser) Exec() {
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
 			if !file.IsDir() && path.Ext(file.Name())[:len(".pcap")] == ".pcap" {
+				for {
+					if runtime.NumGoroutine() >= p.maxgo {
+						time.Sleep(1 * time.Second)
+					} else {
+						break
+					}
+				}
+
 				wg.Add(1)
 				go func(fn string) {
 					defer wg.Done()
@@ -145,7 +156,16 @@ func (p *BipTraceParser) parse(fn string) {
 					}
 
 					tokens := strings.Split(line, "/")
-					event = strings.Replace(tokens[len(tokens)-1], ",", "_", -1)
+
+					// event = strings.Replace(tokens[len(tokens)-1], ",", "_", -1)
+					// special handing of event type
+					// event: ICOM_5G/DlData_SsBlockSendReq, MIB
+					// event: ICOM_5G/DlData_PdschPayloadTbSendReq (reassembled)
+					// event: ICOM_5G/PdschPayloadTbSendReq (fragment offset 0)
+					event = tokens[len(tokens)-1]
+					event = strings.Replace(event, ",", "_", -1)
+					event = strings.Replace(event, " ", "", -1)
+					event = strings.Split(event, "(")[0]
 					if _, exist := mapEventHeader[event]; !exist {
 						mapEventHeader[event] = make([]string, 0)
 						mapEventHeaderOk[event] = false
