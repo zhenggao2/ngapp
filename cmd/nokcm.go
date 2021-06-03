@@ -28,8 +28,8 @@ import (
 )
 
 var (
-	tcm string
-	cmp string
+	tcm    string
+	cmpath string
 )
 
 // cmCmd represents the cm command
@@ -45,28 +45,26 @@ var cmCmd = &cobra.Command{
 		viper.WriteConfig()
 
 		if tcm == "scfc" || tcm == "vendor" || tcm == "freqhist" {
-			fileInfo, err := ioutil.ReadDir(cmp)
+			fileInfo, err := ioutil.ReadDir(cmpath)
 			if err != nil {
-				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmp))
-				fmt.Printf("Fail to read directory: %s.\n", cmp)
+				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmpath))
+				fmt.Printf("Fail to read directory: %s.\n", cmpath)
 				return
 			}
 
-			parser := new(nokcm.XmlParser)
-
 			// recreate output directory if necessary
-			out := path.Join(cmp, fmt.Sprintf("parsed_%s", tcm))
+			out := path.Join(cmpath, fmt.Sprintf("parsed_%s", tcm))
 			os.RemoveAll(out)
 			if err := os.MkdirAll(out, 0775); err != nil {
 				panic(fmt.Sprintf("Fail to create directory: %v", err))
 			}
 
+			parser := new(nokcm.XmlParser)
 			parser.Init(Logger, out, debug)
-
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".xml" {
-					xml := path.Join(cmp, file.Name())
+					xml := path.Join(cmpath, file.Name())
 
 					wg.Add(1)
 					go func(fn string) {
@@ -77,10 +75,10 @@ var cmCmd = &cobra.Command{
 			}
 			wg.Wait()
 		} else if tcm == "ims2" {
-			fileInfo, err := ioutil.ReadDir(cmp)
+			fileInfo, err := ioutil.ReadDir(cmpath)
 			if err != nil {
-				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmp))
-				fmt.Printf("Fail to read directory: %s.\n", cmp)
+				Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", cmpath))
+				fmt.Printf("Fail to read directory: %s.\n", cmpath)
 				return
 			}
 
@@ -90,7 +88,7 @@ var cmCmd = &cobra.Command{
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".ims2" {
-					ims2 := path.Join(cmp, file.Name())
+					ims2 := path.Join(cmpath, file.Name())
 
 					wg.Add(1)
 					go func(fn string) {
@@ -130,16 +128,16 @@ func init() {
 	// is called directly, e.g.:
 	// someCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
 	cmCmd.Flags().StringVar(&tcm, "tcm", "scfc", "type of CM[scfc,vendor,freqhist,ims2,cmcc]")
-	cmCmd.Flags().StringVar(&cmp, "cmp", "./data", "path containing CM files")
+	cmCmd.Flags().StringVar(&cmpath, "cmpath", "./data", "path containing CM files")
 	cmCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("cm.tcm", cmCmd.Flags().Lookup("tcm"))
-	viper.BindPFlag("cm.cmp", cmCmd.Flags().Lookup("cmp"))
+	viper.BindPFlag("cm.cmpath", cmCmd.Flags().Lookup("cmpath"))
 	viper.BindPFlag("cm.debug", cmCmd.Flags().Lookup("debug"))
 }
 
 func loadCmFlags() {
 	tcm = viper.GetString("cm.tcm")
-	cmp = viper.GetString("cm.cmp")
+	cmpath = viper.GetString("cm.cmpath")
 	debug = viper.GetBool("cm.debug")
 }
 
