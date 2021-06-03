@@ -56,7 +56,7 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern strin
 	p.wsharkPath = wshark
 	p.bipTracePath = trace
 	p.pattern = pattern
-	p.maxgo = maxgo
+	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BipTrace parser...(working dir: %v)", p.bipTracePath))

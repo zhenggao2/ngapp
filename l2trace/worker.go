@@ -62,7 +62,7 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 	p.wsharkPath = wshark
 	p.l2TracePath = trace
 	p.pattern = pattern
-	p.maxgo = maxgo
+	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2Trace parser...(working dir: %v)", p.l2TracePath))

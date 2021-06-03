@@ -21,7 +21,7 @@ import (
 	"runtime"
 )
 
-var swVersion = "v0.21.060204"
+var swVersion = "v0.21.060206"
 
 func main() {
 	fmt.Printf("ngapp version: %s, built with: %s\n", swVersion, runtime.Version())
