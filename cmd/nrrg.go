@@ -2167,7 +2167,7 @@ var nrrgSimCmd = &cobra.Command{
 		parameters["f1"] = 2
 		parameters["f2"] = 2
 		parameters["f3"] = 3
-		parameters["f4"] = 0
+		parameters["f4"] = 1
 		parameters["f5"] = 2
 		parameters["f6"] = 2
 		parameters["f7"] = 2
@@ -2176,7 +2176,13 @@ var nrrgSimCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println(err.Error())
 		} else {
-			fmt.Printf("result=%v", result)
+			if math.IsNaN(result.(float64)) {
+				fmt.Println("NaN")
+			} else if math.IsInf(result.(float64), 0) {
+				fmt.Println("Inf")
+			} else {
+				fmt.Println(result)
+			}
 		}
 	},
 }

@@ -34,6 +34,7 @@ var (
 	op string
 	pmpath  string
 	pmdb string
+	kpipath string
 )
 
 // pmCmd represents the pm command
@@ -91,6 +92,40 @@ var pmCmd = &cobra.Command{
 	},
 }
 
+// kpiCmd represents the kpi command
+var kpiCmd = &cobra.Command{
+	Use:   "kpi",
+	Short: "KPI reporting tool",
+	Long:  `The kpi module parses KPI definitions and generates KPI reports.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		loadKpiFlags()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		laPrint(cmd, args)
+		viper.WriteConfig()
+
+		fileInfo, err := ioutil.ReadDir(kpipath)
+		if err != nil {
+			Logger.Fatal(fmt.Sprintf("Fail to read directory: %s.", kpipath))
+			fmt.Printf("Fail to read directory: %s.\n", kpipath)
+			return
+		}
+
+		// create output directory if necessary
+		if err := os.MkdirAll(path.Join(kpipath, "kpi_report"), 0775); err != nil {
+			panic(fmt.Sprintf("Fail to create directory: %v", err))
+		}
+
+		parser := new(nokpm.KpiParser)
+		parser.Init(Logger, op, pmdb, debug)
+		for _, file := range fileInfo {
+			if !file.IsDir() {
+				parser.Parse(path.Join(kpipath, file.Name()))
+			}
+		}
+	},
+}
+
 // from <Effective Go>
 /*
 The init function
@@ -102,6 +137,7 @@ Besides initializations that cannot be expressed as declarations, a common use o
 */
 func init() {
 	rootCmd.AddCommand(pmCmd)
+	rootCmd.AddCommand(kpiCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -116,7 +152,7 @@ func init() {
 	pmCmd.Flags().StringVar(&op, "op", "cmcc", "name of specific operator[cmcc,twm]")
 	pmCmd.Flags().StringVar(&pmpath, "pmpath", "./data", "path containing PM files")
 	pmCmd.Flags().StringVar(&pmdb, "pmdb", "./pmdb", "path of PM database")
-	pmCmd.Flags().IntVar(&maxgo, "maxgo", 5, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
+	pmCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	pmCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("pm.tpm", pmCmd.Flags().Lookup("tpm"))
 	viper.BindPFlag("pm.op", pmCmd.Flags().Lookup("op"))
@@ -124,6 +160,17 @@ func init() {
 	viper.BindPFlag("pm.pmdb", pmCmd.Flags().Lookup("pmdb"))
 	viper.BindPFlag("pm.maxgo", pmCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("pm.debug", pmCmd.Flags().Lookup("debug"))
+
+	kpiCmd.Flags().StringVar(&op, "op", "cmcc", "name of specific operator[cmcc,twm]")
+	kpiCmd.Flags().StringVar(&kpipath, "kpipath", "./data", "path containing KPI definitions")
+	kpiCmd.Flags().StringVar(&pmdb, "pmdb", "./pmdb", "path of PM database")
+	kpiCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
+	kpiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
+	viper.BindPFlag("kpi.op", kpiCmd.Flags().Lookup("op"))
+	viper.BindPFlag("kpi.kpipath", kpiCmd.Flags().Lookup("kpipath"))
+	viper.BindPFlag("kpi.pmdb", kpiCmd.Flags().Lookup("pmdb"))
+	viper.BindPFlag("kpi.maxgo", kpiCmd.Flags().Lookup("maxgo"))
+	viper.BindPFlag("kpi.debug", kpiCmd.Flags().Lookup("debug"))
 }
 
 func loadPmFlags() {
@@ -133,4 +180,12 @@ func loadPmFlags() {
 	pmdb = viper.GetString("pm.pmdb")
 	maxgo = viper.GetInt("pm.maxgo")
 	debug = viper.GetBool("pm.debug")
+}
+
+func loadKpiFlags() {
+	op = viper.GetString("kpi.op")
+	kpipath = viper.GetString("kpi.kpipath")
+	pmdb = viper.GetString("kpi.pmdb")
+	maxgo = viper.GetInt("kpi.maxgo")
+	debug = viper.GetBool("kpi.debug")
 }

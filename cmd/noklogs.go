@@ -103,7 +103,7 @@ func init() {
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
 	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
 	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
-	logsCmd.Flags().IntVar(&maxgo, "maxgo", 5, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
+	logsCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	logsCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("logs.tlog", logsCmd.Flags().Lookup("tlog"))
 	viper.BindPFlag("logs.py2", logsCmd.Flags().Lookup("py2"))
