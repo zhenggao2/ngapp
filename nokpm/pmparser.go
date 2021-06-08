@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 )
 
 // keyPerAgg is map between measurement aggregation and its default key pattern in PM database.
@@ -305,13 +306,7 @@ func (p *PmParser) Init(log *zap.Logger, op, db string, debug bool) {
 	p.op = op
 	p.db = db
 	p.debug = debug
-
-	// For TWM XINOS M55145(NRANS), the aggregation is NRBTS_PLMN
-	if p.op == "twm" {
-		aggPerMeasType["NRANS"] = "NRBTS_PLMN"
-	}
-
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing PM parser..."))
+	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing PM parser..."))
 }
 
 func (p *PmParser) Parse(pm, tpm string) {
@@ -457,7 +452,23 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 		return
 	}
 
+	// For TWM XINOS M55145(NRANS), the aggregation is NRBTS_PLMN
+	var agg string
+	if p.op == "twm" && measType == "NRANS" {
+		agg = "NRBTS_PLMN"
+	} else {
+		agg = aggPerMeasType[measType]
+	}
+
+	buffPool := sync.Pool{
+		New: func() interface{} {
+			return new(bytes.Buffer)
+		},
+	}
+
 	data := make(map[string]*bytes.Buffer)
+	maxLineToFlush := 20000
+	nline := 0
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -467,8 +478,7 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 		// remove leading and tailing spaces
 		line = strings.TrimSpace(line)
 		tokens := strings.Split(line, ",")
-
-		keyPatTokens := strings.Split(keyPerAgg[aggPerMeasType[measType]], "_")
+		keyPatTokens := strings.Split(keyPerAgg[agg], "_")
 		keyTokens := make([]string, 0)
 		//fmt.Printf("measType=%s,keyPatTokens=%v,p.pos=%v,headerTokens[0]=%v\n", measType, keyPatTokens, p.pos, headerTokens[0])
 		for _, token := range keyPatTokens {
@@ -480,14 +490,40 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 			counter := headerTokens[i]
 			val := tokens[i]
 			if _, exist := data[counter]; !exist {
-				data[counter] = new(bytes.Buffer)
+				//data[counter] = &bytes.Buffer{}
+				data[counter] = buffPool.Get().(*bytes.Buffer)
+				data[counter].Reset()
 			}
 			data[counter].WriteString(key + "," + val + "\n")
+		}
+
+		nline += 1
+		if nline >= maxLineToFlush {
+			//fmt.Printf("nline=%d, writing to gz...[%s]\n", nline, path.Base(csv))
+			for counter := range data {
+				ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+				fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+				if err != nil {
+					p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+					break
+				}
+
+				gw := gzip.NewWriter(fout)
+				gw.Write(data[counter].Bytes())
+				gw.Close()
+
+				data[counter].Reset()
+				buffPool.Put(data[counter])
+
+				fout.Close()
+			}
+			nline = 0
 		}
 	}
 
 	fin.Close()
 
+	fmt.Printf("writing last piece to gz...[%s]\n", path.Base(csv))
 	for counter := range data {
 		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
 		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
@@ -498,6 +534,7 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 
 		gw := gzip.NewWriter(fout)
 		gw.Write(data[counter].Bytes())
+		buffPool.Put(data[counter])
 		gw.Close()
 
 		fout.Close()
