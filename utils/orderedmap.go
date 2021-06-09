@@ -55,6 +55,23 @@ func (p *OrderedMap) Add(k interface{}, v interface{}) {
 	}
 }
 
+// Remove method removes (k,v) pair from the ordered map.
+func (p *OrderedMap) Remove(k interface{}) {
+	_, e := p.m[k]
+	if e {
+		newKeys := make([]interface{}, p.Len()-1)
+		for _, k2 := range p.keys {
+			if k2 != k {
+				newKeys = append(newKeys, k2)
+			}
+		}
+		p.keys = newKeys
+		delete(p.m, k)
+	} else {
+		return
+	}
+}
+
 // Len method returns size of the ordered map.
 func (p *OrderedMap) Len() int {
 	return len(p.keys)

@@ -35,6 +35,9 @@ var (
 	pmpath  string
 	pmdb string
 	kpipath string
+	btsid string
+	stime string
+	etime string
 )
 
 // pmCmd represents the pm command
@@ -117,12 +120,14 @@ var kpiCmd = &cobra.Command{
 		}
 
 		parser := new(nokpm.KpiParser)
-		parser.Init(Logger, op, pmdb, debug)
+		parser.Init(Logger, op, pmdb, maxgo, debug)
 		for _, file := range fileInfo {
 			if !file.IsDir() {
-				parser.Parse(path.Join(kpipath, file.Name()))
+				parser.ParseKpiDef(path.Join(kpipath, file.Name()))
 			}
 		}
+		parser.LoadPmDb(pmdb, btsid, stime, etime)
+		parser.CalcKpi(path.Join(kpipath, "kpi_report"))
 	},
 }
 
@@ -164,11 +169,17 @@ func init() {
 	kpiCmd.Flags().StringVar(&op, "op", "cmcc", "name of specific operator[cmcc,twm]")
 	kpiCmd.Flags().StringVar(&kpipath, "kpipath", "./data", "path containing KPI definitions")
 	kpiCmd.Flags().StringVar(&pmdb, "pmdb", "./pmdb", "path of PM database")
+	kpiCmd.Flags().StringVar(&btsid, "btsid", "123,456", "target BTS IDs(comma seperated)")
+	kpiCmd.Flags().StringVar(&stime, "stime", "20060102", "start time inclusive[YYYYMMDD]")
+	kpiCmd.Flags().StringVar(&etime, "etime", "20060102", "end time inclusive[YYYYMMDD]")
 	kpiCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	kpiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("kpi.op", kpiCmd.Flags().Lookup("op"))
 	viper.BindPFlag("kpi.kpipath", kpiCmd.Flags().Lookup("kpipath"))
 	viper.BindPFlag("kpi.pmdb", kpiCmd.Flags().Lookup("pmdb"))
+	viper.BindPFlag("kpi.btsid", kpiCmd.Flags().Lookup("btsid"))
+	viper.BindPFlag("kpi.stime", kpiCmd.Flags().Lookup("stime"))
+	viper.BindPFlag("kpi.etime", kpiCmd.Flags().Lookup("etime"))
 	viper.BindPFlag("kpi.maxgo", kpiCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("kpi.debug", kpiCmd.Flags().Lookup("debug"))
 }
@@ -186,6 +197,9 @@ func loadKpiFlags() {
 	op = viper.GetString("kpi.op")
 	kpipath = viper.GetString("kpi.kpipath")
 	pmdb = viper.GetString("kpi.pmdb")
+	btsid = viper.GetString("kpi.btsid")
+	stime = viper.GetString("kpi.stime")
+	etime = viper.GetString("kpi.etime")
 	maxgo = viper.GetInt("kpi.maxgo")
 	debug = viper.GetBool("kpi.debug")
 }

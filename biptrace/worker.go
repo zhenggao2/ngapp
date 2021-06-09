@@ -18,6 +18,7 @@ package biptrace
 import (
 	"bytes"
 	"fmt"
+	cmap "github.com/orcaman/concurrent-map"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -47,7 +48,7 @@ type BipTraceParser struct {
 	debug        bool
 
 	traceFiles []string
-	headerWritten map[string]bool
+	headerWritten cmap.ConcurrentMap
 }
 
 func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern string, maxgo int, debug bool) {
@@ -73,7 +74,7 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern strin
 		}
 	}
 
-	p.headerWritten = make(map[string]bool)
+	p.headerWritten = cmap.New()
 }
 
 func (p *BipTraceParser) Exec() {
@@ -148,7 +149,6 @@ func (p *BipTraceParser) parse(fn string) {
 
 			// remove leading and tailing spaces
 			line = strings.TrimSpace(line)
-
 			if len(line) > 0 {
 				if strings.Contains(line, "ICOM_5G") {
 					icomRec = false
@@ -156,18 +156,11 @@ func (p *BipTraceParser) parse(fn string) {
 					if len(fields) > 0 {
 						mapEventRecord[event].Add(ts, fields)
 						mapEventHeaderOk[event] = true
-
 						// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
-						if _, exist := p.headerWritten[event]; !exist {
-							mutex := &sync.Mutex{}
-							mutex.Lock()
-							p.headerWritten[event] = false
-							mutex.Unlock()
-						}
+						p.headerWritten.SetIfAbsent(event, false)
 					}
 
 					tokens := strings.Split(line, "/")
-
 					// event = strings.Replace(tokens[len(tokens)-1], ",", "_", -1)
 					// special handing of event type
 					// event: ICOM_5G/DlData_SsBlockSendReq, MIB
@@ -235,14 +228,12 @@ func (p *BipTraceParser) parse(fn string) {
 				break
 			}
 
-			if !p.headerWritten[k1] {
+			written, _ := p.headerWritten.Get(k1)
+			if !written.(bool) {
 				fout.WriteString(strings.Join(v1, ",") + "\n")
-				// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
-				mutex := &sync.Mutex{}
-				mutex.Lock()
-				p.headerWritten[k1] = true
-				mutex.Unlock()
+				p.headerWritten.Set(k1, true)
 			}
+
 			for p := 0; p < mapEventRecord[k1].Len(); p += 1{
 				k2 := mapEventRecord[k1].Keys()[p].(string)
 				v2 := mapEventRecord[k1].Val(k2).(string)
