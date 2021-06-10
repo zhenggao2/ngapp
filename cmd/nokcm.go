@@ -23,8 +23,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -64,8 +66,15 @@ var cmCmd = &cobra.Command{
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".xml" {
-					xml := path.Join(cmpath, file.Name())
+					for {
+						if runtime.NumGoroutine() >= maxgo {
+							time.Sleep(1 * time.Second)
+						} else {
+							break
+						}
+					}
 
+					xml := path.Join(cmpath, file.Name())
 					wg.Add(1)
 					go func(fn string) {
 						defer wg.Done()
@@ -88,8 +97,15 @@ var cmCmd = &cobra.Command{
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".ims2" {
-					ims2 := path.Join(cmpath, file.Name())
+					for {
+						if runtime.NumGoroutine() >= maxgo {
+							time.Sleep(1 * time.Second)
+						} else {
+							break
+						}
+					}
 
+					ims2 := path.Join(cmpath, file.Name())
 					wg.Add(1)
 					go func(fn string) {
 						defer wg.Done()
@@ -129,15 +145,18 @@ func init() {
 	// someCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
 	cmCmd.Flags().StringVar(&tcm, "tcm", "scfc", "type of CM[scfc,vendor,freqhist,ims2,cmcc]")
 	cmCmd.Flags().StringVar(&cmpath, "cmpath", "./data", "path containing CM files")
+	cmCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	cmCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("cm.tcm", cmCmd.Flags().Lookup("tcm"))
 	viper.BindPFlag("cm.cmpath", cmCmd.Flags().Lookup("cmpath"))
+	viper.BindPFlag("cm.maxgo", cmCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("cm.debug", cmCmd.Flags().Lookup("debug"))
 }
 
 func loadCmFlags() {
 	tcm = viper.GetString("cm.tcm")
 	cmpath = viper.GetString("cm.cmpath")
+	maxgo = viper.GetInt("cm.maxgo")
 	debug = viper.GetBool("cm.debug")
 }
 

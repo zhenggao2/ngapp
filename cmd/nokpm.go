@@ -169,7 +169,7 @@ func init() {
 	kpiCmd.Flags().StringVar(&op, "op", "cmcc", "name of specific operator[cmcc,twm]")
 	kpiCmd.Flags().StringVar(&kpipath, "kpipath", "./data", "path containing KPI definitions")
 	kpiCmd.Flags().StringVar(&pmdb, "pmdb", "./pmdb", "path of PM database")
-	kpiCmd.Flags().StringVar(&btsid, "btsid", "123,456", "target BTS IDs(comma seperated)")
+	kpiCmd.Flags().StringVar(&btsid, "btsid", "123,456", "target BTS IDs(comma seperated) or 'all' as a special value(CAUTION!)")
 	kpiCmd.Flags().StringVar(&stime, "stime", "20060102", "start time inclusive[YYYYMMDD]")
 	kpiCmd.Flags().StringVar(&etime, "etime", "20060102", "end time inclusive[YYYYMMDD]")
 	kpiCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")

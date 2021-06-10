@@ -37,8 +37,6 @@ type KpiParser struct {
 	op    string
 	db    string
 	maxgo int
-	bts []string
-	date []string
 	debug bool
 
 	//kpis map[string]*KpiDef // key = KPI name, val = KpiDef
@@ -70,7 +68,6 @@ func (p *KpiParser) Init(log *zap.Logger, op, db string, maxgo int, debug bool) 
 	p.db = db
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
-	//p.kpis = make(map[string]*KpiDef)
 	p.kpis = utils.NewOrderedMap()
 
 	// For TWM XINOS M55145(NRANS), the aggregation is NRBTS_PLMN
@@ -82,10 +79,6 @@ func (p *KpiParser) Init(log *zap.Logger, op, db string, maxgo int, debug bool) 
 }
 
 func (p *KpiParser) ParseKpiDef(kdf string) {
-	if !strings.Contains(kdf, "5g21a") {
-		return
-	}
-
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing KPI definitions...[%s]", path.Base(kdf)))
 
 	fin, err := os.Open(kdf)
@@ -179,7 +172,10 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Loading PM DB..."))
 
-	btsList := strings.Split(btsid, ",")
+	var btsList []string
+	if btsid != "all" {
+		btsList = strings.Split(btsid, ",")
+	}
 
 	p.pms = cmap.New()
 	for _, k := range p.kpis.Keys() {
@@ -234,7 +230,7 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 					bts := tokens2[0]
 					// Timestamp should be "2006-01-02"
 					ts := strings.Replace(tokens2[len(tokens2)-1], "-", "", -1)
-					if !utils.ContainsStr(btsList, bts) {
+					if len(btsList) > 0 && !utils.ContainsStr(btsList, bts) {
 						continue
 					}
 					if ts < stime || ts > etime {
@@ -286,16 +282,15 @@ func (p *KpiParser) unsafeParseBool(s string) bool {
 func (p *KpiParser) CalcKpi(rptPath string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Calculating KPI..."))
 
-	//rptHeader := []string{"kpiName, aggKey, kpiVal"}
-	ofn := path.Join(rptPath, fmt.Sprintf("kpi_report_%s.csv", time.Now().Format("20060102_150406")))
-	fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
-	if err != nil {
-		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
-		return
-	}
-	fout.WriteString("kpiName, kpiAgg, aggKey, kpiVal\n")
+	// key1 = agg, key2 = aggKey, key3 = kpiName, val3 = kpiVal
+	report := make(map[string]*utils.OrderedMap)
+	// key = agg, val = list of kpiName
+	reportHeader := make(map[string][]string)
+	reportHeaderWiUnit := make(map[string][]string)
+	timestamp := time.Now().Format("20060102_150406")
 
 	for _, kpi := range p.kpis.Keys() {
+		headerWritten := false
 		//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Calculating KPI...[%s]", kpi))
 		expr, _ := govaluate.NewEvaluableExpression(p.kpis.Val(kpi).(*KpiDef).formula)
 		paras := make(map[string]interface{})
@@ -315,6 +310,19 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 				continue
 			}
 
+			agg := p.kpis.Val(kpi).(*KpiDef).agg
+			precision := p.kpis.Val(kpi).(*KpiDef).precision
+			unit := p.kpis.Val(kpi).(*KpiDef).unit
+			keyPat := keyPerAgg[agg]
+			if _, exist := report[agg]; !exist {
+				report[agg] = utils.NewOrderedMap()
+				reportHeader[agg] = []string{strings.Replace(keyPat, "_", ",", -1)}
+				reportHeaderWiUnit[agg] = []string{strings.Replace(keyPat, "_", ",", -1)}
+			}
+			if !report[agg].Exist(key) {
+				report[agg].Add(key, utils.NewOrderedMap())
+			}
+
 			for _, c := range p.kpis.Val(kpi).(*KpiDef).counters {
 				m, _ := p.pms.Get(c)
 				v, _ := m.(cmap.ConcurrentMap).Get(key)
@@ -326,13 +334,41 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
 			} else {
 				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpi_name=%v, key=%v, paras=%v, ret=%.*f", kpi, key, paras, p.kpis[kpi].precision, ret))
-				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, ret=%.*f", kpi, p.kpis.Val(kpi).(*KpiDef).agg, key, p.kpis.Val(kpi).(*KpiDef).precision, ret))
-				fout.WriteString(fmt.Sprintf("%s[%s],%s,%s,%.*f\n", kpi, p.kpis.Val(kpi).(*KpiDef).unit, p.kpis.Val(kpi).(*KpiDef).agg, key, p.kpis.Val(kpi).(*KpiDef).precision, ret))
+				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, ret=%.*f", kpi, agg, key, precision, ret))
+				report[agg].Val(key).(*utils.OrderedMap).Add(kpi, strconv.FormatFloat(ret.(float64), 'f', precision, 64))
+				if !headerWritten {
+					reportHeader[agg] = append(reportHeader[agg], kpi.(string))
+					reportHeaderWiUnit[agg] = append(reportHeaderWiUnit[agg], fmt.Sprintf("%s[%s]", kpi.(string), unit))
+					headerWritten = true
+				}
 			}
 		}
 	}
 
-	fout.Close()
+	for agg := range report {
+		ofn := path.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
+		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+			return
+		}
+
+		fout.WriteString(strings.Join(reportHeaderWiUnit[agg], ",") + "\n")
+		for _, aggKey := range report[agg].Keys() {
+			v := report[agg].Val(aggKey).(*utils.OrderedMap)
+			line := []string{strings.Replace(aggKey.(string), "_", ",", -1)}
+			for i := 1; i < len(reportHeader[agg]); i += 1 {
+				if v.Exist(reportHeader[agg][i]) {
+					line = append(line, v.Val(reportHeader[agg][i]).(string))
+				} else {
+					line = append(line, "-")
+				}
+			}
+			fout.WriteString(strings.Join(line, ",") + "\n")
+		}
+
+		fout.Close()
+	}
 }
 
 func (p *KpiParser) writeLog(level zapcore.Level, s string) {
