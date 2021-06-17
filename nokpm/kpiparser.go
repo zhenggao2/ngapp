@@ -128,6 +128,7 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 			expression, err := govaluate.NewEvaluableExpression(p.kpis.Val(name).(*KpiDef).formula)
 			if err != nil {
 				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Invalid KPI definition: fail to parse formula. (kpidef.name=%s, kpiDef.formula=%s)", name, p.kpis.Val(name).(*KpiDef).formula))
+				p.kpis.Remove(name)
 				continue
 			}
 			for _, v := range expression.Vars() {

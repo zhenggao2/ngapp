@@ -59,13 +59,12 @@ func (p *OrderedMap) Add(k interface{}, v interface{}) {
 func (p *OrderedMap) Remove(k interface{}) {
 	_, e := p.m[k]
 	if e {
-		newKeys := make([]interface{}, p.Len()-1)
-		for _, k2 := range p.keys {
-			if k2 != k {
-				newKeys = append(newKeys, k2)
+		for i, k2 := range p.keys {
+			if k2 == k {
+				p.keys = append(p.keys[:i], p.keys[i+1:]...)
+				break
 			}
 		}
-		p.keys = newKeys
 		delete(p.m, k)
 	} else {
 		return
