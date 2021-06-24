@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/Knetic/govaluate"
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/unidoc/unioffice/schema/soo/sml"
+	"github.com/unidoc/unioffice/spreadsheet"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -346,6 +348,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 		}
 	}
 
+	/*
 	for agg := range report {
 		ofn := path.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
 		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
@@ -370,6 +373,71 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 		fout.Close()
 	}
+	 */
+
+	workbook := spreadsheet.New()
+	wrapped := workbook.StyleSheet.AddCellStyle()
+	wrapped.SetWrapped(true)
+	for agg := range report {
+		sheet := workbook.AddSheet()
+		sheet.SetName(agg)
+
+		// write header
+		row := sheet.AddRow()
+		reportHeaderWiUnit[agg] = append(strings.Split(reportHeaderWiUnit[agg][0], ","), reportHeaderWiUnit[agg][1:]...)
+		for _, h := range reportHeaderWiUnit[agg] {
+			cell := row.AddCell()
+			cell.SetString(h)
+			cell.SetStyle(wrapped)
+		}
+
+		frozen := false
+		for _, aggKey := range report[agg].Keys() {
+			row := sheet.AddRow()
+			tokens := strings.Split(aggKey.(string), "_")
+			for _, k := range tokens {
+				row.AddCell().SetString(k)
+			}
+
+			if !frozen {
+				view := sheet.InitialView()
+				view.SetState(sml.ST_PaneStateFrozen)
+				view.SetYSplit(1)
+				view.SetXSplit(float64(len(tokens)))
+				view.SetTopLeft(fmt.Sprintf("%s%d", p.int2Col(uint32(len(tokens))), 2))
+				frozen = true
+			}
+
+			v := report[agg].Val(aggKey).(*utils.OrderedMap)
+			for i := 1; i < len(reportHeader[agg]); i += 1 {
+				if v.Exist(reportHeader[agg][i]) {
+					row.AddCell().SetString(v.Val(reportHeader[agg][i]).(string))
+				} else {
+					row.AddCell().SetString("-")
+				}
+			}
+		}
+
+		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+	}
+
+	workbook.SaveToFile(path.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp)))
+	workbook.Close()
+}
+
+func (p *KpiParser) int2Col(i uint32) string {
+	var s string
+	for {
+		if i / 26 > 0 {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			i = (i - i % 26) / 26
+		} else {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			break
+		}
+	}
+
+	return s
 }
 
 func (p *KpiParser) writeLog(level zapcore.Level, s string) {
