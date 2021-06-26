@@ -32,6 +32,9 @@ import (
 var (
 	tcm    string
 	cmpath string
+	ins string
+	moc string
+	ignore string
 )
 
 // cmCmd represents the cm command
@@ -122,6 +125,23 @@ var cmCmd = &cobra.Command{
 	},
 }
 
+// cmDiffCmd represents the cmdiff command
+var cmDiffCmd = &cobra.Command{
+	Use:   "cmdiff",
+	Short: "CM Diff tool",
+	Long:  `The cmdiff module finds difference of parsed SCFC/Vendor(.dat).`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		loadCmDiffFlags()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		laPrint(cmd, args)
+		viper.WriteConfig()
+
+		differ := new(nokcm.CmDiffer)
+		differ.Init(Logger, cmpath, ins, moc, ignore, debug)
+	},
+}
+
 // from <Effective Go>
 /*
 The init function
@@ -133,6 +153,7 @@ Besides initializations that cannot be expressed as declarations, a common use o
 */
 func init() {
 	rootCmd.AddCommand(cmCmd)
+	rootCmd.AddCommand(cmDiffCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -151,6 +172,17 @@ func init() {
 	viper.BindPFlag("cm.cmpath", cmCmd.Flags().Lookup("cmpath"))
 	viper.BindPFlag("cm.maxgo", cmCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("cm.debug", cmCmd.Flags().Lookup("debug"))
+
+	cmDiffCmd.Flags().StringVar(&cmpath, "cmpath", "./data", "path containing parsed CM files(.dat)")
+	cmDiffCmd.Flags().StringVar(&ins, "ins", "input_1.dat,input_2.dat", "input CM files(.dat) which will be compared, comma separated")
+	cmDiffCmd.Flags().StringVar(&moc, "moc", "all", "MOC categories which will be compared, comma separated[sbts,nrbts,mnl,tnl,eqm,eqmr,all]")
+	cmDiffCmd.Flags().StringVar(&ignore, "ignore", "sbts:MRBTSDESC,nrbts:NRREL", "MOCs which will be excluded from comparison, comma separated tokens with each token composed of MOC category and MOC name")
+	cmDiffCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
+	viper.BindPFlag("cmdiff.cmpath", cmDiffCmd.Flags().Lookup("cmpath"))
+	viper.BindPFlag("cmdiff.ins", cmDiffCmd.Flags().Lookup("ins"))
+	viper.BindPFlag("cmdiff.moc", cmDiffCmd.Flags().Lookup("moc"))
+	viper.BindPFlag("cmdiff.ignore", cmDiffCmd.Flags().Lookup("ignore"))
+	viper.BindPFlag("cmdiff.debug", cmDiffCmd.Flags().Lookup("debug"))
 }
 
 func loadCmFlags() {
@@ -158,5 +190,13 @@ func loadCmFlags() {
 	cmpath = viper.GetString("cm.cmpath")
 	maxgo = viper.GetInt("cm.maxgo")
 	debug = viper.GetBool("cm.debug")
+}
+
+func loadCmDiffFlags() {
+	cmpath = viper.GetString("cmdiff.cmpath")
+	ins = viper.GetString("cmdiff.ins")
+	moc = viper.GetString("cmdiff.moc")
+	ignore = viper.GetString("cmdiff.ignore")
+	debug = viper.GetBool("cmdiff.debug")
 }
 

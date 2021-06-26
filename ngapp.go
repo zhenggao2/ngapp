@@ -22,7 +22,7 @@ import (
 	"runtime"
 )
 
-var swVersion = "v0.21.062401"
+var swVersion = "v0.21.062601"
 
 func init() {
 	err := license.SetMeteredKey("fb1b3cb24189879d60454c44462d70091e9cdb168e21205c9aa38cf0e413891d")
@@ -34,7 +34,7 @@ func init() {
 }
 
 func main() {
-	fmt.Printf("ngapp version: %s, built with: %s\n", swVersion, runtime.Version())
+	fmt.Printf("ngapp version: %s, built with: %s\n\n", swVersion, runtime.Version())
 	// runtime.GOMAXPROCS(runtime.NumCPU() / 2)
 
 	lic := license.GetLicenseKey()
@@ -42,7 +42,6 @@ func main() {
 		// fmt.Printf("Failed retrieving license key")
 		return
 	}
-	fmt.Println("Check Unioffice license: OK!")
 
 	/*
 		// GetMeteredState freshly checks the state, contacting the licensing server.

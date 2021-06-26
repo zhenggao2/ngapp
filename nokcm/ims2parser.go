@@ -35,7 +35,7 @@ func (p *Ims2Parser) Init(log *zap.Logger, debug bool) {
 }
 
 func (p *Ims2Parser) Parse(ims2 string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing IMS2...[%s]", ims2))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing IMS2(not implemented yet!)...[%s]", ims2))
 }
 
 func (p *Ims2Parser) writeLog(level zapcore.Level, s string) {
