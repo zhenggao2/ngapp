@@ -16,10 +16,13 @@ limitations under the License.
 package nokcm
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -43,6 +46,8 @@ type CmDiffer struct {
 	ins []string
 	moc []string // list of MOC catagories to be analyzed
 	ignore map[string][]string // key=MOC catagory, val=list of ignored MOCs
+	db map[string]map[string]map[string]string // [k1=moc, v1=[k2=instanceId, v2=[k3=paraName, v3=paraVal]]]
+	db2 *utils.OrderedMap
 	debug bool
 }
 
@@ -51,6 +56,9 @@ func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug 
 	p.cmpath = cmpath
 	p.ins = strings.Split(ins, ",")
 	p.moc = strings.Split(moc, ",")
+	if utils.ContainsStr(p.moc, "all") {
+		p.moc = []string{"all"}
+	}
 
 	p.ignore = make(map[string][]string)
 	tokens := strings.Split(ignore, ",")
@@ -69,12 +77,112 @@ func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug 
 		}
 	}
 
+	p.db = make(map[string]map[string]map[string]string)
+	p.db2 = utils.NewOrderedMap()
 	p.debug = debug
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing CM differ..."))
 }
 
-func (p *CmDiffer) parseDat() {
+func (p *CmDiffer) Compare() {
+	for _, s := range p.ins {
+		dat := path.Join(p.cmpath, s)
+		p.parseDat(dat)
+	}
 
+	for _, k := range p.db2.Sort() {
+		if p.db2.Val(k).(bool) {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("moc=%v, valid=%v", k, p.db2.Val(k)))
+		}
+	}
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("db=%v\n", p.db))
+}
+
+func (p *CmDiffer) parseDat(dat string) {
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", path.Base(dat)))
+
+	fin, err := os.Open(dat)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+
+	reader := bufio.NewReader(fin)
+	var moc, id string
+	var valid bool
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		// remove leading and tailing spaces
+		line = strings.TrimSpace(line)
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			line = line[1:len(line)-1]
+			dn := strings.Split(line, "===")[1]
+			tokens := strings.Split(dn, "/")
+			mocList := make([]string, 0)
+			idList := make([]string, 0)
+			for _, t := range tokens {
+				pair := strings.Split(t, "-")
+				mocList = append(mocList, pair[0])
+				idList = append(idList, pair[1])
+			}
+
+			moc = strings.Join(mocList, ".")
+			id = strings.Join(idList, ".")
+
+			// check against p.moc
+			valid = false
+			for _, m := range p.moc {
+				if m == "all" {
+					valid = true
+					break
+				}
+
+				if strings.HasPrefix(moc, mocCatMap[m].prefix) && (mocCatMap[m].suffix == nil || (mocCatMap[m].suffix != nil && utils.ContainsStr(mocCatMap[m].suffix, mocList[len(mocList)-1]))) {
+					if m == "eqm" && strings.Contains(moc, "EQM_R") {
+						valid = false
+					} else {
+						valid = true
+					}
+				}
+			}
+
+			// check against p.ignore
+			for k := range p.ignore {
+				if strings.HasPrefix(moc, mocCatMap[k].prefix) {
+					for _, m := range p.ignore[k] {
+						if utils.ContainsStr(mocList, m) {
+							valid = false
+						}
+					}
+				}
+			}
+
+			p.db2.Add(moc, valid)
+			if valid {
+				if _, e := p.db[moc]; !e {
+					p.db[moc] = make(map[string]map[string]string)
+				}
+
+				if _, e := p.db[moc][id]; !e {
+					p.db[moc][id] = make(map[string]string)
+				}
+			}
+		} else {
+			if valid {
+				tokens := strings.Split(line, "===")
+				p.db[moc][id][tokens[0]] = tokens[1]
+			}
+		}
+	}
+
+	fin.Close()
 }
 
 func (p *CmDiffer) writeLog(level zapcore.Level, s string) {

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 )
 
 // OrderedMap implements ordered map data structure.
@@ -74,6 +75,17 @@ func (p *OrderedMap) Remove(k interface{}) {
 // Len method returns size of the ordered map.
 func (p *OrderedMap) Len() int {
 	return len(p.keys)
+}
+
+// Sort method sorts internal keys.
+func (p *OrderedMap) Sort() []string {
+	keys := make([]string, 0)
+	for _, k := range p.keys {
+		keys = append(keys, k.(string))
+	}
+
+	sort.Strings(keys)
+	return keys
 }
 
 // String method implements the Stringer interface

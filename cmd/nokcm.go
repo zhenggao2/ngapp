@@ -139,6 +139,7 @@ var cmDiffCmd = &cobra.Command{
 
 		differ := new(nokcm.CmDiffer)
 		differ.Init(Logger, cmpath, ins, moc, ignore, debug)
+		differ.Compare()
 	},
 }
 
