@@ -18,26 +18,28 @@ package nokcm
 import (
 	"bufio"
 	"fmt"
+	cmap "github.com/orcaman/concurrent-map"
+	"github.com/unidoc/unioffice/spreadsheet"
+	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
-
-type ParaDef struct {
-	index int
-	mocCat string
-	mocName string
-	paraName string
-	comments string
-}
 
 type CmFinder struct {
 	log *zap.Logger
 	cmpath string
 	paras string
-	db map[string]map[string]map[string]string // [k1=moc, v1=[k2=instanceId, v2=[k3=paraName, v3=paraVal]]]
+	maxgo int
+	mocDb map[string]bool // key=MOC_CAT.MOC_NAME
+	paraDb map[string][]string // key=MOC_CAT.MOC_NAME, val=list of parameters
+	db cmap.ConcurrentMap // [key1=MOC_CAT.MOC_NAME, val1=[key2=dn, val2=[key3=paraName, val3=paraVal]]]
 	debug bool
 }
 
@@ -45,13 +47,153 @@ func (p *CmFinder) Init(log *zap.Logger, cmpath, paras string, debug bool) {
 	p.log = log
 	p.cmpath = cmpath
 	p.paras = paras
-	p.db = make(map[string]map[string]map[string]string)
+	p.mocDb = make(map[string]bool)
+	p.paraDb = make(map[string][]string)
+	p.db = cmap.New()
 	p.debug = debug
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing CM Finder..."))
 }
 
+func (p *CmFinder) Search() {
+	p.LoadParas()
+	// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v", p.mocDb))
+	// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v", p.paraDb))
+
+	for sname := range p.mocDb {
+		p.db.Set(sname, cmap.New())
+	}
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Searching CM files..."))
+	fileInfo, err := ioutil.ReadDir(p.cmpath)
+	if err != nil {
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Fail to read directory: %s.", p.cmpath))
+		return
+	}
+
+	wg := &sync.WaitGroup{}
+	for _, file := range fileInfo {
+		if !file.IsDir() {
+			wg.Add(1)
+			go func(fn string) {
+				defer wg.Done()
+				p.parseDat(fn)
+			}(path.Join(p.cmpath, file.Name()))
+		}
+	}
+	wg.Wait()
+
+	/*
+	for _, sname := range p.db.Keys() {
+		m1, _ := p.db.Get(sname)
+		for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
+			m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
+			for _, pn := range m2.(cmap.ConcurrentMap).Keys() {
+				pv, _ := m2.(cmap.ConcurrentMap).Get(pn)
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("sname=%v,dn=%v,pn=%v,pv=%v", sname, dn, pn, pv))
+			}
+		}
+	}
+	 */
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Exporting results to excel..."))
+	workbook := spreadsheet.New()
+	wrapped := workbook.StyleSheet.AddCellStyle()
+	wrapped.SetWrapped(true)
+	for _, sname := range p.db.Keys() {
+		sheet := workbook.AddSheet()
+		sheet.SetName(sname)
+		// write header
+		row := sheet.AddRow()
+		header := append([]string{"DN"}, p.paraDb[sname]...)
+		for _, h := range header {
+			cell := row.AddCell()
+			cell.SetString(h)
+			cell.SetStyle(wrapped)
+		}
+
+		m1, _ := p.db.Get(sname)
+		for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
+			row := sheet.AddRow()
+			rowData := []string{dn}
+
+			m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
+			for _, pn := range p.paraDb[sname] {
+				pv, ok := m2.(cmap.ConcurrentMap).Get(pn)
+				if ok {
+					rowData = append(rowData, pv.(string))
+				} else {
+					rowData = append(rowData, "-")
+				}
+			}
+
+			for _, d := range rowData{
+				row.AddCell().SetString(d)
+			}
+		}
+
+		sheet.SetFrozen(true, true)
+		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+	}
+
+	workbook.SaveToFile(filepath.Join(filepath.Dir(p.paras), fmt.Sprintf("cm_find_result_%s.xlsx", time.Now().Format("20060102_150406"))))
+	workbook.Close()
+}
+
+func (p *CmFinder) int2Col(i uint32) string {
+	var s string
+	for {
+		if i / 26 > 0 {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			i = (i - i % 26) / 26
+		} else {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			break
+		}
+	}
+
+	return s
+}
+
+func (p *CmFinder) LoadParas() {
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Loading parameter list...[%s]", filepath.Base(p.paras)))
+
+	fin, err := os.Open(p.paras)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+
+	reader := bufio.NewReader(fin)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		// remove leading and tailing spaces
+		line = strings.TrimSpace(line)
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		tokens := strings.Split(line, ":")
+		// nrbts:NRCELL-msg1FrequencyStart:PRACH Frequency start
+		if len(tokens) == 3 {
+			names := strings.Split(tokens[1], "-")
+			mocDn := fmt.Sprintf("%s.%s", tokens[0], names[0])
+			if _, e := p.mocDb[mocDn]; !e {
+				p.mocDb[mocDn] = true
+				p.paraDb[mocDn] = make([]string, 0)
+			}
+			p.paraDb[mocDn] = append(p.paraDb[mocDn], names[1])
+		}
+	}
+
+	fin.Close()
+}
+
 func (p *CmFinder) parseDat(dat string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", path.Base(dat)))
+	// p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", filepath.Base(dat)))
 
 	fin, err := os.Open(dat)
 	if err != nil {
@@ -60,7 +202,8 @@ func (p *CmFinder) parseDat(dat string) {
 	}
 
 	reader := bufio.NewReader(fin)
-	var moc, id string
+	var dn, moc, sname string
+	var valid bool
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -75,28 +218,46 @@ func (p *CmFinder) parseDat(dat string) {
 
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			line = line[1:len(line)-1]
-			dn := strings.Split(line, "===")[1]
+			dn = strings.Split(line, "===")[1]
 			tokens := strings.Split(dn, "/")
 			mocList := make([]string, 0)
-			idList := make([]string, 0)
 			for _, t := range tokens {
 				pair := strings.Split(t, "-")
 				mocList = append(mocList, pair[0])
-				idList = append(idList, pair[1])
 			}
 
 			moc = strings.Join(mocList, ".")
-			id = strings.Join(idList, ".")
-			if _, e := p.db[moc]; !e {
-				p.db[moc] = make(map[string]map[string]string)
+			valid = false
+			for k := range p.mocDb {
+				names := strings.Split(k, ".")
+				if names[0] == "eqm" && strings.Contains(moc, "EQM_R") {
+					continue
+				} else {
+					if strings.HasPrefix(moc, mocCatMap[names[0]].prefix) && mocList[len(mocList)-1] == names[1] {
+						valid = true
+						sname = k
+						// fmt.Printf("dn=%v, sname=%v, valid=%v\n", dn, sname, valid)
+						break
+					}
+				}
 			}
 
-			if _, e := p.db[moc][id]; !e {
-				p.db[moc][id] = make(map[string]string)
+			if valid {
+				m, _ := p.db.Get(sname)
+				m.(cmap.ConcurrentMap).Set(dn, cmap.New())
+				p.db.Set(sname, m)
 			}
 		} else {
-			tokens := strings.Split(line, "===")
-			p.db[moc][id][tokens[0]] = tokens[1]
+			if valid {
+				tokens := strings.Split(line, "===")
+				if utils.ContainsStr(p.paraDb[sname], tokens[0]) {
+					m1, _ := p.db.Get(sname)
+					m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
+					m2.(cmap.ConcurrentMap).Set(tokens[0], tokens[1])
+					m1.(cmap.ConcurrentMap).Set(dn, m2)
+					p.db.Set(sname, m1)
+				}
+			}
 		}
 	}
 

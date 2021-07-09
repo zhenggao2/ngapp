@@ -158,6 +158,7 @@ var cmFindCmd = &cobra.Command{
 
 		finder := new(nokcm.CmFinder)
 		finder.Init(Logger, cmpath, paras, debug)
+		finder.Search()
 	},
 }
 
