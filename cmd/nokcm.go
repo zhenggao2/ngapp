@@ -35,6 +35,7 @@ var (
 	ins string
 	moc string
 	ignore string
+	paras string
 )
 
 // cmCmd represents the cm command
@@ -143,6 +144,23 @@ var cmDiffCmd = &cobra.Command{
 	},
 }
 
+// cmFindCmd represents the cmfind command
+var cmFindCmd = &cobra.Command{
+	Use:   "cmfind",
+	Short: "CM Find tool",
+	Long:  `The cmfind module finds interested parameters from parsed SCFC/Vendor(.dat).`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		loadCmFindFlags()
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		laPrint(cmd, args)
+		viper.WriteConfig()
+
+		finder := new(nokcm.CmFinder)
+		finder.Init(Logger, cmpath, paras, debug)
+	},
+}
+
 // from <Effective Go>
 /*
 The init function
@@ -155,6 +173,7 @@ Besides initializations that cannot be expressed as declarations, a common use o
 func init() {
 	rootCmd.AddCommand(cmCmd)
 	rootCmd.AddCommand(cmDiffCmd)
+	rootCmd.AddCommand(cmFindCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -184,6 +203,13 @@ func init() {
 	viper.BindPFlag("cmdiff.moc", cmDiffCmd.Flags().Lookup("moc"))
 	viper.BindPFlag("cmdiff.ignore", cmDiffCmd.Flags().Lookup("ignore"))
 	viper.BindPFlag("cmdiff.debug", cmDiffCmd.Flags().Lookup("debug"))
+
+	cmFindCmd.Flags().StringVar(&cmpath, "cmpath", "./data", "path containing parsed CM files(.dat)")
+	cmFindCmd.Flags().StringVar(&paras, "paras", "para_list.txt", "file containing interested parameters, one parameter per line which is mocCategory:mocName-paraName:comments")
+	cmFindCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
+	viper.BindPFlag("cmfind.cmpath", cmFindCmd.Flags().Lookup("cmpath"))
+	viper.BindPFlag("cmfind.paras", cmFindCmd.Flags().Lookup("paras"))
+	viper.BindPFlag("cmfind.debug", cmFindCmd.Flags().Lookup("debug"))
 }
 
 func loadCmFlags() {
@@ -199,5 +225,11 @@ func loadCmDiffFlags() {
 	moc = viper.GetString("cmdiff.moc")
 	ignore = viper.GetString("cmdiff.ignore")
 	debug = viper.GetBool("cmdiff.debug")
+}
+
+func loadCmFindFlags() {
+	cmpath = viper.GetString("cmfind.cmpath")
+	paras = viper.GetString("cmfind.paras")
+	debug = viper.GetBool("cmfind.debug")
 }
 
