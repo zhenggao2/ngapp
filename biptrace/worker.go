@@ -150,6 +150,11 @@ func (p *BipTraceParser) parse(fn string) {
 			// remove leading and tailing spaces
 			line = strings.TrimSpace(line)
 			if len(line) > 0 {
+				// skip [...] lines such as: [8 TB Payload fragments (65580 bytes): #33(8960), #34(8960), #35(8960), #36(8960), #37(8960), #39(8960), #40(8960), #41(2860)]
+				if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+					continue
+				}
+
 				if strings.Contains(line, "ICOM_5G") {
 					icomRec = false
 

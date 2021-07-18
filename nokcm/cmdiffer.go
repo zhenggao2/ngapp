@@ -18,12 +18,15 @@ package nokcm
 import (
 	"bufio"
 	"fmt"
+	"github.com/unidoc/unioffice/spreadsheet"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type MocCategory struct {
@@ -42,18 +45,18 @@ var mocCatMap = map[string]MocCategory {
 
 type CmDiffer struct {
 	log *zap.Logger
-	cmpath string
+	cmpath []string
 	ins []string
 	moc []string // list of MOC catagories to be analyzed
 	ignore map[string][]string // key=MOC catagory, val=list of ignored MOCs
-	db map[string]map[string]map[string]string // [k1=moc, v1=[k2=instanceId, v2=[k3=paraName, v3=paraVal]]]
+	db map[string]map[string]*utils.OrderedMap // [k1=moc, v1=[k2=paraName, v2=[k3=instanceId, v3=paraVal]]]
 	db2 *utils.OrderedMap
 	debug bool
 }
 
 func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug bool) {
 	p.log = log
-	p.cmpath = cmpath
+	p.cmpath = strings.Split(cmpath, ",")
 	p.ins = strings.Split(ins, ",")
 	p.moc = strings.Split(moc, ",")
 	if utils.ContainsStr(p.moc, "all") {
@@ -77,16 +80,18 @@ func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug 
 		}
 	}
 
-	p.db = make(map[string]map[string]map[string]string)
+	p.db = make(map[string]map[string]*utils.OrderedMap)
 	p.db2 = utils.NewOrderedMap()
 	p.debug = debug
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing CM differ..."))
 }
 
 func (p *CmDiffer) Compare() {
-	for _, s := range p.ins {
-		dat := path.Join(p.cmpath, s)
-		p.parseDat(dat)
+	for _, fn := range p.ins {
+		for _, cmp := range p.cmpath {
+			dat := path.Join(cmp, fn)
+			p.parseDat(dat)
+		}
 	}
 
 	for _, k := range p.db2.Sort() {
@@ -94,11 +99,77 @@ func (p *CmDiffer) Compare() {
 			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("moc=%v, valid=%v", k, p.db2.Val(k)))
 		}
 	}
-	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("db=%v\n", p.db))
+	//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("db=%v\n", p.db))
+
+	headerWritten := make(map[string]bool)
+	hasDiff := false
+	workbook := spreadsheet.New()
+	wrapped := workbook.StyleSheet.AddCellStyle()
+	wrapped.SetWrapped(true)
+	for k1 := range p.db {
+		sheet := workbook.AddSheet()
+		headerWritten[k1] = false
+		hasDiff = false
+
+		for k2 := range p.db[k1] {
+			diff := "NO"
+			ids := make([]string, 0)
+			vals := make([]string, 0)
+			vset := make(map[string]bool)
+			for _, k3 := range p.db[k1][k2].Sort() {
+				v3 := p.db[k1][k2].Val(k3).(string)
+				ids = append(ids, k3)
+				vals = append(vals, v3)
+				vset[v3] = true
+			}
+
+			if len(vset) > 1 {
+				diff = "YES"
+				hasDiff = true
+			}
+
+			// write header
+			if !headerWritten[k1] {
+				row := sheet.AddRow()
+				header := append([]string{k1, "Diff"}, ids...)
+				for _, h := range header {
+					cell := row.AddCell()
+					cell.SetString(h)
+					cell.SetStyle(wrapped)
+				}
+				headerWritten[k1] = true
+			}
+
+			// write row
+			row := sheet.AddRow()
+			rowData := append([]string{k2, diff}, vals...)
+			for _, d := range rowData{
+				row.AddCell().SetString(d)
+			}
+		}
+
+		// set sheet name
+		sheetName := k1
+		if hasDiff {
+			sheetName += "#"
+		}
+		if len(sheetName) > 31 {
+			sheet.SetName(sheetName[len(sheetName)-31:])
+		} else {
+			sheet.SetName(sheetName)
+		}
+
+		sheet.SetFrozen(true, true)
+		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+	}
+
+	workbook.SaveToFile(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150406"))))
+	workbook.Close()
 }
 
 func (p *CmDiffer) parseDat(dat string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", path.Base(dat)))
+	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", path.Base(dat)))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", dat))
 
 	fin, err := os.Open(dat)
 	if err != nil {
@@ -167,22 +238,36 @@ func (p *CmDiffer) parseDat(dat string) {
 			p.db2.Add(moc, valid)
 			if valid {
 				if _, e := p.db[moc]; !e {
-					p.db[moc] = make(map[string]map[string]string)
-				}
-
-				if _, e := p.db[moc][id]; !e {
-					p.db[moc][id] = make(map[string]string)
+					p.db[moc] = make(map[string]*utils.OrderedMap)
 				}
 			}
 		} else {
 			if valid {
 				tokens := strings.Split(line, "===")
-				p.db[moc][id][tokens[0]] = tokens[1]
+				if _, e := p.db[moc][tokens[0]]; !e {
+					p.db[moc][tokens[0]] = utils.NewOrderedMap()
+				}
+				p.db[moc][tokens[0]].Add(fmt.Sprintf("%v-%v", dat, id), tokens[1])
 			}
 		}
 	}
 
 	fin.Close()
+}
+
+func (p *CmDiffer) int2Col(i uint32) string {
+	var s string
+	for {
+		if i / 26 > 0 {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			i = (i - i % 26) / 26
+		} else {
+			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			break
+		}
+	}
+
+	return s
 }
 
 func (p *CmDiffer) writeLog(level zapcore.Level, s string) {

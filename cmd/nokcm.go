@@ -148,7 +148,7 @@ var cmDiffCmd = &cobra.Command{
 var cmFindCmd = &cobra.Command{
 	Use:   "cmfind",
 	Short: "CM Find tool",
-	Long:  `The cmfind module finds interested parameters from parsed SCFC/Vendor(.dat).`,
+	Long:  `The cmfind module finds selected parameters from parsed SCFC/Vendor(.dat).`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadCmFindFlags()
 	},
