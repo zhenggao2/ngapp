@@ -137,6 +137,7 @@ func (p *BipTraceParser) parse(fn string) {
 	if stdOut.Len() > 0 {
 		// TODO use bytes.Buffer.readString("\n") to postprocessing text files
 		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("splitting BIP trace into csv... [%s]", fn))
+		bipEvent := false
 		icomRec := false
 		var ts string
 		var event string
@@ -156,6 +157,7 @@ func (p *BipTraceParser) parse(fn string) {
 				}
 
 				if strings.Contains(line, "ICOM_5G") {
+					bipEvent = true
 					icomRec = false
 
 					if len(fields) > 0 {
@@ -182,9 +184,12 @@ func (p *BipTraceParser) parse(fn string) {
 					if _, exist := mapEventRecord[event]; !exist {
 						mapEventRecord[event] = utils.NewOrderedMap()
 					}
+				} else if strings.Contains(line, "ICMP") {
+					bipEvent = false
+					icomRec = false
 				}
 
-				if strings.Split(line, ":")[0] == "Epoch Time" {
+				if bipEvent && strings.Split(line, ":")[0] == "Epoch Time" {
 					// Epoch Time: 1621323617.322338000 seconds
 					tokens := strings.Split(strings.Split(line, " ")[2], ".")
 					sec, _ := strconv.ParseInt(tokens[0], 10, 64)
@@ -197,11 +202,11 @@ func (p *BipTraceParser) parse(fn string) {
 					fields = fmt.Sprintf("%s,%s", event, ts)
 				}
 
-				if line == "ICOM 5G Protocol" {
+				if bipEvent && line == "ICOM 5G Protocol" {
 					icomRec = true
 				}
 
-				if icomRec {
+				if bipEvent && icomRec {
 					if strings.Contains(line, "padding") {
 						continue
 					}
