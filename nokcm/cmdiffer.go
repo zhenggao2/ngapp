@@ -135,14 +135,18 @@ func (p *CmDiffer) Compare() {
 
 		for k2 := range p.db[k1] {
 			diff := "NO"
-			ids := make([]string, 0)
 			vals := make([]string, 0)
 			vset := make(map[string]bool)
-			for _, k3 := range p.db[k1][k2].Sort() {
-				v3 := p.db[k1][k2].Val(k3).(string)
-				ids = append(ids, k3)
-				vals = append(vals, v3)
-				vset[v3] = true
+			for _, k3 := range headerMap[k1][2:] {
+				if p.db[k1][k2].Exist(k3) {
+					v3 := p.db[k1][k2].Val(k3).(string)
+					vals = append(vals, v3)
+					vset[v3] = true
+				} else {
+					vals = append(vals, "-")
+					vset["-"] = true
+				}
+
 			}
 
 			if len(vset) > 1 {
