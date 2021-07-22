@@ -34,10 +34,10 @@ import (
 
 type CmFinder struct {
 	log *zap.Logger
-	cmpath string
+	cmpath []string
 	paras string
 	maxgo int
-	mocDb map[string]bool // key=MOC_CAT.MOC_NAME
+	mocDb cmap.ConcurrentMap // key=MOC_CAT.MOC_NAME, val=MOC full name
 	paraDb map[string][]string // key=MOC_CAT.MOC_NAME, val=list of parameters
 	db cmap.ConcurrentMap // [key1=MOC_CAT.MOC_NAME, val1=[key2=dn, val2=[key3=paraName, val3=paraVal]]]
 	debug bool
@@ -45,9 +45,9 @@ type CmFinder struct {
 
 func (p *CmFinder) Init(log *zap.Logger, cmpath, paras string, debug bool) {
 	p.log = log
-	p.cmpath = cmpath
+	p.cmpath = strings.Split(cmpath, ",")
 	p.paras = paras
-	p.mocDb = make(map[string]bool)
+	p.mocDb = cmap.New()
 	p.paraDb = make(map[string][]string)
 	p.db = cmap.New()
 	p.debug = debug
@@ -59,28 +59,30 @@ func (p *CmFinder) Search() {
 	// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v", p.mocDb))
 	// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v", p.paraDb))
 
-	for sname := range p.mocDb {
+	for _, sname := range p.mocDb.Keys() {
 		p.db.Set(sname, cmap.New())
 	}
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Searching CM files..."))
-	fileInfo, err := ioutil.ReadDir(p.cmpath)
-	if err != nil {
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Fail to read directory: %s.", p.cmpath))
-		return
-	}
-
-	wg := &sync.WaitGroup{}
-	for _, file := range fileInfo {
-		if !file.IsDir() {
-			wg.Add(1)
-			go func(fn string) {
-				defer wg.Done()
-				p.parseDat(fn)
-			}(path.Join(p.cmpath, file.Name()))
+	for _, cmp := range p.cmpath {
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Searching CM files...[path=%v]", cmp))
+		fileInfo, err := ioutil.ReadDir(cmp)
+		if err != nil {
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Fail to read directory: %s.", cmp))
+			return
 		}
+
+		wg := &sync.WaitGroup{}
+		for _, file := range fileInfo {
+			if !file.IsDir() {
+				wg.Add(1)
+				go func(fn, ts string) {
+					defer wg.Done()
+					p.parseDat(fn, ts)
+				}(path.Join(cmp, file.Name()), filepath.Base(cmp))
+			}
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	/*
 	for _, sname := range p.db.Keys() {
@@ -104,7 +106,8 @@ func (p *CmFinder) Search() {
 		sheet.SetName(sname)
 		// write header
 		row := sheet.AddRow()
-		header := append([]string{"DN"}, p.paraDb[sname]...)
+		mocName, _ := p.mocDb.Get(sname)
+		header := append([]string{fmt.Sprintf("DN(%v)", mocName.(string)), "TS"}, p.paraDb[sname]...)
 		for _, h := range header {
 			cell := row.AddCell()
 			cell.SetString(h)
@@ -114,7 +117,15 @@ func (p *CmFinder) Search() {
 		m1, _ := p.db.Get(sname)
 		for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
 			row := sheet.AddRow()
-			rowData := []string{dn}
+
+			tokens := strings.Split(dn, ",")
+			tmp := strings.Split(tokens[1], "/")
+			idList := make([]string, 0)
+			for _, t := range tmp {
+				pair := strings.Split(t, "-")
+				idList = append(idList, pair[1])
+			}
+			rowData := []string{strings.Join(idList, "_"), tokens[0]}
 
 			m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
 			for _, pn := range p.paraDb[sname] {
@@ -181,8 +192,8 @@ func (p *CmFinder) LoadParas() {
 		if len(tokens) == 3 {
 			names := strings.Split(tokens[1], "-")
 			mocDn := fmt.Sprintf("%s.%s", tokens[0], names[0])
-			if _, e := p.mocDb[mocDn]; !e {
-				p.mocDb[mocDn] = true
+			if _, e := p.mocDb.Get(mocDn); !e {
+				p.mocDb.Set(mocDn, "")
 				p.paraDb[mocDn] = make([]string, 0)
 			}
 			p.paraDb[mocDn] = append(p.paraDb[mocDn], names[1])
@@ -192,7 +203,7 @@ func (p *CmFinder) LoadParas() {
 	fin.Close()
 }
 
-func (p *CmFinder) parseDat(dat string) {
+func (p *CmFinder) parseDat(dat, ts string) {
 	// p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", filepath.Base(dat)))
 
 	fin, err := os.Open(dat)
@@ -226,9 +237,12 @@ func (p *CmFinder) parseDat(dat string) {
 				mocList = append(mocList, pair[0])
 			}
 
+			// update dn to include timestamp
+			dn = fmt.Sprintf("%v,%v", ts, dn)
+
 			moc = strings.Join(mocList, ".")
 			valid = false
-			for k := range p.mocDb {
+			for _, k := range p.mocDb.Keys() {
 				names := strings.Split(k, ".")
 				if names[0] == "eqm" && strings.Contains(moc, "EQM_R") {
 					continue
@@ -243,6 +257,7 @@ func (p *CmFinder) parseDat(dat string) {
 			}
 
 			if valid {
+				p.mocDb.Set(sname, strings.Join(mocList, "_"))
 				m, _ := p.db.Get(sname)
 				m.(cmap.ConcurrentMap).Set(dn, cmap.New())
 				p.db.Set(sname, m)

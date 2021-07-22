@@ -101,15 +101,37 @@ func (p *CmDiffer) Compare() {
 	}
 	//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("db=%v\n", p.db))
 
-	headerWritten := make(map[string]bool)
+	headerMap := make(map[string][]string)
+	for k1 := range p.db {
+		headerMap[k1] = make([]string, 0)
+		count := 0
+		for k2 := range p.db[k1] {
+			ids := make([]string, 0)
+			for _, k3 := range p.db[k1][k2].Sort() {
+				ids = append(ids, k3)
+			}
+			if len(ids) > count {
+				count = len(ids)
+				headerMap[k1] = append([]string{k1, "Diff"}, ids...)
+			}
+		}
+	}
+
 	hasDiff := false
 	workbook := spreadsheet.New()
 	wrapped := workbook.StyleSheet.AddCellStyle()
 	wrapped.SetWrapped(true)
 	for k1 := range p.db {
 		sheet := workbook.AddSheet()
-		headerWritten[k1] = false
 		hasDiff = false
+
+		// write header
+		row := sheet.AddRow()
+		for _, h := range headerMap[k1] {
+			cell := row.AddCell()
+			cell.SetString(h)
+			cell.SetStyle(wrapped)
+		}
 
 		for k2 := range p.db[k1] {
 			diff := "NO"
@@ -126,18 +148,6 @@ func (p *CmDiffer) Compare() {
 			if len(vset) > 1 {
 				diff = "YES"
 				hasDiff = true
-			}
-
-			// write header
-			if !headerWritten[k1] {
-				row := sheet.AddRow()
-				header := append([]string{k1, "Diff"}, ids...)
-				for _, h := range header {
-					cell := row.AddCell()
-					cell.SetString(h)
-					cell.SetStyle(wrapped)
-				}
-				headerWritten[k1] = true
 			}
 
 			// write row
@@ -247,7 +257,7 @@ func (p *CmDiffer) parseDat(dat string) {
 				if _, e := p.db[moc][tokens[0]]; !e {
 					p.db[moc][tokens[0]] = utils.NewOrderedMap()
 				}
-				p.db[moc][tokens[0]].Add(fmt.Sprintf("%v-%v", dat, id), tokens[1])
+				p.db[moc][tokens[0]].Add(fmt.Sprintf("%v-%v", id, dat), tokens[1])
 			}
 		}
 	}
