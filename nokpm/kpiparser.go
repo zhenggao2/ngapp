@@ -411,7 +411,8 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			v := report[agg].Val(aggKey).(*utils.OrderedMap)
 			for i := 1; i < len(reportHeader[agg]); i += 1 {
 				if v.Exist(reportHeader[agg][i]) {
-					row.AddCell().SetString(v.Val(reportHeader[agg][i]).(string))
+					fv, _ := strconv.ParseFloat(v.Val(reportHeader[agg][i]).(string), 64)
+					row.AddCell().SetNumber(fv)
 				} else {
 					row.AddCell().SetString("-")
 				}
