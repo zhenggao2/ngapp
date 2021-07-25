@@ -1,3 +1,98 @@
+cm:
+  cmpath: D:\work\email\202105\twm_support\02-5g_scf\dump_20210721
+  debug: true
+  maxgo: 48
+  tcm: scfc
+cm-4g:
+  cmpath: D:\work\email\202105\twm_support\01-4g_scf
+  debug: true
+  maxgo: 48
+  tcm: scfc
+cmdiff:
+  cmpath: D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0525,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0609,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0622,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0629,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0630,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0709,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0721
+  debug: true
+  ignore: sbts:MRBTSDESC,nrbts:NRREL
+  ins: SCF_1721004.dat
+  moc: nrbts,mnl,eqmr
+cmfind:
+  cmpath: D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0525,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0609,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0622,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0629,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0630,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0709,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0721
+  debug: true
+  paras: D:\work\email\202105\twm_support\02-5g_scf\nr_para_list.txt
+kpi:
+  btsid: 1721004
+  debug: true
+  etime: "20210720"
+  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
+  maxgo: 12
+  op: twm
+  pmdb: D:\work\email\202105\twm_support\03-xinos\db
+  stime: "20210601"
+kpi_after_lockdown:
+  btsid: 1220151
+  debug: true
+  etime: "20210521"
+  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
+  maxgo: 12
+  op: twm
+  pmdb: D:\work\email\202105\twm_support\03-xinos\db
+  stime: "20210517"
+kpi_all:
+  btsid: all
+  debug: true
+  etime: "20210705"
+  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
+  maxgo: 12
+  op: twm
+  pmdb: D:\work\email\202105\twm_support\03-xinos\db
+  stime: "20210705"
+kpi_before_lockdown:
+  btsid: 1220151
+  debug: true
+  etime: "20210511"
+  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
+  maxgo: 12
+  op: twm
+  pmdb: D:\work\email\202105\twm_support\03-xinos\db
+  stime: "20210507"
+logs:
+  debug: true
+  filter: both
+  luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\generated_luashark
+  maxgo: 7
+  pattern: .pcap
+  py2: C:/Python27
+  rat: nr
+  scs: 30khz
+  tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
+  tlog: bip
+  trace: D:\work\email\202105\twm_support\5gc2200_log\Fist time\gNB_10.221.133.213_20210527_113152_BIP
+  wshark: C:/Program Files/Wireshark
+logs_5g21a:
+  debug: true
+  filter: both
+  luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G21A_11.800.965\generated_luashark
+  maxgo: 5
+  pattern: .pcap
+  py2: C:/Python27
+  rat: nr
+  scs: 30khz
+  tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G21A_11.800.965\TLDA
+  tlog: bip
+  trace: D:\work\email\202103\5g21a_hz_ojt\hz_test\field\0518log
+  wshark: C:/Program Files/Wireshark
+logs_2200_off:
+  debug: true
+  filter: both
+  luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\generated_luashark
+  maxgo: 7
+  pattern: .pcap
+  py2: C:/Python27
+  rat: nr
+  scs: 30khz
+  tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
+  tlog: bip
+  trace: D:\work\email\202105\twm_support\5gc2200_log\Third time\gNB_10.221.133.213_20210527_143642_BIP
+  wshark: C:/Program Files/Wireshark
 nrrg:
   advanced:
     bestssb: 0
@@ -673,5 +768,10 @@ nrrg:
     ussnumcandidates: n1
     ussoffset: 0
     ussperiod: sl1
-tti:
-  dir: ./data
+pm:
+  debug: true
+  maxgo: 7
+  op: twm
+  pmdb: D:\work\email\202105\twm_support\03-xinos\db
+  pmpath: D:\work\email\202105\twm_support\03-xinos\5g_pm_0720
+  tpm: sql
