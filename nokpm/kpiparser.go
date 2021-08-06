@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -189,18 +190,18 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 
 	wg := &sync.WaitGroup{}
 	for _, c := range p.pms.Keys() {
-		/*
+		// avoid 'too many open files' error of os.Open
+		// ulimit -n 1024/2048 or ulimit -a
 		for {
-			if runtime.NumGoroutine() >= p.maxgo {
+			if runtime.NumGoroutine() >= 512 {
 				time.Sleep(1 * time.Second)
 			} else {
 				break
 			}
 		}
-		 */
 
 		fn := path.Join(db, c + ".gz")
-		//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Loading PM...[%s]", path.Base(fn)))
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Loading PM...[%s]", path.Base(fn)))
 
 		wg.Add(1)
 		go func(c, fn string) {

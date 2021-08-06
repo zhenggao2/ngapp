@@ -40,6 +40,7 @@ type L2TtiTraceParser struct {
 	ttiFilter string
 	maxgo int
 	debug bool
+	nok21a bool
 
 	slotsPerRf int
 	ttiFiles []string
@@ -59,6 +60,7 @@ func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter 
 	p.ttiFilter = strings.ToLower(filter)
 	p.maxgo = maxgo
 	p.debug = debug
+	p.nok21a = false
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing tti parser...(working dir: %v)", p.ttiDir))
 
@@ -437,10 +439,15 @@ func (p *L2TtiTraceParser) Exec() {
 								v.AllFields[posDlFdSched.PosTxNumber] += fmt.Sprintf("(ReTx%v)", intTxNum-1)
 							}
 
-							// update per beaer info [lcId, scheduledBytesPerBearer, remainingBytesPerBearerInFdEoBuffer, bsrSfn, bsrSlot]
+							// update per beaer info:
+							// 5G21A = [lcId, scheduledBytesPerBearer, remainingBytesPerBearerInFdEoBuffer, bsrSfn, bsrSlot]
+							// 5G20B = [lcId, scheduledBytesPerBearer, remainingBytesPerBearerInFdEoBuffer]
 							// there are max 18 bearers
 							maxNumBearerPerUe := 18
-							sizeSchedBearerRecord := 5
+							sizeSchedBearerRecord := 3
+							if p.nok21a {
+								sizeSchedBearerRecord = 5
+							}
 							lcId := make([]string, 0)
 							schedBytes := make([]string, 0)
 							remainBytes := make([]string, 0)
@@ -453,15 +460,22 @@ func (p *L2TtiTraceParser) Exec() {
 									lcId = append(lcId, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib])
 									schedBytes = append(schedBytes, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+1])
 									remainBytes = append(remainBytes, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+2])
-									bsrSfn = append(bsrSfn, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+3])
-									bsrSlot = append(bsrSlot, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+4])
+									if p.nok21a {
+										bsrSfn = append(bsrSfn, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+3])
+										bsrSlot = append(bsrSlot, tokens[valStart+posDlFdSched.PosLcId+sizeSchedBearerRecord*ib+4])
+									}
 								}
 							}
 
 							v.LcIdList = lcId
 
-							perBearerInfo := []string{fmt.Sprintf("[%s]", strings.Join(lcId, ";")), fmt.Sprintf("[%s]", strings.Join(schedBytes, ";")), fmt.Sprintf("[%s]", strings.Join(remainBytes, ";")),
-								fmt.Sprintf("[%s]", strings.Join(bsrSfn, ";")), fmt.Sprintf("[%s]", strings.Join(bsrSlot, ";"))}
+							var perBearerInfo []string
+							if p.nok21a {
+								perBearerInfo = []string{fmt.Sprintf("[%s]", strings.Join(lcId, ";")), fmt.Sprintf("[%s]", strings.Join(schedBytes, ";")), fmt.Sprintf("[%s]", strings.Join(remainBytes, ";")),
+									fmt.Sprintf("[%s]", strings.Join(bsrSfn, ";")), fmt.Sprintf("[%s]", strings.Join(bsrSlot, ";"))}
+							} else {
+								perBearerInfo = []string{fmt.Sprintf("[%s]", strings.Join(lcId, ";")), fmt.Sprintf("[%s]", strings.Join(schedBytes, ";")), fmt.Sprintf("[%s]", strings.Join(remainBytes, ";"))}
+							}
 							v.AllFields = append(append(v.AllFields[:posDlFdSched.PosLcId], perBearerInfo...), v.AllFields[posDlFdSched.PosLcId+sizeSchedBearerRecord*maxNumBearerPerUe:]...)
 
 							// update dlSchedAggFields accordingly only once
