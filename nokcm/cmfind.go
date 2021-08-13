@@ -146,7 +146,7 @@ func (p *CmFinder) Search() {
 		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
 	}
 
-	workbook.SaveToFile(filepath.Join(filepath.Dir(p.paras), fmt.Sprintf("cm_find_result_%s.xlsx", time.Now().Format("20060102_150406"))))
+	workbook.SaveToFile(filepath.Join(filepath.Dir(p.paras), fmt.Sprintf("cm_find_result_%s.xlsx", time.Now().Format("20060102_150405"))))
 	workbook.Close()
 }
 

@@ -28,6 +28,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 )
 
 // keyPerAgg is map between measurement aggregation and its default key pattern in PM database.
@@ -40,7 +41,7 @@ var keyPerAgg = map[string]string {
 	"NRCELL" : "NRBTSID_NRCELLID_TS",
 	"NRCELL_PLMN" : "NRBTSID_NRCELLID_MCC_MNC_TS",
 	"NRCELL_NRREL" : "NRBTSID_NRCELLID_NRCI_MCC_MNC_TS",
-	"NRCELL_NRRELE" : "NRBTSID_NRCELLID_ECI_MCC_MNC_TS",
+	"NRCELL_PLMN_NRRELE" : "NRBTSID_NRCELLID_MCC_MNC_ECI_DMCC_DMNC_TS",
 }
 
 // aggPerMeas is map between measurement type and its aggregation.
@@ -84,7 +85,7 @@ var aggPerMeasType = map[string]string {
 	"NIFC" : "NRCELL",
 	"NRMG" : "NRCELL",
 	"NRREL" : "NRCELL_NRREL",
-	"NGCFB" : "NRCELL", // FIXME
+	"NGCFB" : "NRCELL",
 	"NDLHQ" : "NRCELL",
 	"NDLSQ" : "NRCELL",
 	"NULHQ" : "NRCELL",
@@ -114,8 +115,11 @@ var aggPerMeasType = map[string]string {
 	"ENDSS" : "NRCELL",
 	"PDCCH" : "NRCELL",
 	"NCAV" : "NRCELL",
-	"NREMO" : "NRCELL_NRRELE", // FIXME, new in 5G21A
+	"NREMO" : "NRCELL_PLMN_NRRELE", // FIXME, new in 5G21A
 	"NPSL" : "NRBTS_PLMN_SLICE", // new in 5G21A
+	"NRMOP" : "NRCELL", // new in 5G21B
+	"NRPFW" : "NRBTS", // new in 5G21B
+	"NCAD1" : "NRDU", // new in 5G21B
 }
 
 // measId2MeasType is map between measurement ID and its type.
@@ -194,6 +198,11 @@ var measId2MeasType = map[string]string {
 	"M55800" : "NGNS",
 	"M55144" : "NREMO",
 	"M55328" : "NPSL",
+	"M55157" : "NRMOP",
+	"M55337" : "NRPFW",
+	"M55348" : "NCAD1",
+	"M55604" : "RURWS",
+	"M55605" : "TRRW",
 }
 
 // measType2MeasId is map between measurement type and its ID.
@@ -272,6 +281,11 @@ var measType2MeasId = map[string]string {
 	"NGNS" : "M55800",
 	"NREMO" : "M55144",
 	"NPSL" : "M55328",
+	"NRMOP" : "M55157",
+	"NRPFW" : "M55337",
+	"NCAD1" : "M55348",
+	"RURWS" : "M55604",
+	"TRRW" : "M55605",
 }
 
 // keyPatTwmXinos is map between token of the default key pattern and the field of TWM XINOS.
@@ -286,7 +300,26 @@ var keyPatTwmXinos = map[string]string {
 	"SD" : "SD",
 	"NRCI" : "NRCI",
 	"ECI" : "ECI",
+	"DMCC" : "DMCC",
+	"DMNC" : "DMNC",
 	"TS" : "TIME",
+}
+
+// keyPatRawPm is map between token of the default key pattern and the field of Raw PM.
+var keyPatRawPm = map[string]string {
+	"NRBTSID" : "NRBTS",
+	"NRCELLID" : "NRCELL",
+	"NRDUID" : "NRDU",
+	"NRCUUPID" : "NRCUUP",
+	"MCC" : "MCC",
+	"MNC" : "MNC",
+	"SST" : "SST",
+	"SD" : "SD",
+	"NRCI" : "NRCI",
+	"ECI" : "ECI",
+	"DMCC" : "DMCC",
+	"DMNC" : "DMNC",
+	"TS" : "startTime_interval",
 }
 
 type PmParser struct {
@@ -327,75 +360,50 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 		return
 	}
 
-	root := doc.SelectElement("raml")
-	if root == nil {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No raml element, xml=[%s]", xml))
+	omes := doc.SelectElement("OMeS")
+	if omes == nil {
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No OMeS element, xml=[%s]", xml))
 		return
 	}
-	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), root.NamespaceURI(), root.GetPath(), root.Index(), root.Tag, root.Attr)
-	// root: tag=raml, attr=[{ version 2.1 0xc000686120} { xmlns raml21.xsd 0xc000686120}]
-
-	cm := root.SelectElement("cmData")
-	if cm == nil {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No cmData element, xml=[%s]", xml))
-		return
-	}
-	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), cm.NamespaceURI(), cm.GetPath(), cm.Index(), cm.Tag, cm.Attr)
-	// cmData: tag=cmData, attr=[{ scope all 0xc0006861e0} { type actual 0xc0006861e0}]
+	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), omes.NamespaceURI(), omes.GetPath(), omes.Index(), omes.Tag, omes.Attr)
+	// omes: tag=raml, attr=[{ version 2.1 0xc000686120} { xmlns raml21.xsd 0xc000686120}]
 
 	data := make(map[string]*utils.OrderedMap)
-	for _, mo := range cm.FindElements("managedObject") {
-		dn := mo.SelectAttrValue("distName", "")
-		if len(dn) == 0 {
-			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No distName attribute in managedObject element [path=%v,index=%v], xml=[%s]", mo.GetPath(), mo.Index(), xml))
-			break
-		}
+	for _, pmSetup := range omes.FindElements("PMSetup") {
+		//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), pmSetup.NamespaceURI(), pmSetup.GetPath(), pmSetup.Index(), pmSetup.Tag, pmSetup.Attr)
+		// cmData: tag=cmData, attr=[{ scope all 0xc0006861e0} { type actual 0xc0006861e0}]
 
-		dn = strings.Replace(dn, "PLMN-PLMN/", "", -1)
-		data[dn] = utils.NewOrderedMap()
-		for _, list := range mo.FindElements("list") {
-			listName := list.SelectAttrValue("name", "")
+		// TODO
+		startTime := pmSetup.SelectAttrValue("startTime", "")
+		t, _ := time.Parse("2006-01-02T15:04:05.000-07:00:00", startTime)
+		startTime = t.Format("20060102150405")
+		interval := pmSetup.SelectAttrValue("interval", "")
 
-			// first pass, find all fields
-			fields := make(map[string]bool)
-			for _, item := range list.FindElements("item") {
-				for _, p := range item.FindElements("p") {
-					par := listName + "." + p.SelectAttrValue("name", "")
-					if _, exist := fields[par]; !exist {
-						fields[par] = false
-					}
+		for _, pmMoResult := range pmSetup.FindElements("PMMOResult") {
+			moList := make([]string, 0)
+			for _, mo := range pmMoResult.FindElements("MO") {
+				dim := mo.SelectAttrValue("dimension", "")
+				subDn := mo.FindElement("DN")
+				if dim == "network_element" {
+					moList = append(moList, strings.SplitN(subDn.Text(), "/", 3)[2]) // remove PLMN-PLMN/MRBTS-xxx
+				} else {
+					moList = append(moList, strings.SplitN(subDn.Text(), "/", 2)[1]) // remove PLMN-PLMN
 				}
 			}
 
-			// second pass, update data[dn]
-			for _, item := range list.FindElements("item") {
-				for _, p := range item.FindElements("p") {
-					par := listName + "." + p.SelectAttrValue("name", "")
-					if data[dn].Exist(par) {
-						data[dn].Add(par, append(data[dn].Val(par).([]string), p.Text()))
-					} else {
-						data[dn].Add(par, []string{p.Text()})
-					}
-					fields[par] = true
-				}
+			dn := strings.Join(moList, "/")
+			// TODO
+			dn = fmt.Sprintf("%s/startTime-%s/interval-%s", dn, startTime, interval)
 
-				for par := range fields {
-					if !fields[par] {
-						if data[dn].Exist(par) {
-							data[dn].Add(par, append(data[dn].Val(par).([]string), "-"))
-						} else {
-							data[dn].Add(par, []string{"-"})
-						}
-					} else {
-						fields[par] = false
-					}
+			if _, e := data[dn]; !e {
+				data[dn] = utils.NewOrderedMap()
+			}
+			for _, neWbts := range pmMoResult.FindElements("NE-WBTS_1.0") {
+				// measType := neWbts.SelectAttrValue("measurementType", "")
+				for _, pm := range neWbts.ChildElements() {
+					data[dn].Add(pm.Tag, pm.Text())
 				}
 			}
-		}
-
-		for _, p := range mo.FindElements("p") {
-			par := p.SelectAttrValue("name", "")
-			data[dn].Add(par, p.Text())
 		}
 	}
 
@@ -412,13 +420,6 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 		fout.WriteString(fmt.Sprintf("\n[dn===%s]\n", dn))
 		for _, par := range data[dn].Keys() {
 			fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
-			/*
-				if _, ok := data[dn].Val(par).([]string); ok {
-					fout.WriteString(fmt.Sprintf("%s===%+q\n", par, data[dn].Val(par)))
-				} else {
-					fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
-				}
-			*/
 		}
 	}
 	fout.Close()
@@ -579,6 +580,10 @@ func (p *PmParser) findKeyPatPosTwmXinos(tokens []string) CsvHeaderPos {
 			pos.keyPatPos["NRCI"] = i
 		case keyPatTwmXinos["ECI"]:
 			pos.keyPatPos["ECI"] = i
+		case keyPatTwmXinos["DMCC"]:
+			pos.keyPatPos["DMCC"] = i
+		case keyPatTwmXinos["DMNC"]:
+			pos.keyPatPos["DMNC"] = i
 		case keyPatTwmXinos["TS"]:
 			pos.keyPatPos["TS"] = i
 		}

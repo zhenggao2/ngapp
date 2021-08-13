@@ -291,7 +291,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 	// key = agg, val = list of kpiName
 	reportHeader := make(map[string][]string)
 	reportHeaderWiUnit := make(map[string][]string)
-	timestamp := time.Now().Format("20060102_150406")
+	timestamp := time.Now().Format("20060102_150405")
 
 	for _, kpi := range p.kpis.Keys() {
 		headerWritten := false
