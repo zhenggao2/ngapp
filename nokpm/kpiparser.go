@@ -26,6 +26,7 @@ import (
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"math"
 	"os"
 	"path"
 	"runtime"
@@ -63,6 +64,18 @@ type KpiDef struct {
 	measTypes []string
 	counters []string
 	agg string // used aggregation level
+}
+
+var PmAggMax = []string {
+	"M55114C00010",
+	"M55114C00013",
+	"M55114C00036",
+	"M55308C02001",
+	"M55308C02003",
+	"M55308C20001",
+	"M55308C20002",
+	"M55308C21002",
+	"M55308C21004",
 }
 
 func (p *KpiParser) Init(log *zap.Logger, op, db string, maxgo int, debug bool) {
@@ -232,18 +245,32 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 					tokens := strings.Split(line, ",")
 					tokens2 := strings.Split(tokens[0], "_")
 					bts := tokens2[0]
-					// Timestamp should be "2006-01-02"
+					// TWM: Timestamp should be "2006-01-02"
+					// CMCC: Timestamp should be "startTime.interval"
 					ts := strings.Replace(tokens2[len(tokens2)-1], "-", "", -1)
 					if len(btsList) > 0 && !utils.ContainsStr(btsList, bts) {
 						continue
 					}
+
+					if p.op == "cmcc" {
+						startTime := strings.Split(ts, ".")[0]
+						ts = startTime[:len(stime)]
+
+						// override tokens[0]
+						tokens2[len(tokens2)-1] = ts
+						tokens[0] = strings.Join(tokens2, "_")
+					}
+
 					if ts < stime || ts > etime {
 						continue
 					}
 
 					if len(tokens[1]) == 0 {
 						m, _ := p.pms.Get(c)
-						m.(cmap.ConcurrentMap).Set(tokens[0], float64(0))
+						_, e := m.(cmap.ConcurrentMap).Get(tokens[0])
+						if !e {
+							m.(cmap.ConcurrentMap).Set(tokens[0], float64(0))
+						}
 						p.pms.Set(c, m)
 					} else {
 						v, err := strconv.ParseFloat(tokens[1], 64)
@@ -252,7 +279,17 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 							continue
 						} else {
 							m, _ := p.pms.Get(c)
-							m.(cmap.ConcurrentMap).Set(tokens[0], v)
+							v0, e := m.(cmap.ConcurrentMap).Get(tokens[0])
+							if !e {
+								m.(cmap.ConcurrentMap).Set(tokens[0], v)
+							} else {
+								// check PM object aggregation method
+								if utils.ContainsStr(PmAggMax, c) {
+									m.(cmap.ConcurrentMap).Set(tokens[0], math.Max(v0.(float64), v))
+								} else {
+									m.(cmap.ConcurrentMap).Set(tokens[0], v0.(float64) + v)
+								}
+							}
 							p.pms.Set(c, m)
 						}
 					}

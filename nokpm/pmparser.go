@@ -21,7 +21,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/beevik/etree"
-	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -319,7 +318,7 @@ var keyPatRawPm = map[string]string {
 	"ECI" : "ECI",
 	"DMCC" : "DMCC",
 	"DMNC" : "DMNC",
-	"TS" : "startTime_interval",
+	"TS" : "TS", // format: xxx/TS-startTime.interval
 }
 
 type PmParser struct {
@@ -366,14 +365,10 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 		return
 	}
 	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), omes.NamespaceURI(), omes.GetPath(), omes.Index(), omes.Tag, omes.Attr)
-	// omes: tag=raml, attr=[{ version 2.1 0xc000686120} { xmlns raml21.xsd 0xc000686120}]
 
-	data := make(map[string]*utils.OrderedMap)
+	data := make(map[string]*bytes.Buffer)
 	for _, pmSetup := range omes.FindElements("PMSetup") {
 		//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), pmSetup.NamespaceURI(), pmSetup.GetPath(), pmSetup.Index(), pmSetup.Tag, pmSetup.Attr)
-		// cmData: tag=cmData, attr=[{ scope all 0xc0006861e0} { type actual 0xc0006861e0}]
-
-		// TODO
 		startTime := pmSetup.SelectAttrValue("startTime", "")
 		t, _ := time.Parse("2006-01-02T15:04:05.000-07:00:00", startTime)
 		startTime = t.Format("20060102150405")
@@ -391,38 +386,44 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 				}
 			}
 
+			// append 'TS'
+			moList = append(moList, fmt.Sprintf("TS-%s.%s", startTime, interval))
 			dn := strings.Join(moList, "/")
-			// TODO
-			dn = fmt.Sprintf("%s/startTime-%s/interval-%s", dn, startTime, interval)
 
-			if _, e := data[dn]; !e {
-				data[dn] = utils.NewOrderedMap()
+			// extract key
+			keyTokens := make([]string, 0)
+			t := strings.Split(dn, "/")
+			for _, t2 := range t {
+				keyTokens = append(keyTokens, strings.Split(t2, "-")[1])
 			}
+			key := strings.Join(keyTokens, "_")
+
 			for _, neWbts := range pmMoResult.FindElements("NE-WBTS_1.0") {
 				// measType := neWbts.SelectAttrValue("measurementType", "")
 				for _, pm := range neWbts.ChildElements() {
-					data[dn].Add(pm.Tag, pm.Text())
+					if _, e := data[pm.Tag]; !e {
+						data[pm.Tag] = &bytes.Buffer{}
+					}
+
+					data[pm.Tag].WriteString(key + "," + pm.Text() + "\n")
 				}
 			}
 		}
 	}
 
-	xmlBn := path.Base(xml)
-	ofn := path.Join(p.db, fmt.Sprintf("%s.dat", xmlBn[:len(xmlBn)-len(path.Ext(xml))]))
-	fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
-	if err != nil {
-		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
-		return
-	}
-
-	fout.WriteString("# [dn===*]\n# name===value\n")
-	for dn := range data {
-		fout.WriteString(fmt.Sprintf("\n[dn===%s]\n", dn))
-		for _, par := range data[dn].Keys() {
-			fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
+	for counter := range data {
+		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+			return
 		}
+
+		gw := gzip.NewWriter(fout)
+		gw.Write(data[counter].Bytes())
+		gw.Close()
+		fout.Close()
 	}
-	fout.Close()
 }
 
 func (p *PmParser) ParseSqlQueryCsv(csv string) {
