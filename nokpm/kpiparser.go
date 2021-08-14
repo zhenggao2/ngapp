@@ -67,6 +67,7 @@ type KpiDef struct {
 }
 
 var PmAggMax = []string {
+	// 5G NSA
 	"M55114C00010",
 	"M55114C00013",
 	"M55114C00036",
@@ -76,6 +77,19 @@ var PmAggMax = []string {
 	"M55308C20002",
 	"M55308C21002",
 	"M55308C21004",
+	// 5G SA
+	"M55138C00014",
+	"M55138C00015",
+	"M55138C00016",
+	"M55138C00019",
+	"M55138C00022",
+	"M55138C01007",
+	"M55138C01010",
+}
+
+var PmAggMin = []string {
+	// 5G SA
+	"M55139C00512",
 }
 
 func (p *KpiParser) Init(log *zap.Logger, op, db string, maxgo int, debug bool) {
@@ -286,6 +300,8 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 								// check PM object aggregation method
 								if utils.ContainsStr(PmAggMax, c) {
 									m.(cmap.ConcurrentMap).Set(tokens[0], math.Max(v0.(float64), v))
+								} else if utils.ContainsStr(PmAggMin, c) {
+									m.(cmap.ConcurrentMap).Set(tokens[0], math.Min(v0.(float64), v))
 								} else {
 									m.(cmap.ConcurrentMap).Set(tokens[0], v0.(float64) + v)
 								}
