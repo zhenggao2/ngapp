@@ -34,10 +34,13 @@ import (
 
 const (
 	BIN_PYTHON    string = "python.exe"
+	BIN_PYTHON_LINUX    string = "python2"
 	PY_TLDA       string = "tlda.py"
 	LUA_LUASHARK  string = "luashark.lua"
 	BIN_TSHARK    string = "tshark.exe"
+	BIN_TSHARK_LINUX    string = "tshark"
 	BIN_TEXT2PCAP string = "text2pcap.exe"
+	BIN_TEXT2PCAP_LINUX string = "text2pcap"
 )
 
 type L2TraceParser struct {
@@ -121,7 +124,15 @@ func (p *L2TraceParser) Exec() {
 		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing L2Trace using TLDA..."))
 		var stdOut bytes.Buffer
 		var stdErr bytes.Buffer
-		cmd := exec.Command(path.Join(p.py2Path, BIN_PYTHON), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+		var cmd *exec.Cmd
+		if runtime.GOOS == "linux" {
+			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON_LINUX), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+		} else if runtime.GOOS == "windows" {
+			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+		} else {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+			return
+		}
 		cmd.Stdout = &stdOut
 		cmd.Stderr = &stdErr
 		p.writeLog(zapcore.DebugLevel, cmd.String())
@@ -186,7 +197,15 @@ func (p *L2TraceParser) convert2Pcap(fn string) {
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
-	cmd := exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP), "-u", "5678,0", path.Join(decodedDir, fn), path.Join(outPath, fn))
+	var cmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP_LINUX), "-u", "5678,0", path.Join(decodedDir, fn), path.Join(outPath, fn))
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP), "-u", "5678,0", path.Join(decodedDir, fn), path.Join(outPath, fn))
+	} else {
+		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+		return
+	}
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
 	p.writeLog(zapcore.DebugLevel, cmd.String())
@@ -211,7 +230,15 @@ func (p *L2TraceParser) parseWithTshark(fn string) {
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
-	cmd := exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", path.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	} else {
+		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+		return
+	}
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
 	p.writeLog(zapcore.DebugLevel, cmd.String())

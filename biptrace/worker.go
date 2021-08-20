@@ -35,6 +35,7 @@ import (
 
 const (
 	BIN_TSHARK    string = "tshark.exe"
+	BIN_TSHARK_LINUX    string = "tshark"
 	LUA_LUASHARK  string = "luashark.lua"
 )
 
@@ -127,7 +128,15 @@ func (p *BipTraceParser) parse(fn string) {
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
-	cmd := exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	var cmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", path.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+	} else {
+		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+		return
+	}
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
 	p.writeLog(zapcore.DebugLevel, cmd.String())
