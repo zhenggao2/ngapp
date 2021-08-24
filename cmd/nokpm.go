@@ -65,6 +65,9 @@ var pmCmd = &cobra.Command{
 				panic(fmt.Sprintf("Fail to create directory: %v", err))
 			}
 
+			parser := new(nokpm.PmParser)
+			parser.Init(Logger, op, pmdb, debug)
+
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() {
@@ -81,14 +84,16 @@ var pmCmd = &cobra.Command{
 						wg.Add(1)
 						go func(fn string) {
 							defer wg.Done()
-							parser := new(nokpm.PmParser)
-							parser.Init(Logger, op, pmdb, debug)
 							parser.Parse(fn, tpm)
 						}(path.Join(pmpath, file.Name()))
 					}
 				}
 			}
 			wg.Wait()
+
+			if tpm == "raw" {
+				parser.ArchiveRawPm()
+			}
 		} else {
 			fmt.Printf("Unsupported tpm[=%s].\n", tpm)
 		}

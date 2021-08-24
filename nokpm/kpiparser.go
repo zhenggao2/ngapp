@@ -194,8 +194,8 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 	fin.Close()
 
 	/*
-	for k := range p.kpis {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%s, kpiDef=%v", k, p.kpis[k]))
+	for _, k := range p.kpis.Keys() {
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%s, kpiDef=%v", k, p.kpis.Val(k)))
 	}
 	 */
 }
@@ -390,8 +390,8 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
 			} else {
-				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpi_name=%v, key=%v, paras=%v, ret=%.*f", kpi, key, paras, p.kpis[kpi].precision, ret))
-				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, ret=%.*f", kpi, agg, key, precision, ret))
+				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpi_name=%v, key=%v, paras=%v, ret=%.*f", kpi, key, paras, precision, ret))
+				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, paras=%v, ret=%.*f", kpi, agg, key, paras, precision, ret))
 				report[agg].Val(key).(*utils.OrderedMap).Add(kpi, strconv.FormatFloat(ret.(float64), 'f', precision, 64))
 				if !headerWritten {
 					reportHeader[agg] = append(reportHeader[agg], kpi.(string))

@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/beevik/etree"
+	cmap "github.com/orcaman/concurrent-map"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -326,6 +327,7 @@ type PmParser struct {
 	op    string
 	db    string
 	debug bool
+	rawDat cmap.ConcurrentMap
 }
 
 type CsvHeaderPos struct {
@@ -338,6 +340,7 @@ func (p *PmParser) Init(log *zap.Logger, op, db string, debug bool) {
 	p.op = op
 	p.db = db
 	p.debug = debug
+	p.rawDat = cmap.New()
 	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing PM parser..."))
 }
 
@@ -347,6 +350,28 @@ func (p *PmParser) Parse(pm, tpm string) {
 		p.ParseRawPmXml(pm)
 	case "sql":
 		p.ParseSqlQueryCsv(pm)
+	}
+}
+
+func (p *PmParser) ArchiveRawPm() {
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Archiving raw PMs..."))
+	for _, counter := range p.rawDat.Keys() {
+		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+			return
+		}
+
+		gw := gzip.NewWriter(fout)
+		m, _ := p.rawDat.Get(counter)
+		for _, key := range m.(cmap.ConcurrentMap).Keys() {
+			val, _ := m.(cmap.ConcurrentMap).Get(key)
+			s := fmt.Sprintf("%v,%v\n", key, val)
+			gw.Write([]byte(s))
+		}
+		gw.Close()
+		fout.Close()
 	}
 }
 
@@ -366,7 +391,6 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 	}
 	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), omes.NamespaceURI(), omes.GetPath(), omes.Index(), omes.Tag, omes.Attr)
 
-	data := make(map[string]*bytes.Buffer)
 	for _, pmSetup := range omes.FindElements("PMSetup") {
 		//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), pmSetup.NamespaceURI(), pmSetup.GetPath(), pmSetup.Index(), pmSetup.Tag, pmSetup.Attr)
 		startTime := pmSetup.SelectAttrValue("startTime", "")
@@ -401,16 +425,16 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 			for _, neWbts := range pmMoResult.FindElements("NE-WBTS_1.0") {
 				// measType := neWbts.SelectAttrValue("measurementType", "")
 				for _, pm := range neWbts.ChildElements() {
-					if _, e := data[pm.Tag]; !e {
-						data[pm.Tag] = &bytes.Buffer{}
-					}
-
-					data[pm.Tag].WriteString(key + "," + pm.Text() + "\n")
+					p.rawDat.SetIfAbsent(pm.Tag, cmap.New())
+					m, _ := p.rawDat.Get(pm.Tag)
+					m.(cmap.ConcurrentMap).SetIfAbsent(key, pm.Text())
+					p.rawDat.Set(pm.Tag, m)
 				}
 			}
 		}
 	}
 
+	/*
 	for counter := range data {
 		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
 		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
@@ -424,6 +448,7 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 		gw.Close()
 		fout.Close()
 	}
+	 */
 }
 
 func (p *PmParser) ParseSqlQueryCsv(csv string) {
