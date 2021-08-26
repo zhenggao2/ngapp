@@ -403,7 +403,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 		}
 	}
 
-	/*
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Generating KPI report..."))
 	for agg := range report {
 		ofn := path.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
 		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
@@ -428,7 +428,6 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 		fout.Close()
 	}
-	 */
 
 	workbook := spreadsheet.New()
 	wrapped := workbook.StyleSheet.AddCellStyle()
