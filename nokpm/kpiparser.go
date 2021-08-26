@@ -193,11 +193,11 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 
 	fin.Close()
 
-	/*
-	for _, k := range p.kpis.Keys() {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%s, kpiDef=%v", k, p.kpis.Val(k)))
+	if p.debug {
+		for _, k := range p.kpis.Keys() {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%s, kpiDef=%v", k, p.kpis.Val(k)))
+		}
 	}
-	 */
 }
 
 func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
@@ -318,12 +318,12 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 	}
 	wg.Wait()
 
-	/*
-	for _, c := range p.pms.Keys() {
-		m, _ := p.pms.Get(c)
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("counterName=%s, count=%d", c, m.(cmap.ConcurrentMap).Count()))
+	if p.debug {
+		for _, c := range p.pms.Keys() {
+			m, _ := p.pms.Get(c)
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("counterName=%s, count=%d", c, m.(cmap.ConcurrentMap).Count()))
+		}
 	}
-	 */
 }
 
 func (p *KpiParser) unsafeAtoi(s string) int {
@@ -390,8 +390,9 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
 			} else {
-				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpi_name=%v, key=%v, paras=%v, ret=%.*f", kpi, key, paras, precision, ret))
-				//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, paras=%v, ret=%.*f", kpi, agg, key, paras, precision, ret))
+				if p.debug {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("kpiName=%v, kpiAgg=%v, aggKey=%v, paras=%v, ret=%.*f", kpi, agg, key, paras, precision, ret))
+				}
 				report[agg].Val(key).(*utils.OrderedMap).Add(kpi, strconv.FormatFloat(ret.(float64), 'f', precision, 64))
 				if !headerWritten {
 					reportHeader[agg] = append(reportHeader[agg], kpi.(string))
@@ -465,8 +466,13 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			v := report[agg].Val(aggKey).(*utils.OrderedMap)
 			for i := 1; i < len(reportHeader[agg]); i += 1 {
 				if v.Exist(reportHeader[agg][i]) {
-					fv, _ := strconv.ParseFloat(v.Val(reportHeader[agg][i]).(string), 64)
-					row.AddCell().SetNumber(fv)
+					fv, err := strconv.ParseFloat(v.Val(reportHeader[agg][i]).(string), 64)
+					if err != nil {
+						p.writeLog(zapcore.WarnLevel, fmt.Sprintf("strconv.ParseFloat failed (v = %v, error=%v)", v, err.Error()))
+						row.AddCell().SetString("")
+					} else {
+						row.AddCell().SetNumber(fv)
+					}
 				} else {
 					row.AddCell().SetString("-")
 				}
