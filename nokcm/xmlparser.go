@@ -88,38 +88,55 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 		for _, list := range mo.FindElements("list") {
 			listName := list.SelectAttrValue("name", "")
 
-			// first pass, find all fields
-			fields := make(map[string]bool)
-			for _, item := range list.FindElements("item") {
-				for _, p := range item.FindElements("p") {
-					par := listName + "." + p.SelectAttrValue("name", "")
-					if _, exist := fields[par]; !exist {
-						fields[par] = false
-					}
+			/* --special handling of list without <item> Element
+			<list name="nrhoirDNList">
+				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-1</p>
+				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-2</p>
+				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-3</p>
+				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-4</p>
+			</list>
+			 */
+			numItem := len(list.FindElements("item"))
+			if numItem == 0 {
+				val := make([]string, 0)
+				for _, p := range list.FindElements("p") {
+					val = append(val, p.Text())
 				}
-			}
-
-			// second pass, update data[dn]
-			for _, item := range list.FindElements("item") {
-				for _, p := range item.FindElements("p") {
-					par := listName + "." + p.SelectAttrValue("name", "")
-					if data[dn].Exist(par) {
-						data[dn].Add(par, append(data[dn].Val(par).([]string), p.Text()))
-					} else {
-						data[dn].Add(par, []string{p.Text()})
-					}
-					fields[par] = true
-				}
-
-				for par := range fields {
-					if !fields[par] {
-						if data[dn].Exist(par) {
-							data[dn].Add(par, append(data[dn].Val(par).([]string), "-"))
-						} else {
-							data[dn].Add(par, []string{"-"})
+				data[dn].Add(listName, val)
+			} else {
+				// first pass, find all fields
+				fields := make(map[string]bool)
+				for _, item := range list.FindElements("item") {
+					for _, p := range item.FindElements("p") {
+						par := listName + "." + p.SelectAttrValue("name", "")
+						if _, exist := fields[par]; !exist {
+							fields[par] = false
 						}
-					} else {
-						fields[par] = false
+					}
+				}
+
+				// second pass, update data[dn]
+				for _, item := range list.FindElements("item") {
+					for _, p := range item.FindElements("p") {
+						par := listName + "." + p.SelectAttrValue("name", "")
+						if data[dn].Exist(par) {
+							data[dn].Add(par, append(data[dn].Val(par).([]string), p.Text()))
+						} else {
+							data[dn].Add(par, []string{p.Text()})
+						}
+						fields[par] = true
+					}
+
+					for par := range fields {
+						if !fields[par] {
+							if data[dn].Exist(par) {
+								data[dn].Add(par, append(data[dn].Val(par).([]string), "-"))
+							} else {
+								data[dn].Add(par, []string{"-"})
+							}
+						} else {
+							fields[par] = false
+						}
 					}
 				}
 			}
