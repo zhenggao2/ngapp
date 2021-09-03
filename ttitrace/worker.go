@@ -62,7 +62,7 @@ func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter 
 	p.debug = debug
 	p.nok21a = false
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing tti parser...(working dir: %v)", p.ttiDir))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 TTI trace parser...(working dir: %v)", p.ttiDir))
 
 	fileInfo, err := ioutil.ReadDir(p.ttiDir)
 	if err != nil {
@@ -82,8 +82,8 @@ func (p *L2TtiTraceParser) Exec() {
 	scs2nslots := map[string]int{"15khz": 10, "30khz": 20, "120khz": 80}
 	p.slotsPerRf = scs2nslots[strings.ToLower(p.ttiScs)]
 
-	// recreate dir for parsed ttis
-	outPath := path.Join(p.ttiDir, "parsed_ttis")
+	// recreate dir for parsed l2 tti trace
+	outPath := path.Join(p.ttiDir, "parsed_tti")
 	os.RemoveAll(outPath)
 	if err := os.MkdirAll(outPath, 0775); err != nil {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))

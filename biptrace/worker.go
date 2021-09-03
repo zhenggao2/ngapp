@@ -61,7 +61,7 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern strin
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BipTrace parser...(working dir: %v)", p.bipTracePath))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BIP trace parser...(working dir: %v)", p.bipTracePath))
 
 	fileInfo, err := ioutil.ReadDir(p.bipTracePath)
 	if err != nil {
@@ -79,7 +79,7 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern strin
 }
 
 func (p *BipTraceParser) Exec() {
-	// recreate dir for parsed ttis
+	// recreate dir for parsed bip trace
 	outPath := path.Join(p.bipTracePath, "parsed_biptrace")
 	if err := os.RemoveAll(outPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))

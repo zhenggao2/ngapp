@@ -33,13 +33,13 @@ import (
 )
 
 const (
-	BIN_PYTHON    string = "python.exe"
-	BIN_PYTHON_LINUX    string = "python2"
-	PY_TLDA       string = "tlda.py"
-	LUA_LUASHARK  string = "luashark.lua"
-	BIN_TSHARK    string = "tshark.exe"
+	BIN_PYTHON2         string = "python.exe"
+	BIN_PYTHON2_LINUX   string = "python2"
+	PY2_TLDA            string = "tlda.py"
+	LUA_LUASHARK        string = "luashark.lua"
+	BIN_TSHARK          string = "tshark.exe"
 	BIN_TSHARK_LINUX    string = "tshark"
-	BIN_TEXT2PCAP string = "text2pcap.exe"
+	BIN_TEXT2PCAP       string = "text2pcap.exe"
 	BIN_TEXT2PCAP_LINUX string = "text2pcap"
 )
 
@@ -68,7 +68,7 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2Trace parser...(working dir: %v)", p.l2TracePath))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2-HI/L2-LO trace parser...(working dir: %v)", p.l2TracePath))
 
 	fileInfo, err := ioutil.ReadDir(p.l2TracePath)
 	if err != nil {
@@ -84,7 +84,7 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 }
 
 func (p *L2TraceParser) Exec() {
-	// recreate dir for parsed ttis
+	// recreate dir for parsed l2 trace
 	outPath := path.Join(p.l2TracePath, "parsed_l2trace")
 	if err := os.RemoveAll(outPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
@@ -126,9 +126,9 @@ func (p *L2TraceParser) Exec() {
 		var stdErr bytes.Buffer
 		var cmd *exec.Cmd
 		if runtime.GOOS == "linux" {
-			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON_LINUX), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON2_LINUX), path.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
 		} else if runtime.GOOS == "windows" {
-			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON), path.Join(p.tldaPath, PY_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON2), path.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
 		} else {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 			return
