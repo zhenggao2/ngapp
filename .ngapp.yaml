@@ -1,5 +1,5 @@
 cm:
-  cmpath: D:\work\email\202105\twm_support\02-5g_scf\dump_20210721
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf/
   debug: true
   maxgo: 48
   tcm: scfc
@@ -8,7 +8,24 @@ cm-4g:
   debug: true
   maxgo: 48
   tcm: scfc
+cm-5g:
+  cmpath: D:\work\email\202105\twm_support\02-5g_scf\dump_20210721
+  debug: true
+  maxgo: 48
+  tcm: scfc
 cmdiff:
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf/parsed_scfc
+  debug: true
+  ignore: sbts:MRBTSDESC,nrbts:NRREL
+  ins: Configuration_scf_MRBTS-1619301_EShanXianXinYiDongDaLou-5NHX_20210902-1716.dat,Configuration_scf_MRBTS-1619304_YuanJiangXianJiangDong-5NHX_20210902-1742.dat
+  moc: nrbts
+cmdiff-twm:
+  cmpath: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0525,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0609,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0622,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0629,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0630,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0709,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0721
+  debug: true
+  ignore: sbts:MRBTSDESC,nrbts:NRREL
+  ins: SCF_1320103.dat,SCF_1649002.dat,SCF_1269006.dat
+  moc: nrbts,mnl,eqmr
+cmdiff-win:
   cmpath: D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0525,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0609,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0622,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0629,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0630,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0709,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0721
   debug: true
   ignore: sbts:MRBTSDESC,nrbts:NRREL
@@ -19,7 +36,34 @@ cmfind:
   debug: true
   paras: D:\work\email\202105\twm_support\02-5g_scf\nr_para_list.txt
 kpi:
-  btsid: 1721004
+  btsid: 552400
+  debug: true
+  etime: "202108252359"
+  kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
+  maxgo: 12
+  op: cmcc
+  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/db/
+  stime: "202108250000"
+kpi-shandong:
+  btsid: 2598781
+  debug: true
+  etime: "2021081323"
+  kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
+  maxgo: 12
+  op: cmcc
+  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/db/
+  stime: "2021081200"
+kpi-twm:
+  btsid: 1320103
+  debug: true
+  etime: "20210801"
+  kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
+  maxgo: 12
+  op: twm
+  pmdb: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/db/
+  stime: "20210801"
+kpi-win:
+  btsid: 1649002
   debug: true
   etime: "20210720"
   kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
@@ -55,6 +99,36 @@ kpi_before_lockdown:
   pmdb: D:\work\email\202105\twm_support\03-xinos\db
   stime: "20210507"
 logs:
+  chbw: 30MHz
+  debug: true
+  filter: both
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
+  maxgo: 48
+  nap: 4
+  pattern: .bin
+  py2: /usr/bin
+  py3: /usr/bin
+  rat: nr
+  scs: 30khz
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
+  tlog: ddr4
+  trace: /home/dabs/Downloads/05-ddr4_iq_sample/
+  wshark: /usr/bin
+logs-linux-l2tti:
+  debug: true
+  filter: both
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
+  maxgo: 7
+  pattern: .csv
+  py2: /usr/bin
+  rat: nr
+  scs: 30khz
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
+  tlog: l2tti
+  trace: /home/dabs/Downloads/test_20210805/2.1-DL-1/tti_packed/fsp-2-6b-L2RT30_ttiTrace/
+  wshark: /usr/bin
+logs-win:
   debug: true
   filter: both
   luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\generated_luashark
@@ -769,6 +843,20 @@ nrrg:
     ussoffset: 0
     ussperiod: sl1
 pm:
+  debug: true
+  maxgo: 48
+  op: cmcc
+  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/db/
+  pmpath: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/raw_pm_jiangxi/
+  tpm: raw
+pm-twm:
+  debug: true
+  maxgo: 7
+  op: twm
+  pmdb: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/db/
+  pmpath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_pm_0801/
+  tpm: sql
+pm-win:
   debug: true
   maxgo: 7
   op: twm
