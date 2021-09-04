@@ -79,7 +79,7 @@ func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter 
 
 // func (p *L2TtiTraceParser) onOkBtnClicked(checked bool) {
 func (p *L2TtiTraceParser) Exec() {
-	scs2nslots := map[string]int{"15khz": 10, "30khz": 20, "120khz": 80}
+	scs2nslots := map[string]int{"15k": 10, "30k": 20, "120k": 80}
 	p.slotsPerRf = scs2nslots[strings.ToLower(p.ttiScs)]
 
 	// recreate dir for parsed l2 tti trace

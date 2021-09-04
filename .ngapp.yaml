@@ -99,7 +99,7 @@ kpi_before_lockdown:
   pmdb: D:\work\email\202105\twm_support\03-xinos\db
   stime: "20210507"
 logs:
-  chbw: 30MHz
+  chbw: 30m
   debug: true
   filter: both
   luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
@@ -109,7 +109,7 @@ logs:
   py2: /usr/bin
   py3: /usr/bin
   rat: nr
-  scs: 30khz
+  scs: 15k
   snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
   tlog: ddr4
@@ -123,7 +123,7 @@ logs-linux-l2tti:
   pattern: .csv
   py2: /usr/bin
   rat: nr
-  scs: 30khz
+  scs: 30k
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
   tlog: l2tti
   trace: /home/dabs/Downloads/test_20210805/2.1-DL-1/tti_packed/fsp-2-6b-L2RT30_ttiTrace/
@@ -136,7 +136,7 @@ logs-win:
   pattern: .pcap
   py2: C:/Python27
   rat: nr
-  scs: 30khz
+  scs: 30k
   tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
   tlog: bip
   trace: D:\work\email\202105\twm_support\5gc2200_log\Fist time\gNB_10.221.133.213_20210527_113152_BIP
@@ -149,7 +149,7 @@ logs_5g21a:
   pattern: .pcap
   py2: C:/Python27
   rat: nr
-  scs: 30khz
+  scs: 30k
   tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G21A_11.800.965\TLDA
   tlog: bip
   trace: D:\work\email\202103\5g21a_hz_ojt\hz_test\field\0518log
@@ -162,7 +162,7 @@ logs_2200_off:
   pattern: .pcap
   py2: C:/Python27
   rat: nr
-  scs: 30khz
+  scs: 30k
   tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
   tlog: bip
   trace: D:\work\email\202105\twm_support\5gc2200_log\Third time\gNB_10.221.133.213_20210527_143642_BIP

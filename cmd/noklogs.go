@@ -74,7 +74,7 @@ var logsCmd = &cobra.Command{
 		} else if tlog == "ddr4" && pattern == ".bin"{
 			// .bin is raw DDR4 from WebEM or gnb_logs
 			parser := new(ddr4trace.Ddr4TraceParser)
-			parser.Init(Logger, py3, snaptool, trace, pattern, maxgo, debug)
+			parser.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, maxgo, nap, debug)
 			parser.Exec()
 		} else {
 			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
@@ -113,8 +113,8 @@ func init() {
 	logsCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
 	logsCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat,.bin]")
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
-	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15khz,30khz,120khz]")
-	logsCmd.Flags().StringVar(&chbw, "chbw", "30MHz", "NRCELL/chBw or NRCELL_FDD/chBwDl(chBwUl) setting[20MHz,30MHz,100MHz]")
+	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15k,30k,120k]")
+	logsCmd.Flags().StringVar(&chbw, "chbw", "30MHz", "NRCELL/chBw or NRCELL_FDD/chBwDl(chBwUl) setting[20m,30m,100m]")
 	logsCmd.Flags().IntVar(&nap, "nap", 4, "Number of antenna ports of gNB[2,4]")
 	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
 	logsCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")

@@ -24,7 +24,12 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gonum.org/v1/gonum/dsp/fourier"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
 	"io/ioutil"
+	"math"
 	"math/cmplx"
 	"os"
 	"os/exec"
@@ -40,30 +45,38 @@ import (
 const (
 	BIN_PYTHON3         string = "python.exe"
 	BIN_PYTHON3_LINUX   string = "python3"
-	PY3_SNAPSHOT_TOOL string = "SnapshotAnalyzer.py"
-	LOKI_IQ_NORM_FACTOR int = 16384
+	PY3_SNAPSHOT_TOOL   string = "SnapshotAnalyzer.py"
+	LOKI_IQ_NORM_FACTOR int    = 16384
 )
 
 type Ddr4TraceParser struct {
-	log          *zap.Logger
-	py3Path string
-	snapToolPath string
+	log           *zap.Logger
+	py3Path       string
+	snapToolPath  string
 	ddr4TracePath string
-	pattern      string
-	maxgo int
-	debug        bool
+	pattern       string
+	scs           string
+	chbw          string
+	maxgo         int
+	nap           int
+	debug         bool
 
 	traceFiles []string
-	iqdata cmap.ConcurrentMap
+	iqData     cmap.ConcurrentMap
+	rssiData cmap.ConcurrentMap
+	rssiCount cmap.ConcurrentMap
 }
 
-func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern string, maxgo int, debug bool) {
+func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, nap int, debug bool) {
 	p.log = log
 	p.py3Path = py3
 	p.snapToolPath = snaptool
 	p.ddr4TracePath = trace
 	p.pattern = pattern
+	p.scs = strings.ToLower(scs)
+	p.chbw = strings.ToLower(chbw)
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
+	p.nap = nap
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing DDR4 trace parser...(working dir: %v)", p.ddr4TracePath))
@@ -80,7 +93,9 @@ func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern st
 		}
 	}
 
-	p.iqdata = cmap.New()
+	p.iqData = cmap.New()
+	p.rssiData = cmap.New()
+	p.rssiCount = cmap.New()
 }
 
 func (p *Ddr4TraceParser) Exec() {
@@ -94,7 +109,7 @@ func (p *Ddr4TraceParser) Exec() {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
 
-	if p.pattern == ".bin"  {
+	if p.pattern == ".bin" {
 		fileInfo, err := ioutil.ReadDir(p.ddr4TracePath)
 		if err != nil {
 			p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.ddr4TracePath))
@@ -116,53 +131,264 @@ func (p *Ddr4TraceParser) Exec() {
 				go func(fn string) {
 					defer wg.Done()
 					p.parse(fn)
-				} (file.Name())
+				}(file.Name())
 			}
 		}
 		wg.Wait()
 	}
 
-	for _, key := range p.iqdata.Keys() {
-		m, _ := p.iqdata.Get(key)
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("iqdata: key=%v, len=%v", key, len(m.([]complex128))))
-		/*
-		for i := 0; i < 100; i++ {
-			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("iq = %v", m.([]complex128)[i]))
-		}
-		 */
-
-		rf0sl0symb0u := m.([]complex128)[320:4416]
-		fft := fourier.NewCmplxFFT(len(rf0sl0symb0u))
-		coeff := fft.Coefficients(nil, rf0sl0symb0u)
-
-		iq := make([]complex128, 0)
-		amp := make([]float64, 0)
-		for i := range coeff {
-			i := fft.ShiftIdx(i)
-			iq = append(iq, coeff[i])
-			amp = append(amp, cmplx.Abs(coeff[i]))
-		}
-
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Frame 0 Slot 0 Symbol 0: len=%v", len(amp)))
-		fout, err := os.OpenFile(path.Join(outPath, strings.Split(key, ".")[0] + "_frame0_slot0_symbol0.csv"), os.O_WRONLY|os.O_CREATE, 0664)
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, err.Error())
-			return
-		}
-
-		for i := range iq {
-			fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", i+1, real(iq[i]), imag(iq[i]), amp[i]))
-		}
-
-		fout.Close()
+	// calculate sampling constants
+	// key = scs_bw, val = FFT size
+	fftSizeMap := map[string]int{
+		"15k_5m":    512,
+		"15k_10m":   1024,
+		"15k_15m":   1536,
+		"15k_20m":   2048,
+		"15k_30m":   4096,
+		"15k_40m":   4096,
+		"30k_20m":   1024,
+		"30k_40m":   2048,
+		"30k_50m":   2048,
+		"30k_60m":   4096,
+		"30k_80m":   4096,
+		"30k_90m":   4096,
+		"30k_100m":  4096,
+		"120k_100m": 1024,
 	}
+
+	// key = scs_bw, val = samples rate(Msps)
+	samplingRateMap := map[string]float64{
+		"15k_5m":    7.68,
+		"15k_10m":   15.35,
+		"15k_15m":   23.04,
+		"15k_20m":   30.72,
+		"15k_30m":   61.44,
+		"15k_40m":   61.44,
+		"30k_20m":   30.72,
+		"30k_40m":   61.44,
+		"30k_50m":   61.44,
+		"30k_60m":   122.88,
+		"30k_80m":   122.88,
+		"30k_90m":   122.88,
+		"30k_100m":  122.88,
+		"120k_100m": 122.88,
+	}
+
+	var slotsPerRf int
+	var tc, k, u, deltaF, exp2Negu, symbsPerSubf float64
+	var nu, ncpSymb07, ncpSymbOth float64
+	// OFDM symbol length(nomal, l=0 or l=7*2^u) and OFDM symbol length(nomal, l<>0 and l<>7*2^u), unit is ms
+	var lenSymb07, lenSymbOth float64
+
+	tc = 1.0 / (480 * 1000 * 4096) * 1000
+	k = 64
+	switch p.scs {
+	case "15k":
+		u = 0
+	case "30k":
+		u = 1
+	case "120k":
+		u = 3
+	default:
+		u = -1
+	}
+	deltaF = 15 * math.Exp2(u)
+	slotsPerRf = int(10 * math.Exp2(u))
+	exp2Negu = 1 / math.Exp2(u)
+	symbsPerSubf = 14 * math.Exp2(u)
+	nu = 2048 * k * exp2Negu
+	ncpSymb07 = 144*k*exp2Negu + 16*k
+	ncpSymbOth = 144 * k * exp2Negu
+	lenSymb07 = (nu + ncpSymb07) * tc
+	lenSymbOth = (nu + ncpSymbOth) * tc
+
+	// Sampling rate, unit is Msps
+	samplingRate := samplingRateMap[p.scs+"_"+p.chbw]
+	fftSize := fftSizeMap[p.scs+"_"+p.chbw]
+	// Sampling time, unit is ms
+	samplingTime := 1 / samplingRate / 1000
+
+	var samplesSymb07, samplesSymbOth, samplesSlot, samplesCpSymb07, samplesCpSymbOth int
+	samplesSymb07 = int(lenSymb07 / samplingTime)
+	samplesSymbOth = int(lenSymbOth / samplingTime)
+	samplesSlot = 2*samplesSymb07 + 12*samplesSymbOth
+	samplesCpSymb07 = int(ncpSymb07 * tc / samplingTime)
+	samplesCpSymbOth = int(ncpSymbOth * tc / samplingTime)
+
+	samplesExCpSymb07 := samplesSymb07 - samplesCpSymb07
+	samplesExCpSymbOth := samplesSymbOth - samplesCpSymbOth
+
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("tc=%v, k=%v, u=%v, deltaF=%v, slotsPerRf=%v, exp2Negu=%v", tc, k, u, deltaF, slotsPerRf, exp2Negu))
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("nu=%v, ncpSymb07=%v, ncpSymbOth=%v, lenSymb07=%vms, lenSymbOth=%vms, lenSubframe=%vms", nu, ncpSymb07, ncpSymbOth, lenSymb07, lenSymbOth, 2*lenSymb07+(symbsPerSubf-2)*lenSymbOth))
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("SamplingRate=%vMsps, fftSize=%v, samplingTime=%vms", samplingRate, fftSize, samplingTime))
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("samplesSymb07=%v, samplesSymbOth=%v, samplesSlot=%v, samplesCpSymb07=%v, samplesCpSymbOth=%v, samplesExCpSymb07=%v, samplesExCpSymbOth=%v", samplesSymb07, samplesSymbOth, samplesSlot, samplesCpSymb07, samplesCpSymbOth, samplesExCpSymb07, samplesExCpSymbOth))
+
+	for _, key := range p.iqData.Keys() {
+		m, _ := p.iqData.Get(key)
+		totSamples := len(m.([]complex128))
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("iqData: key=%v, len=%v", key, totSamples))
+		/*
+			for i := 0; i < 100; i++ {
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("iq = %v", m.([]complex128)[i]))
+			}
+		*/
+
+		tks := strings.Split(strings.Split(key, ".")[0], "_")
+		ant := tks[len(tks)-1]
+		p.rssiData.SetIfAbsent(ant, cmap.New())
+		p.rssiCount.SetIfAbsent(ant, cmap.New())
+
+		nrf := totSamples / (samplesSlot * slotsPerRf)
+		for irf := range utils.PyRange(0, nrf, 1) {
+			for isl := range utils.PyRange(0, slotsPerRf, 1) {
+				k := irf * slotsPerRf + isl
+				z := m.([]complex128)[k*samplesSlot:(k+1)*samplesSlot]
+
+				c := 0
+				for isymb := range utils.PyRange(0, 14, 1) {
+					var uiq []complex128
+					if isymb == 0 || isymb == int(7 * math.Exp2(u)) {
+						s := z[c:c+samplesSymb07]
+						c += samplesSymb07
+						uiq = s[samplesCpSymb07:]
+					} else {
+						s := z[c:c+samplesSymbOth]
+						c += samplesSymbOth
+						uiq = s[samplesCpSymbOth:]
+					}
+
+					fft := fourier.NewCmplxFFT(len(uiq))
+					coeff := fft.Coefficients(nil, uiq)
+
+					iq := make([]complex128, 0)
+					amp := make([]float64, 0)
+					for i := range coeff {
+						i := fft.ShiftIdx(i)
+						iq = append(iq, coeff[i])
+						amp = append(amp, cmplx.Abs(coeff[i]))
+					}
+
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Frame%v,Slot%v,Symbol%v: len=%v", irf, isl, isymb, len(amp)))
+
+					key2 := fmt.Sprintf("symbol%v", isymb)
+					m, _ := p.rssiData.Get(ant)
+					m.(cmap.ConcurrentMap).SetIfAbsent(key2, make([]float64, len(amp)))
+					m2, _ := m.(cmap.ConcurrentMap).Get(key2)
+					for i := range amp {
+						m2.([]float64)[i] += amp[i]
+					}
+					m.(cmap.ConcurrentMap).Set(key2, m2)
+					p.rssiData.Set(ant, m)
+
+					c, _ := p.rssiCount.Get(ant)
+					c.(cmap.ConcurrentMap).SetIfAbsent(key2, 0)
+					c2, _ := c.(cmap.ConcurrentMap).Get(key2)
+					c2 = c2.(int) + 1
+					c.(cmap.ConcurrentMap).Set(key2, c2)
+					p.rssiCount.Set(ant, c)
+
+					/*
+					// save as .png using gonum/v1/plot
+					pl := plot.New()
+					pl.Add(plotter.NewGrid())
+					pl.Title.Text = fmt.Sprintf("RSSI(Frame%v-Slot%v-Symbol%v)", irf, isl, isymb)
+					pl.X.Label.Text = "FFT Bin"
+					pl.Y.Label.Text = "RSSI(dBm)"
+					pts := make(plotter.XYs, len(amp))
+					for i := range pts {
+						pts[i].X = float64(i + 1)
+						pts[i].Y = 10 * math.Log10(amp[i]/math.Exp2(30))
+					}
+					err := plotutil.AddLines(pl, "RSSI", pts)
+					if err != nil {
+						p.writeLog(zapcore.ErrorLevel, err.Error())
+					} else {
+						if err := pl.Save(4*vg.Inch, 4*vg.Inch, path.Join(outPath, fmt.Sprintf("%v_rssi_frame%v_slot%v_symbol%v.png", strings.Split(key, ".")[0], irf, isl, isymb))); err != nil {
+							p.writeLog(zapcore.ErrorLevel, err.Error())
+						}
+					}
+
+					// save as .csv
+					fout, err := os.OpenFile(path.Join(outPath, strings.Split(key, ".")[0]+ fmt.Sprintf("_frame%v_slot%v_symbol%v.csv", irf, isl, isymb)), os.O_WRONLY|os.O_CREATE, 0664)
+					if err != nil {
+						p.writeLog(zapcore.ErrorLevel, err.Error())
+						return
+					}
+
+					for i := range iq {
+						fout.WriteString(fmt.Sprintf("%v,%v,%v\n", real(iq[i]), imag(iq[i]), amp[i]))
+					}
+
+					fout.Close()
+					 */
+				}
+			}
+		}
+	}
+
+	for _, ant := range p.rssiData.Keys() {
+		m, _ := p.rssiData.Get(ant)
+		c, _ := p.rssiCount.Get(ant)
+		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
+			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
+			c2, _ := c.(cmap.ConcurrentMap).Get(symb)
+			for i := range m2.([]float64) {
+				m2.([]float64)[i] = 10 *math.Log10(m2.([]float64)[i] / float64(c2.(int)) / math.Exp2(30))
+			}
+
+			m.(cmap.ConcurrentMap).Set(symb, m2)
+		}
+		p.rssiData.Set(ant, m)
+	}
+
+	for _, ant := range p.rssiData.Keys() {
+		m, _ := p.rssiData.Get(ant)
+		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
+			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
+
+			// save as .png using gonum/v1/plot
+			pl := plot.New()
+			pl.Add(plotter.NewGrid())
+			pl.Title.Text = fmt.Sprintf("RSSI(%v-%v)", ant, symb)
+			pl.X.Label.Text = "FFT Bin"
+			pl.Y.Label.Text = "RSSI(dBm)"
+			pts := make(plotter.XYs, len(m2.([]float64)))
+			for i := range pts {
+				pts[i].X = float64(i + 1)
+				pts[i].Y = m2.([]float64)[i]
+			}
+			err := plotutil.AddLines(pl, "RSSI", pts)
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, err.Error())
+			} else {
+				if err := pl.Save(8*vg.Inch, 4*vg.Inch, path.Join(outPath, fmt.Sprintf("rssi_%v_%v.png", ant, symb))); err != nil {
+					p.writeLog(zapcore.ErrorLevel, err.Error())
+				}
+			}
+		}
+	}
+
+	/*
+	// save as .csv
+	fout, err := os.OpenFile(path.Join(outPath, strings.Split(key, ".")[0]+ fmt.Sprintf("_frame%v_slot%v_symbol%v.csv", irf, isl, isymb)), os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+
+	for i := range iq {
+		fout.WriteString(fmt.Sprintf("%v,%v,%v\n", real(iq[i]), imag(iq[i]), amp[i]))
+	}
+
+	fout.Close()
+	 */
 }
 
 func (p *Ddr4TraceParser) parse(fn string) {
 	// 1st step: parse DDR4(.bin) using Loki snapshot_tool
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing DDR4 trace using Loki snapshot_tool... [%s]", fn))
 	outPath := path.Join(p.ddr4TracePath, "parsed_ddr4trace")
-	decodedDir := path.Join(outPath, strings.Split(fn, ".")[0] + "_result")
+	decodedDir := path.Join(outPath, strings.Split(fn, ".")[0]+"_result")
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
@@ -216,7 +442,7 @@ func (p *Ddr4TraceParser) parse(fn string) {
 
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Loading per antenna I/Q samples... [%s]", fn))
 			key := strings.Replace(strings.Replace(fn, path.Join(p.ddr4TracePath, "parsed_ddr4trace"), "ddr4", -1), "/", "_", -1)
-			p.iqdata.SetIfAbsent(key, make([]complex128, 0))
+			p.iqData.SetIfAbsent(key, make([]complex128, 0))
 
 			fin, err := os.Open(fn)
 			if err != nil {
@@ -241,11 +467,11 @@ func (p *Ddr4TraceParser) parse(fn string) {
 				i, _ := strconv.ParseFloat(iq[0], 64)
 				q, _ := strconv.ParseFloat(iq[1], 64)
 
-				m, _ := p.iqdata.Get(key)
+				m, _ := p.iqData.Get(key)
 				m = append(m.([]complex128), complex(i/float64(LOKI_IQ_NORM_FACTOR), q/float64(LOKI_IQ_NORM_FACTOR)))
-				p.iqdata.Set(key, m)
+				p.iqData.Set(key, m)
 			}
-		} (file)
+		}(file)
 	}
 	wg.Wait()
 }
