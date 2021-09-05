@@ -104,10 +104,10 @@ logs:
   filter: both
   luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
   maxgo: 48
-  nap: 4
   pattern: .bin
   py2: /usr/bin
   py3: /usr/bin
+  qbits: 30
   rat: nr
   scs: 15k
   snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/

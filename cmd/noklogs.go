@@ -28,7 +28,7 @@ import (
 var (
 	tlog     string
 	py2      string
-	py3 string
+	py3      string
 	tlda     string
 	snaptool string
 	luashark string
@@ -37,8 +37,8 @@ var (
 	pattern  string
 	rat      string
 	scs      string
-	chbw string
-	nap int
+	chbw     string
+	qbits    int
 	filter   string
 )
 
@@ -74,7 +74,7 @@ var logsCmd = &cobra.Command{
 		} else if tlog == "ddr4" && pattern == ".bin"{
 			// .bin is raw DDR4 from WebEM or gnb_logs
 			parser := new(ddr4trace.Ddr4TraceParser)
-			parser.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, maxgo, nap, debug)
+			parser.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, maxgo, qbits, debug)
 			parser.Exec()
 		} else {
 			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
@@ -115,7 +115,7 @@ func init() {
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
 	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15k,30k,120k]")
 	logsCmd.Flags().StringVar(&chbw, "chbw", "30MHz", "NRCELL/chBw or NRCELL_FDD/chBwDl(chBwUl) setting[20m,30m,100m]")
-	logsCmd.Flags().IntVar(&nap, "nap", 4, "Number of antenna ports of gNB[2,4]")
+	logsCmd.Flags().IntVar(&qbits, "qbits", 30, "Bits of RSSI quantization[28,30]")
 	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
 	logsCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
 	logsCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
@@ -131,7 +131,7 @@ func init() {
 	viper.BindPFlag("logs.rat", logsCmd.Flags().Lookup("rat"))
 	viper.BindPFlag("logs.scs", logsCmd.Flags().Lookup("scs"))
 	viper.BindPFlag("logs.chbw", logsCmd.Flags().Lookup("chbw"))
-	viper.BindPFlag("logs.nap", logsCmd.Flags().Lookup("nap"))
+	viper.BindPFlag("logs.qbits", logsCmd.Flags().Lookup("qbits"))
 	viper.BindPFlag("logs.filter", logsCmd.Flags().Lookup("filter"))
 	viper.BindPFlag("logs.maxgo", logsCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("logs.debug", logsCmd.Flags().Lookup("debug"))
@@ -150,7 +150,7 @@ func loadLogsFlags() {
 	rat = viper.GetString("logs.rat")
 	scs = viper.GetString("logs.scs")
 	chbw = viper.GetString("logs.chbw")
-	nap = viper.GetInt("logs.nap")
+	qbits = viper.GetInt("logs.qbits")
 	filter = viper.GetString("logs.filter")
 	maxgo = viper.GetInt("logs.maxgo")
 	debug = viper.GetBool("logs.debug")

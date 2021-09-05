@@ -60,7 +60,7 @@ type Ddr4TraceParser struct {
 	scs           string
 	chbw          string
 	maxgo         int
-	nap           int
+	qbits float64
 	debug         bool
 
 	traceFiles []string
@@ -69,7 +69,7 @@ type Ddr4TraceParser struct {
 	rssiCount  cmap.ConcurrentMap
 }
 
-func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, nap int, debug bool) {
+func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, qbits int, debug bool) {
 	p.log = log
 	p.py3Path = py3
 	p.snapToolPath = snaptool
@@ -78,7 +78,7 @@ func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, s
 	p.scs = strings.ToLower(scs)
 	p.chbw = strings.ToLower(chbw)
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
-	p.nap = nap
+	p.qbits = float64(qbits)
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing DDR4 trace parser...(working dir: %v)", p.ddr4TracePath))
@@ -374,7 +374,7 @@ func (p *Ddr4TraceParser) Exec() {
 			for i := range pts {
 				pts[i].X = float64(i)
 				// assume Q_bit=30
-				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]/math.Exp2(30))
+				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]/math.Exp2(p.qbits))
 
 				if i >= firstRe && i < (firstRe+nbrRe) {
 					iprb := math.Floor(float64(i-firstRe) / 12)
@@ -386,7 +386,7 @@ func (p *Ddr4TraceParser) Exec() {
 			for i := range pts2 {
 				pts2[i].X = float64(i)
 				// assume Q_bit=30
-				pts2[i].Y = 10 * math.Log10(pts2[i].Y/12/math.Exp2(30))
+				pts2[i].Y = 10 * math.Log10(pts2[i].Y/12/math.Exp2(p.qbits))
 			}
 
 			const rows, cols = 2, 1
@@ -496,7 +496,7 @@ func (p *Ddr4TraceParser) parse(fn string) {
 		p.writeLog(zapcore.DebugLevel, stdErr.String())
 	}
 
-	// 2nd step: parsing ant_x.txt where x=0..nap-1
+	// 2nd step: parsing ant_x.txt where x=0..nbrAntennaPorts-1
 	antFiles := make([]string, 0)
 	subcells, _ := filepath.Glob(path.Join(path.Join(decodedDir, "nr", "ul"), "subcellid*"))
 	for _, sc := range subcells {
