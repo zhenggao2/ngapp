@@ -28,6 +28,8 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
 	"io/ioutil"
 	"math"
 	"math/cmplx"
@@ -63,8 +65,8 @@ type Ddr4TraceParser struct {
 
 	traceFiles []string
 	iqData     cmap.ConcurrentMap
-	rssiData cmap.ConcurrentMap
-	rssiCount cmap.ConcurrentMap
+	rssiData   cmap.ConcurrentMap
+	rssiCount  cmap.ConcurrentMap
 }
 
 func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, nap int, debug bool) {
@@ -174,6 +176,24 @@ func (p *Ddr4TraceParser) Exec() {
 		"120k_100m": 122.88,
 	}
 
+	// key = scs_bw, val = PRB number
+	nbrPrbMap := map[string]int{
+		"15k_5m":    25,
+		"15k_10m":   52,
+		"15k_15m":   79,
+		"15k_20m":   106,
+		"15k_30m":   160,
+		"15k_40m":   216,
+		"30k_20m":   51,
+		"30k_40m":   106,
+		"30k_50m":   133,
+		"30k_60m":   162,
+		"30k_80m":   217,
+		"30k_90m":   245,
+		"30k_100m":  273,
+		"120k_100m": 66,
+	}
+
 	var slotsPerRf int
 	var tc, k, u, deltaF, exp2Negu, symbsPerSubf float64
 	var nu, ncpSymb07, ncpSymbOth float64
@@ -208,6 +228,12 @@ func (p *Ddr4TraceParser) Exec() {
 	// Sampling time, unit is ms
 	samplingTime := 1 / samplingRate / 1000
 
+	// Transmission bandwidth in PRB
+	nbrPrb := nbrPrbMap[p.scs+"_"+p.chbw]
+	nbrRe := nbrPrb * 12
+	firstRe := (fftSize - nbrRe) / 2
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("nbrPrb=%v, nbrRe=%v [firstRe=%v, lastRe=%v]", nbrPrb, nbrRe, firstRe, firstRe+nbrRe-1))
+
 	var samplesSymb07, samplesSymbOth, samplesSlot, samplesCpSymb07, samplesCpSymbOth int
 	samplesSymb07 = int(lenSymb07 / samplingTime)
 	samplesSymbOth = int(lenSymbOth / samplingTime)
@@ -223,109 +249,90 @@ func (p *Ddr4TraceParser) Exec() {
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("SamplingRate=%vMsps, fftSize=%v, samplingTime=%vms", samplingRate, fftSize, samplingTime))
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("samplesSymb07=%v, samplesSymbOth=%v, samplesSlot=%v, samplesCpSymb07=%v, samplesCpSymbOth=%v, samplesExCpSymb07=%v, samplesExCpSymbOth=%v", samplesSymb07, samplesSymbOth, samplesSlot, samplesCpSymb07, samplesCpSymbOth, samplesExCpSymb07, samplesExCpSymbOth))
 
+	wg := &sync.WaitGroup{}
 	for _, key := range p.iqData.Keys() {
-		m, _ := p.iqData.Get(key)
-		totSamples := len(m.([]complex128))
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("iqData: key=%v, len=%v", key, totSamples))
-		/*
-			for i := 0; i < 100; i++ {
-				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("iq = %v", m.([]complex128)[i]))
-			}
-		*/
-
-		tks := strings.Split(strings.Split(key, ".")[0], "_")
-		ant := tks[len(tks)-1]
-		p.rssiData.SetIfAbsent(ant, cmap.New())
-		p.rssiCount.SetIfAbsent(ant, cmap.New())
-
-		nrf := totSamples / (samplesSlot * slotsPerRf)
-		for irf := range utils.PyRange(0, nrf, 1) {
-			for isl := range utils.PyRange(0, slotsPerRf, 1) {
-				k := irf * slotsPerRf + isl
-				z := m.([]complex128)[k*samplesSlot:(k+1)*samplesSlot]
-
-				c := 0
-				for isymb := range utils.PyRange(0, 14, 1) {
-					var uiq []complex128
-					if isymb == 0 || isymb == int(7 * math.Exp2(u)) {
-						s := z[c:c+samplesSymb07]
-						c += samplesSymb07
-						uiq = s[samplesCpSymb07:]
-					} else {
-						s := z[c:c+samplesSymbOth]
-						c += samplesSymbOth
-						uiq = s[samplesCpSymbOth:]
-					}
-
-					fft := fourier.NewCmplxFFT(len(uiq))
-					coeff := fft.Coefficients(nil, uiq)
-
-					iq := make([]complex128, 0)
-					amp := make([]float64, 0)
-					for i := range coeff {
-						i := fft.ShiftIdx(i)
-						iq = append(iq, coeff[i])
-						amp = append(amp, cmplx.Abs(coeff[i]))
-					}
-
-					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Frame%v,Slot%v,Symbol%v: len=%v", irf, isl, isymb, len(amp)))
-
-					key2 := fmt.Sprintf("symbol%v", isymb)
-					m, _ := p.rssiData.Get(ant)
-					m.(cmap.ConcurrentMap).SetIfAbsent(key2, make([]float64, len(amp)))
-					m2, _ := m.(cmap.ConcurrentMap).Get(key2)
-					for i := range amp {
-						m2.([]float64)[i] += amp[i]
-					}
-					m.(cmap.ConcurrentMap).Set(key2, m2)
-					p.rssiData.Set(ant, m)
-
-					c, _ := p.rssiCount.Get(ant)
-					c.(cmap.ConcurrentMap).SetIfAbsent(key2, 0)
-					c2, _ := c.(cmap.ConcurrentMap).Get(key2)
-					c2 = c2.(int) + 1
-					c.(cmap.ConcurrentMap).Set(key2, c2)
-					p.rssiCount.Set(ant, c)
-
-					/*
-					// save as .png using gonum/v1/plot
-					pl := plot.New()
-					pl.Add(plotter.NewGrid())
-					pl.Title.Text = fmt.Sprintf("RSSI(Frame%v-Slot%v-Symbol%v)", irf, isl, isymb)
-					pl.X.Label.Text = "FFT Bin"
-					pl.Y.Label.Text = "RSSI(dBm)"
-					pts := make(plotter.XYs, len(amp))
-					for i := range pts {
-						pts[i].X = float64(i + 1)
-						pts[i].Y = 10 * math.Log10(amp[i]/math.Exp2(30))
-					}
-					err := plotutil.AddLines(pl, "RSSI", pts)
-					if err != nil {
-						p.writeLog(zapcore.ErrorLevel, err.Error())
-					} else {
-						if err := pl.Save(4*vg.Inch, 4*vg.Inch, path.Join(outPath, fmt.Sprintf("%v_rssi_frame%v_slot%v_symbol%v.png", strings.Split(key, ".")[0], irf, isl, isymb))); err != nil {
-							p.writeLog(zapcore.ErrorLevel, err.Error())
-						}
-					}
-
-					// save as .csv
-					fout, err := os.OpenFile(path.Join(outPath, strings.Split(key, ".")[0]+ fmt.Sprintf("_frame%v_slot%v_symbol%v.csv", irf, isl, isymb)), os.O_WRONLY|os.O_CREATE, 0664)
-					if err != nil {
-						p.writeLog(zapcore.ErrorLevel, err.Error())
-						return
-					}
-
-					for i := range iq {
-						fout.WriteString(fmt.Sprintf("%v,%v,%v\n", real(iq[i]), imag(iq[i]), amp[i]))
-					}
-
-					fout.Close()
-					 */
-				}
+		for {
+			if runtime.NumGoroutine() >= p.maxgo {
+				time.Sleep(1 * time.Second)
+			} else {
+				break
 			}
 		}
-	}
 
+		wg.Add(1)
+		go func(key string) {
+			defer wg.Done()
+
+			m, _ := p.iqData.Get(key)
+			totSamples := len(m.([]complex128))
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Processing iqData: key=%v, len=%v", key, totSamples))
+			/*
+				for i := 0; i < 100; i++ {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("iq = %v", m.([]complex128)[i]))
+				}
+			*/
+
+			tks := strings.Split(strings.Split(key, ".")[0], "_")
+			ant := tks[len(tks)-1]
+			p.rssiData.SetIfAbsent(ant, cmap.New())
+			p.rssiCount.SetIfAbsent(ant, cmap.New())
+
+			nrf := totSamples / (samplesSlot * slotsPerRf)
+			for irf := range utils.PyRange(0, nrf, 1) {
+				for isl := range utils.PyRange(0, slotsPerRf, 1) {
+					k := irf*slotsPerRf + isl
+					z := m.([]complex128)[k*samplesSlot : (k+1)*samplesSlot]
+
+					c := 0
+					for isymb := range utils.PyRange(0, 14, 1) {
+						var uiq []complex128
+						if isymb == 0 || isymb == int(7*math.Exp2(u)) {
+							s := z[c : c+samplesSymb07]
+							c += samplesSymb07
+							uiq = s[samplesCpSymb07:]
+						} else {
+							s := z[c : c+samplesSymbOth]
+							c += samplesSymbOth
+							uiq = s[samplesCpSymbOth:]
+						}
+
+						fft := fourier.NewCmplxFFT(len(uiq))
+						coeff := fft.Coefficients(nil, uiq)
+
+						iq := make([]complex128, 0)
+						amp := make([]float64, 0)
+						for i := range coeff {
+							i := fft.ShiftIdx(i)
+							iq = append(iq, coeff[i])
+							amp = append(amp, cmplx.Abs(coeff[i]))
+						}
+
+						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Frame%v,Slot%v,Symbol%v: len=%v", irf, isl, isymb, len(amp)))
+
+						key2 := fmt.Sprintf("symbol%v", isymb)
+						m, _ := p.rssiData.Get(ant)
+						m.(cmap.ConcurrentMap).SetIfAbsent(key2, make([]float64, len(amp)))
+						m2, _ := m.(cmap.ConcurrentMap).Get(key2)
+						for i := range amp {
+							m2.([]float64)[i] += amp[i]
+						}
+						m.(cmap.ConcurrentMap).Set(key2, m2)
+						p.rssiData.Set(ant, m)
+
+						c, _ := p.rssiCount.Get(ant)
+						c.(cmap.ConcurrentMap).SetIfAbsent(key2, 0)
+						c2, _ := c.(cmap.ConcurrentMap).Get(key2)
+						c2 = c2.(int) + 1
+						c.(cmap.ConcurrentMap).Set(key2, c2)
+						p.rssiCount.Set(ant, c)
+					}
+				}
+			}
+		}(key)
+	}
+	wg.Wait()
+
+	// calculate average RSSI in dBm
 	for _, ant := range p.rssiData.Keys() {
 		m, _ := p.rssiData.Get(ant)
 		c, _ := p.rssiCount.Get(ant)
@@ -333,7 +340,7 @@ func (p *Ddr4TraceParser) Exec() {
 			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
 			c2, _ := c.(cmap.ConcurrentMap).Get(symb)
 			for i := range m2.([]float64) {
-				m2.([]float64)[i] = 10 *math.Log10(m2.([]float64)[i] / float64(c2.(int)) / math.Exp2(30))
+				m2.([]float64)[i] = m2.([]float64)[i] / float64(c2.(int))
 			}
 
 			m.(cmap.ConcurrentMap).Set(symb, m2)
@@ -341,47 +348,122 @@ func (p *Ddr4TraceParser) Exec() {
 		p.rssiData.Set(ant, m)
 	}
 
+	// save as rssi_x_all.csv
+	fout, err := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_re_all.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+	fout.WriteString("Antenna Port,Symbol,FFT Bin,RSSI(dBm)\n")
+
+	fout2, err2 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_prb_all.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err2 != nil {
+		p.writeLog(zapcore.ErrorLevel, err2.Error())
+		return
+	}
+	fout2.WriteString("Antenna Port,Symbol,PRB,RSSI(dBm)\n")
+
 	for _, ant := range p.rssiData.Keys() {
 		m, _ := p.rssiData.Get(ant)
 		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
 			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
 
 			// save as .png using gonum/v1/plot
-			pl := plot.New()
-			pl.Add(plotter.NewGrid())
-			pl.Title.Text = fmt.Sprintf("RSSI(%v-%v)", ant, symb)
-			pl.X.Label.Text = "FFT Bin"
-			pl.Y.Label.Text = "RSSI(dBm)"
 			pts := make(plotter.XYs, len(m2.([]float64)))
+			pts2 := make(plotter.XYs, nbrPrb)
 			for i := range pts {
-				pts[i].X = float64(i + 1)
-				pts[i].Y = m2.([]float64)[i]
+				pts[i].X = float64(i)
+				// assume Q_bit=30
+				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]/math.Exp2(30))
+
+				if i >= firstRe && i < (firstRe+nbrRe) {
+					iprb := math.Floor(float64(i-firstRe) / 12)
+					j := int(iprb)
+					pts2[j].Y += m2.([]float64)[i]
+				}
 			}
-			err := plotutil.AddLines(pl, "RSSI", pts)
+
+			for i := range pts2 {
+				pts2[i].X = float64(i)
+				// assume Q_bit=30
+				pts2[i].Y = 10 * math.Log10(pts2[i].Y/12/math.Exp2(30))
+			}
+
+			const rows, cols = 2, 1
+			plots := make([][]*plot.Plot, rows)
+			for j := 0; j < rows; j++ {
+				plots[j] = make([]*plot.Plot, cols)
+				for i := 0; i < cols; i++ {
+					pl := plot.New()
+					pl.Add(plotter.NewGrid())
+					pl.Title.Text = fmt.Sprintf("RSSI (%v-%v)", ant, symb)
+					pl.Y.Label.Text = "RSSI(dBm)"
+					pl.Y.Min = -120
+					pl.Y.Max = -70
+					pl.Legend.Top = true
+
+					if i == 0 && j == 0 {
+						pl.X.Label.Text = "FFT Bin"
+						pl.X.Min = 0
+						pl.X.Max = float64(len(m2.([]float64)) - 1)
+						plotutil.AddLines(pl, "RSSI_per_RE", pts)
+					}
+
+					if i == 0 && j == 1 {
+						pl.X.Label.Text = "PRB"
+						pl.X.Min = 0
+						pl.X.Max = float64(nbrPrb - 1)
+						plotutil.AddLines(pl, "RSSI_per_PRB", pts2)
+					}
+
+					plots[j][i] = pl
+				}
+			}
+
+			img := vgimg.New(8*vg.Inch, 8*vg.Inch)
+			dc := draw.New(img)
+			t := draw.Tiles{
+				Rows:      rows,
+				Cols:      cols,
+				PadX:      vg.Millimeter,
+				PadY:      vg.Millimeter,
+				PadTop:    vg.Points(2),
+				PadBottom: vg.Points(2),
+				PadLeft:   vg.Points(2),
+				PadRight:  vg.Points(2),
+			}
+			canvases := plot.Align(plots, t, dc)
+			for j := 0; j < rows; j++ {
+				for i := 0; i < cols; i++ {
+					if plots[j][i] != nil {
+						plots[j][i].Draw(canvases[j][i])
+					}
+				}
+			}
+
+			w, err := os.Create(path.Join(outPath, fmt.Sprintf("rssi_%v_%v.png", ant, symb)))
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
-			} else {
-				if err := pl.Save(8*vg.Inch, 4*vg.Inch, path.Join(outPath, fmt.Sprintf("rssi_%v_%v.png", ant, symb))); err != nil {
-					p.writeLog(zapcore.ErrorLevel, err.Error())
-				}
+			}
+			defer w.Close()
+
+			png := vgimg.PngCanvas{Canvas: img}
+			if _, err := png.WriteTo(w); err != nil {
+				p.writeLog(zapcore.ErrorLevel, err.Error())
+			}
+
+			for i := range pts {
+				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts[i].X, pts[i].Y))
+			}
+
+			for i := range pts2 {
+				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts2[i].X, pts2[i].Y))
 			}
 		}
 	}
 
-	/*
-	// save as .csv
-	fout, err := os.OpenFile(path.Join(outPath, strings.Split(key, ".")[0]+ fmt.Sprintf("_frame%v_slot%v_symbol%v.csv", irf, isl, isymb)), os.O_WRONLY|os.O_CREATE, 0664)
-	if err != nil {
-		p.writeLog(zapcore.ErrorLevel, err.Error())
-		return
-	}
-
-	for i := range iq {
-		fout.WriteString(fmt.Sprintf("%v,%v,%v\n", real(iq[i]), imag(iq[i]), amp[i]))
-	}
-
 	fout.Close()
-	 */
+	fout2.Close()
 }
 
 func (p *Ddr4TraceParser) parse(fn string) {
