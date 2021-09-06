@@ -60,7 +60,7 @@ type Ddr4TraceParser struct {
 	scs           string
 	chbw          string
 	maxgo         int
-	qbits float64
+	gain          float64
 	debug         bool
 
 	traceFiles []string
@@ -69,7 +69,7 @@ type Ddr4TraceParser struct {
 	rssiCount  cmap.ConcurrentMap
 }
 
-func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, qbits int, debug bool) {
+func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, gain int, debug bool) {
 	p.log = log
 	p.py3Path = py3
 	p.snapToolPath = snaptool
@@ -78,7 +78,7 @@ func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, s
 	p.scs = strings.ToLower(scs)
 	p.chbw = strings.ToLower(chbw)
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
-	p.qbits = float64(qbits)
+	p.gain = float64(gain)
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing DDR4 trace parser...(working dir: %v)", p.ddr4TracePath))
@@ -299,11 +299,11 @@ func (p *Ddr4TraceParser) Exec() {
 						fft := fourier.NewCmplxFFT(len(uiq))
 						coeff := fft.Coefficients(nil, uiq)
 
-						iq := make([]complex128, 0)
+						// iq := make([]complex128, 0)
 						amp := make([]float64, 0)
 						for i := range coeff {
 							i := fft.ShiftIdx(i)
-							iq = append(iq, coeff[i])
+							// iq = append(iq, coeff[i])
 							amp = append(amp, cmplx.Abs(coeff[i]))
 						}
 
@@ -314,7 +314,8 @@ func (p *Ddr4TraceParser) Exec() {
 						m.(cmap.ConcurrentMap).SetIfAbsent(key2, make([]float64, len(amp)))
 						m2, _ := m.(cmap.ConcurrentMap).Get(key2)
 						for i := range amp {
-							m2.([]float64)[i] += amp[i]
+							// unit is mW assuming 50 Ohm impedance, P = V^2 / 2R and V = sqrt(I^2 + Q^2)
+							m2.([]float64)[i] += 10 * math.Pow(amp[i], 2)
 						}
 						m.(cmap.ConcurrentMap).Set(key2, m2)
 						p.rssiData.Set(ant, m)
@@ -332,13 +333,14 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 	wg.Wait()
 
-	// calculate average RSSI in dBm
+	// calculate average RSSI in mW
 	for _, ant := range p.rssiData.Keys() {
 		m, _ := p.rssiData.Get(ant)
 		c, _ := p.rssiCount.Get(ant)
 		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
 			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
 			c2, _ := c.(cmap.ConcurrentMap).Get(symb)
+			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ant=%v,symb=%v,count=%v", ant, symb, c2.(int)))
 			for i := range m2.([]float64) {
 				m2.([]float64)[i] = m2.([]float64)[i] / float64(c2.(int))
 			}
@@ -348,47 +350,60 @@ func (p *Ddr4TraceParser) Exec() {
 		p.rssiData.Set(ant, m)
 	}
 
-	// save as rssi_x_all.csv
-	fout, err := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_re_all.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	// save per ant/symbol RSSI as rssi_per_ant_symbol_x.csv
+	fout, err := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 		return
 	}
 	fout.WriteString("Antenna Port,Symbol,FFT Bin,RSSI(dBm)\n")
 
-	fout2, err2 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_prb_all.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout2, err2 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err2 != nil {
 		p.writeLog(zapcore.ErrorLevel, err2.Error())
 		return
 	}
 	fout2.WriteString("Antenna Port,Symbol,PRB,RSSI(dBm)\n")
 
+	// key = symbol, val = RSSI per RE or RSSI per PRB
+	rssiRe := make(map[string][]float64)
+	rssiPrb := make(map[string][]float64)
 	for _, ant := range p.rssiData.Keys() {
 		m, _ := p.rssiData.Get(ant)
 		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
 			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
 
-			// save as .png using gonum/v1/plot
+			if _, e := rssiRe[symb]; !e {
+				rssiRe[symb] = make([]float64, len(m2.([]float64)))
+				rssiPrb[symb] = make([]float64, nbrPrb)
+			}
+
 			pts := make(plotter.XYs, len(m2.([]float64)))
 			pts2 := make(plotter.XYs, nbrPrb)
 			for i := range pts {
 				pts[i].X = float64(i)
-				// assume Q_bit=30
-				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]/math.Exp2(p.qbits))
+				pts[i].Y = math.Max(10 * math.Log10(m2.([]float64)[i]) - p.gain, -174 + 10 * math.Log10(15000))
+				rssiRe[symb][i] += m2.([]float64)[i]
+
+				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts[i].X, pts[i].Y))
 
 				if i >= firstRe && i < (firstRe+nbrRe) {
 					iprb := math.Floor(float64(i-firstRe) / 12)
 					j := int(iprb)
 					pts2[j].Y += m2.([]float64)[i]
+					rssiPrb[symb][j] += m2.([]float64)[i]
 				}
 			}
 
 			for i := range pts2 {
 				pts2[i].X = float64(i)
-				// assume Q_bit=30
-				pts2[i].Y = 10 * math.Log10(pts2[i].Y/12/math.Exp2(p.qbits))
+				// pts2[i].Y = 10 * math.Log10(pts2[i].Y / 12 / math.Exp2(p.gain))
+				pts2[i].Y = 10 * math.Log10(pts2[i].Y) - p.gain
+
+				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts2[i].X, pts2[i].Y))
 			}
 
+			// save per ant/symb RSSI as .png using gonum/plot
 			const rows, cols = 2, 1
 			plots := make([][]*plot.Plot, rows)
 			for j := 0; j < rows; j++ {
@@ -398,8 +413,8 @@ func (p *Ddr4TraceParser) Exec() {
 					pl.Add(plotter.NewGrid())
 					pl.Title.Text = fmt.Sprintf("RSSI (%v-%v)", ant, symb)
 					pl.Y.Label.Text = "RSSI(dBm)"
-					pl.Y.Min = -120
-					pl.Y.Max = -70
+					pl.Y.Min = -140
+					pl.Y.Max = -60
 					pl.Legend.Top = true
 
 					if i == 0 && j == 0 {
@@ -451,19 +466,109 @@ func (p *Ddr4TraceParser) Exec() {
 			if _, err := png.WriteTo(w); err != nil {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
 			}
-
-			for i := range pts {
-				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts[i].X, pts[i].Y))
-			}
-
-			for i := range pts2 {
-				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts2[i].X, pts2[i].Y))
-			}
 		}
 	}
 
 	fout.Close()
 	fout2.Close()
+
+	// save per symb RSSI as .png using gonum/plot and as rssi_per_symbol_x.csv
+	fout3, err3 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err3 != nil {
+		p.writeLog(zapcore.ErrorLevel, err3.Error())
+		return
+	}
+	fout3.WriteString("Symbol,FFT Bin,RSSI(dBm)\n")
+
+	fout4, err4 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err4 != nil {
+		p.writeLog(zapcore.ErrorLevel, err4.Error())
+		return
+	}
+	fout4.WriteString("Symbol,PRB,RSSI(dBm)\n")
+
+	for symb := range rssiRe {
+		ptsRe := make(plotter.XYs, len(rssiRe[symb]))
+		ptsPrb := make(plotter.XYs, len(rssiPrb[symb]))
+		for i := range ptsRe {
+			ptsRe[i].X = float64(i)
+			ptsRe[i].Y = math.Max(10 * math.Log10(rssiRe[symb][i]) - p.gain, -174 + 10 * math.Log10(15000))
+
+			fout3.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsRe[i].X, ptsRe[i].Y))
+		}
+
+		for i := range ptsPrb {
+			ptsPrb[i].X = float64(i)
+			ptsPrb[i].Y = 10 * math.Log10(rssiPrb[symb][i]) - p.gain
+
+			fout4.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsPrb[i].X, ptsPrb[i].Y))
+		}
+
+		const rows, cols = 2, 1
+		plots := make([][]*plot.Plot, rows)
+		for j := 0; j < rows; j++ {
+			plots[j] = make([]*plot.Plot, cols)
+			for i := 0; i < cols; i++ {
+				pl := plot.New()
+				pl.Add(plotter.NewGrid())
+				pl.Title.Text = fmt.Sprintf("RSSI (%v)", symb)
+				pl.Y.Label.Text = "RSSI(dBm)"
+				pl.Y.Min = -140
+				pl.Y.Max = -60
+				pl.Legend.Top = true
+
+				if i == 0 && j == 0 {
+					pl.X.Label.Text = "FFT Bin"
+					pl.X.Min = 0
+					pl.X.Max = float64(len(rssiRe[symb]) - 1)
+					plotutil.AddLines(pl, "RSSI_per_RE", ptsRe)
+				}
+
+				if i == 0 && j == 1 {
+					pl.X.Label.Text = "PRB"
+					pl.X.Min = 0
+					pl.X.Max = float64(len(rssiPrb[symb]) - 1)
+					plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
+				}
+
+				plots[j][i] = pl
+			}
+		}
+
+		img := vgimg.New(8*vg.Inch, 8*vg.Inch)
+		dc := draw.New(img)
+		t := draw.Tiles{
+			Rows:      rows,
+			Cols:      cols,
+			PadX:      vg.Millimeter,
+			PadY:      vg.Millimeter,
+			PadTop:    vg.Points(2),
+			PadBottom: vg.Points(2),
+			PadLeft:   vg.Points(2),
+			PadRight:  vg.Points(2),
+		}
+		canvases := plot.Align(plots, t, dc)
+		for j := 0; j < rows; j++ {
+			for i := 0; i < cols; i++ {
+				if plots[j][i] != nil {
+					plots[j][i].Draw(canvases[j][i])
+				}
+			}
+		}
+
+		w, err := os.Create(path.Join(outPath, fmt.Sprintf("rssi_%v.png", symb)))
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, err.Error())
+		}
+		defer w.Close()
+
+		png := vgimg.PngCanvas{Canvas: img}
+		if _, err := png.WriteTo(w); err != nil {
+			p.writeLog(zapcore.ErrorLevel, err.Error())
+		}
+	}
+	fout3.Close()
+	fout4.Close()
 }
 
 func (p *Ddr4TraceParser) parse(fn string) {
