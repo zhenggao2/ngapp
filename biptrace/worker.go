@@ -115,6 +115,24 @@ func (p *BipTraceParser) Exec() {
 			}
 		}
 		wg.Wait()
+
+		// write header
+		for _, event := range p.headerWritten.Keys() {
+			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", event))
+			tmpFn := path.Join(outPath, fmt.Sprintf("%s.csv.tmp", event))
+			fout, err := os.OpenFile(tmpFn, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0664)
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", tmpFn))
+				break
+			}
+
+			data, _ := ioutil.ReadFile(outFn)
+			m, _ := p.headerWritten.Get(event)
+			fout.WriteString(m.(string) + "\n")
+			fout.Write(data)
+			fout.Close()
+			os.Rename(tmpFn, outFn)
+		}
 	}
 }
 
@@ -123,7 +141,6 @@ func (p *BipTraceParser) parse(fn string) {
 	outPath := path.Join(p.bipTracePath, "parsed_biptrace")
 
 	mapEventHeader := make(map[string][]string)
-	mapEventHeaderOk := make(map[string]bool)
 	mapEventRecord := make(map[string]*utils.OrderedMap)
 
 	var stdOut bytes.Buffer
@@ -171,9 +188,22 @@ func (p *BipTraceParser) parse(fn string) {
 
 					if len(fields) > 0 {
 						mapEventRecord[event].Add(ts, fields)
-						mapEventHeaderOk[event] = true
+
 						// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
-						p.headerWritten.SetIfAbsent(event, false)
+						header := strings.Join(mapEventHeader[event], ",")
+						m, e := p.headerWritten.Get(event)
+						if !e {
+							p.headerWritten.Set(event, header)
+							// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
+						} else {
+							if len(header) == len(m.(string)) && header != m.(string) {
+								p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("event=%v, header mismatch while having same length", event))
+							}
+							if len(header) > len(m.(string)) && strings.HasPrefix(header, m.(string)) {
+								p.headerWritten.Set(event, header)
+								// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
+							}
+						}
 					}
 
 					tokens := strings.Split(line, "/")
@@ -186,10 +216,8 @@ func (p *BipTraceParser) parse(fn string) {
 					event = strings.Replace(event, ",", "_", -1)
 					event = strings.Replace(event, " ", "", -1)
 					event = strings.Split(event, "(")[0]
-					if _, exist := mapEventHeader[event]; !exist {
-						mapEventHeader[event] = make([]string, 0)
-						mapEventHeaderOk[event] = false
-					}
+
+					mapEventHeader[event] = make([]string, 0)
 					if _, exist := mapEventRecord[event]; !exist {
 						mapEventRecord[event] = utils.NewOrderedMap()
 					}
@@ -205,9 +233,7 @@ func (p *BipTraceParser) parse(fn string) {
 					nsec, _ := strconv.ParseInt(tokens[1], 10, 64)
 					ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
 
-					if !mapEventHeaderOk[event] {
-						mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
-					}
+					mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
 					fields = fmt.Sprintf("%s,%s", event, ts)
 				}
 
@@ -221,36 +247,25 @@ func (p *BipTraceParser) parse(fn string) {
 					}
 
 					if strings.Contains(line, "Structure") {
-						if !mapEventHeaderOk[event] {
-							mapEventHeader[event] = append(mapEventHeader[event], line)
-						}
+						mapEventHeader[event] = append(mapEventHeader[event], line)
 						fields = fields + ",|"
 					}
 
 					tokens := strings.Split(line, ":")
 					if len(tokens) == 2 {
-						if !mapEventHeaderOk[event] {
-							mapEventHeader[event] = append(mapEventHeader[event], tokens[0])
-						}
+						mapEventHeader[event] = append(mapEventHeader[event], tokens[0])
 						fields = fields + "," + strings.Replace(strings.TrimSpace(tokens[1]), ",", "_", -1)
 					}
 				}
 			}
 		}
 
-		for k1, v1 := range mapEventHeader {
-			//outFn := path.Join(outPath, fmt.Sprintf("%s_%s.csv", path.Base(fn), k1))
+		for k1 := range mapEventHeader {
 			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", k1))
 			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
 				break
-			}
-
-			written, _ := p.headerWritten.Get(k1)
-			if !written.(bool) {
-				fout.WriteString(strings.Join(v1, ",") + "\n")
-				p.headerWritten.Set(k1, true)
 			}
 
 			for p := 0; p < mapEventRecord[k1].Len(); p += 1{

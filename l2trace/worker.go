@@ -68,7 +68,7 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2-HI/L2-LO trace parser...(working dir: %v)", p.l2TracePath))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 trace parser...(working dir: %v)", p.l2TracePath))
 
 	fileInfo, err := ioutil.ReadDir(p.l2TracePath)
 	if err != nil {
