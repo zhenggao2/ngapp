@@ -402,7 +402,7 @@ func (p *BipTraceParser) Exec() {
 			pl.Legend.Top = true
 
 			if i == 0 && j == 0 {
-				pl.Title.Text = fmt.Sprintf("PUCCH/PUSCH Usage")
+				pl.Title.Text = fmt.Sprintf("BIP PUCCH/PUSCH Usage")
 				pl.X.Label.Text = "PRB"
 				pl.Y.Label.Text = "Count(#)"
 				pl.X.Min = 0
@@ -411,14 +411,14 @@ func (p *BipTraceParser) Exec() {
 			}
 
 			if i == 0 && j == 1 {
-				pl.Title.Text = fmt.Sprintf("RSSI (PUCCH/PUSCH)")
+				pl.Title.Text = fmt.Sprintf("BIP noisePower(PUCCH/PUSCH)")
 				pl.X.Label.Text = "PRB"
-				pl.Y.Label.Text = "RSSI(dBm)"
+				pl.Y.Label.Text = "noisePower(dBm)"
 				pl.X.Min = 0
 				pl.X.Max = float64(nbrPrb - 1)
 				pl.Y.Min = -140
 				pl.Y.Max = -60
-				plotutil.AddLines(pl, "RSSI_per_PRB", pts3)
+				plotutil.AddLines(pl, "noisePower_per_PRB", pts3)
 			}
 
 			plots[j][i] = pl
