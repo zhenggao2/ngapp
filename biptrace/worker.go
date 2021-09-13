@@ -16,13 +16,21 @@ limitations under the License.
 package biptrace
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -37,6 +45,10 @@ const (
 	BIN_TSHARK    string = "tshark.exe"
 	BIN_TSHARK_LINUX    string = "tshark"
 	LUA_LUASHARK  string = "luashark.lua"
+	BIP_PUCCH_REQ int = 0
+	BIP_PUCCH_RESP_PS int = 1
+	BIP_PUSCH_REQ int = 2
+	BIP_PUSCH_RESP_PS int = 3
 )
 
 type BipTraceParser struct {
@@ -45,6 +57,8 @@ type BipTraceParser struct {
 	luasharkPath string
 	bipTracePath string
 	pattern      string
+	scs string
+	chbw string
 	maxgo int
 	debug        bool
 
@@ -52,12 +66,14 @@ type BipTraceParser struct {
 	headerWritten cmap.ConcurrentMap
 }
 
-func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern string, maxgo int, debug bool) {
+func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern, scs, chbw string, maxgo int, debug bool) {
 	p.log = log
 	p.luasharkPath = lua
 	p.wsharkPath = wshark
 	p.bipTracePath = trace
 	p.pattern = pattern
+	p.scs = strings.ToLower(scs)
+	p.chbw = strings.ToLower(chbw)
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
@@ -134,10 +150,316 @@ func (p *BipTraceParser) Exec() {
 			os.Rename(tmpFn, outFn)
 		}
 	}
+
+	// noisePower from BIP can be used to calculate offset of DDR4 RSSI
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Collecting PUCCH/PUSCH noisePower..."))
+	bipMsgs := []string{"UlData_PucchReceiveReq.csv", "UlData_PucchReceiveRespPs.csv", "UlData_PuschReceiveReq.csv", "UlData_PuschReceiveRespPs.csv"}
+	msgFields := [][]string{
+		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "rnti (Uint16)", "pucchFormat (Enum)", "startPrb (Uint16)", "numOfPrb (Uint8)", "frequencyHopping (Enum)", "secondHopPrb (Uint16)"},
+		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "rnti (Uint16)", "noisePower (Float32)"},
+		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "rnti (Uint16)", "startPrb (Uint16)", "numOfPrb (Uint16)"},
+		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "noisePower (Float32)", "rnti (Uint16)"},
+	}
+
+	posMap := make(map[string]map[string][]int)
+	dataMap := make(map[string]map[string][]string)
+	for i, msg := range bipMsgs {
+		fin, err := os.Open(path.Join(outPath, msg))
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, err.Error())
+			return
+		}
+
+		reader := bufio.NewReader(fin)
+		firstLine := true
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				break
+			}
+
+			// remove leading and tailing spaces
+			line = strings.TrimSpace(line)
+			if len(line) == 0 {
+				continue
+			}
+
+			tokens := strings.Split(line, ",")
+			if firstLine {
+				posMap[msg] = make(map[string][]int)
+				dataMap[msg] = make(map[string][]string)
+
+				for k, tok := range tokens {
+					if _, e := posMap[msg][tok]; !e {
+						posMap[msg][tok] = []int{k}
+					} else {
+						posMap[msg][tok] = append(posMap[msg][tok], k)
+					}
+				}
+
+				firstLine = false
+
+				msgFieldsInfo := fmt.Sprintf("posMap[%v]:", msg)
+				for _, field := range msgFields[i] {
+					msgFieldsInfo += fmt.Sprintf(" %v=%v", field, posMap[msg][field])
+				}
+				p.writeLog(zapcore.DebugLevel, msgFieldsInfo)
+			} else {
+				// key prefix: timestamp_sfn_slot_subcellId
+				keyPrefix := make([]string, 4)
+				for k := 0; k < 4; k++ {
+					pos := posMap[msg][msgFields[i][k]][0]
+					keyPrefix[k] = tokens[pos]
+					if k == 0 {
+						keyPrefix[k] = keyPrefix[k][:len("2006-01-02_15:04:05")]
+					} else {
+						keyPrefix[k] = strings.Split(strings.TrimSuffix(keyPrefix[k], ")"), "(")[1]
+					}
+				}
+				for _, field := range msgFields[i][4:] {
+					key := strings.Join(append(keyPrefix, strings.Split(field, " ")[0]), "_")
+					if len(posMap[msg][field]) == 1 {
+						val := strings.Split(tokens[posMap[msg][field][0]], " ")[0]
+						if strings.HasSuffix(val, ")") {
+							val = strings.Split(strings.TrimSuffix(val, ")"), "(")[1]
+						}
+						dataMap[msg][key] = []string{val}
+					} else {
+						dataMap[msg][key] = []string{}
+						for _, pos := range posMap[msg][field] {
+							if pos < len(tokens) {
+								val := strings.Split(tokens[pos], " ")[0]
+								if strings.HasSuffix(val, ")") {
+									val = strings.Split(strings.TrimSuffix(val, ")"), "(")[1]
+								}
+								dataMap[msg][key] = append(dataMap[msg][key], val)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/*
+	for msg := range dataMap {
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("dataMap[%v] info:", msg))
+		for key := range dataMap[msg] {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v;%v, val=%v", key, msg, dataMap[msg][key]))
+		}
+	}
+	 */
+
+	// key = scs_bw, val = PRB number
+	nbrPrbMap := map[string]int{
+		"15k_5m":    25,
+		"15k_10m":   52,
+		"15k_15m":   79,
+		"15k_20m":   106,
+		"15k_30m":   160,
+		"15k_40m":   216,
+		"30k_20m":   51,
+		"30k_40m":   106,
+		"30k_50m":   133,
+		"30k_60m":   162,
+		"30k_80m":   217,
+		"30k_90m":   245,
+		"30k_100m":  273,
+		"120k_100m": 66,
+	}
+
+	nbrPrb := nbrPrbMap[p.scs + "_" + p.chbw]
+	pucchRssiMap := make(map[int][]float64)
+	puschRssiMap := make(map[int][]float64)
+	for i := 0; i < nbrPrb; i++ {
+		pucchRssiMap[i] = make([]float64, 0)
+		puschRssiMap[i] = make([]float64, 0)
+	}
+
+	// collect PUSCH noisePower
+	for key := range dataMap[bipMsgs[BIP_PUCCH_RESP_PS]] {
+		if strings.HasSuffix(key, "rnti"){
+			rntiPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][key]
+			startPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
+			numOfPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "numOfPrb", -1)]
+			freqHopPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "frequencyHopping", -1)]
+			secondHopPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "secondHopPrb", -1)]
+
+			rntiPucchRespPs := dataMap[bipMsgs[BIP_PUCCH_RESP_PS]][key]
+			noisePucchRespPs := dataMap[bipMsgs[BIP_PUCCH_RESP_PS]][strings.Replace(key, "rnti", "noisePower", -1)]
+
+			for i, rnti := range rntiPucchRespPs {
+				j := utils.IndexStr(rntiPucchReq, rnti)
+
+				if j == -1 {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("RNTI mismatch(known timestamp issue), key=%v, rnti=%v, skipping", key, rnti))
+					continue
+				}
+
+				noisePower, _ := strconv.ParseFloat(noisePucchRespPs[i], 64)
+				startPrb, _ := strconv.ParseInt(startPrbPucchReq[j], 10, 32)
+				numOfPrb, _ := strconv.ParseInt(numOfPrbPucchReq[j], 10, 32)
+				freqHop, _ := strconv.ParseBool(freqHopPucchReq[j])
+				secondHopPrb, _ := strconv.ParseInt(secondHopPrbPucchReq[j], 10, 32)
+
+				for k := 0; k < int(numOfPrb); k++ {
+					pucchRssiMap[int(startPrb)+k] = append(pucchRssiMap[int(startPrb)+k], noisePower)
+				}
+
+				if freqHop {
+					for k := 0; k < int(numOfPrb); k++ {
+						pucchRssiMap[int(secondHopPrb)+k] = append(pucchRssiMap[int(secondHopPrb)+k], noisePower)
+					}
+				}
+			}
+		}
+	}
+
+	pucchInfo:= make([]int, nbrPrb)
+	for i := 0; i < nbrPrb; i++ {
+		pucchInfo[i] = len(pucchRssiMap[i])
+	}
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("pucchInfo = %v", pucchInfo))
+
+	// collect PUSCH noisePower
+	for key := range dataMap[bipMsgs[BIP_PUSCH_RESP_PS]] {
+		if strings.HasSuffix(key, "rnti"){
+			rntiPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][key]
+			startPrbPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
+			numOfPrbPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][strings.Replace(key, "rnti", "numOfPrb", -1)]
+
+			rntiPuschRespPs := dataMap[bipMsgs[BIP_PUSCH_RESP_PS]][key]
+			noisePuschRespPs := dataMap[bipMsgs[BIP_PUSCH_RESP_PS]][strings.Replace(key, "rnti", "noisePower", -1)]
+
+			noisePower, _ := strconv.ParseFloat(noisePuschRespPs[0], 64)
+			for _, rnti := range rntiPuschRespPs {
+				j := utils.IndexStr(rntiPuschReq, rnti)
+
+				if j == -1 {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("RNTI mismatch(known timestamp issue), key=%v, rnti=%v, skipping", key, rnti))
+					continue
+				}
+
+				startPrb, _ := strconv.ParseInt(startPrbPuschReq[j], 10, 32)
+				numOfPrb, _ := strconv.ParseInt(numOfPrbPuschReq[j], 10, 32)
+
+				for k := 0; k < int(numOfPrb); k++ {
+					puschRssiMap[int(startPrb)+k] = append(puschRssiMap[int(startPrb)+k], noisePower)
+				}
+			}
+		}
+	}
+
+	puschInfo:= make([]int, nbrPrb)
+	for i := 0; i < nbrPrb; i++ {
+		puschInfo[i] = len(puschRssiMap[i])
+	}
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("puschInfo = %v", puschInfo))
+
+	rssi := make([]float64, nbrPrb)
+	for i := 0; i < nbrPrb; i++ {
+		for j := range pucchRssiMap[i] {
+			rssi[i] += math.Pow(10, pucchRssiMap[i][j] / 10)
+		}
+
+		for j := range puschRssiMap[i] {
+			rssi[i] += math.Pow(10, puschRssiMap[i][j] / 10)
+		}
+
+		if len(pucchRssiMap[i]) + len(puschRssiMap[i]) > 0 {
+			rssi[i] = 10 * math.Log10(rssi[i] / float64(len(pucchRssiMap[i])+len(puschRssiMap[i])))
+		} else {
+			scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+			rssi[i] = -174 + 10 * math.Log10(scs * 12 * 1000)
+		}
+	}
+
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("RSSI = %v", rssi))
+
+	// save per PRB RSSI as .png using gonum/plot
+	pts := make(plotter.XYs, nbrPrb)
+	pts2 := make(plotter.XYs, nbrPrb)
+	pts3 := make(plotter.XYs, nbrPrb)
+	for i := range pts {
+		pts[i].X = float64(i)
+		pts[i].Y = float64(pucchInfo[i])
+
+		pts2[i].X = float64(i)
+		pts2[i].Y = float64(puschInfo[i])
+
+		pts3[i].X = float64(i)
+		pts3[i].Y = rssi[i]
+	}
+
+	const rows, cols = 2, 1
+	plots := make([][]*plot.Plot, rows)
+	for j := 0; j < rows; j++ {
+		plots[j] = make([]*plot.Plot, cols)
+		for i := 0; i < cols; i++ {
+			pl := plot.New()
+			pl.Add(plotter.NewGrid())
+
+			pl.Legend.Top = true
+
+			if i == 0 && j == 0 {
+				pl.Title.Text = fmt.Sprintf("PUCCH/PUSCH Usage")
+				pl.X.Label.Text = "PRB"
+				pl.Y.Label.Text = "Count(#)"
+				pl.X.Min = 0
+				pl.X.Max = float64(nbrPrb - 1)
+				plotutil.AddLines(pl, "PUCCH_count", pts, "PUSCH_count", pts2)
+			}
+
+			if i == 0 && j == 1 {
+				pl.Title.Text = fmt.Sprintf("RSSI (PUCCH/PUSCH)")
+				pl.X.Label.Text = "PRB"
+				pl.Y.Label.Text = "RSSI(dBm)"
+				pl.X.Min = 0
+				pl.X.Max = float64(nbrPrb - 1)
+				pl.Y.Min = -140
+				pl.Y.Max = -60
+				plotutil.AddLines(pl, "RSSI_per_PRB", pts3)
+			}
+
+			plots[j][i] = pl
+		}
+	}
+
+	img := vgimg.New(8*vg.Inch, 8*vg.Inch)
+	dc := draw.New(img)
+	t := draw.Tiles{
+		Rows:      rows,
+		Cols:      cols,
+		PadX:      vg.Millimeter,
+		PadY:      vg.Millimeter,
+		PadTop:    vg.Points(2),
+		PadBottom: vg.Points(2),
+		PadLeft:   vg.Points(2),
+		PadRight:  vg.Points(2),
+	}
+	canvases := plot.Align(plots, t, dc)
+	for j := 0; j < rows; j++ {
+		for i := 0; i < cols; i++ {
+			if plots[j][i] != nil {
+				plots[j][i].Draw(canvases[j][i])
+			}
+		}
+	}
+
+	w, err := os.Create(path.Join(outPath, fmt.Sprintf("bip_noisePower.png")))
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+	}
+	defer w.Close()
+
+	png := vgimg.PngCanvas{Canvas: img}
+	if _, err := png.WriteTo(w); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+	}
 }
 
 func (p *BipTraceParser) parse(fn string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing BIP trace using tshark... [%s]", fn))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s]", fn))
 	outPath := path.Join(p.bipTracePath, "parsed_biptrace")
 
 	mapEventHeader := make(map[string][]string)
@@ -162,7 +484,7 @@ func (p *BipTraceParser) parse(fn string) {
 	}
 	if stdOut.Len() > 0 {
 		// TODO use bytes.Buffer.readString("\n") to postprocessing text files
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("splitting BIP trace into csv... [%s]", fn))
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s]", fn))
 		bipEvent := false
 		icomRec := false
 		var ts string

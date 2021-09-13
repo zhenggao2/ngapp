@@ -69,7 +69,7 @@ var logsCmd = &cobra.Command{
 		} else if tlog == "bip" && pattern == ".pcap" {
 			// .pcap is raw BIP from gnb_logs
 			parser := new(biptrace.BipTraceParser)
-			parser.Init(Logger, luashark, wshark, trace, pattern, maxgo, debug)
+			parser.Init(Logger, luashark, wshark, trace, pattern, scs, chbw, maxgo, debug)
 			parser.Exec()
 		} else if tlog == "ddr4" && pattern == ".bin"{
 			// .bin is raw DDR4 from WebEM or gnb_logs
@@ -113,8 +113,8 @@ func init() {
 	logsCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
 	logsCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat,.bin]")
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
-	logsCmd.Flags().StringVar(&scs, "scs", "30khz", "NRCELLGRP/scs setting[15k,30k,120k]")
-	logsCmd.Flags().StringVar(&chbw, "chbw", "30MHz", "NRCELL/chBw or NRCELL_FDD/chBwDl(chBwUl) setting[20m,30m,100m]")
+	logsCmd.Flags().StringVar(&scs, "scs", "30k", "NRCELLGRP/scs setting[15k,30k,120k]")
+	logsCmd.Flags().StringVar(&chbw, "chbw", "30m", "NRCELL/chBw or NRCELL_FDD/chBwDl(chBwUl) setting[20m,30m,100m]")
 	logsCmd.Flags().IntVar(&gain, "gain", 105, "gain assumption in unit of dB")
 	logsCmd.Flags().StringVar(&filter, "filter", "both", "ul/dl tti filter[ul,dl,both]")
 	logsCmd.Flags().IntVar(&maxgo, "maxgo", 3, "maximum number of concurrent goroutines(tune me in case of 'out of memory' issue!)[2..numCPU]")
