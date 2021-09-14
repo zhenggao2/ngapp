@@ -592,6 +592,11 @@ func (p *BipTraceParser) parse(fn string) {
 		}
 
 		for k1 := range mapEventHeader {
+			// SKipping event DlData_EmptySendReq
+			if k1 == "DlData_EmptySendReq" {
+				continue
+			}
+
 			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", k1))
 			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
