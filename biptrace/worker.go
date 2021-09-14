@@ -167,7 +167,8 @@ func (p *BipTraceParser) Exec() {
 		fin, err := os.Open(path.Join(outPath, msg))
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, err.Error())
-			return
+			// return
+			continue
 		}
 
 		reader := bufio.NewReader(fin)
@@ -195,6 +196,12 @@ func (p *BipTraceParser) Exec() {
 					} else {
 						posMap[msg][tok] = append(posMap[msg][tok], k)
 					}
+				}
+
+				// special handing of pucchReceiveReq.startPrb for ABIO
+				lenStartPrb, lenNumOfPrb := len(posMap[bipMsgs[BIP_PUCCH_REQ]]["startPrb (Uint16)"]), len(posMap[bipMsgs[BIP_PUCCH_REQ]]["numOfPrb (Uint8)"])
+				if lenStartPrb > lenNumOfPrb {
+					posMap[bipMsgs[BIP_PUCCH_REQ]]["startPrb (Uint16)"] = posMap[bipMsgs[BIP_PUCCH_REQ]]["startPrb (Uint16)"][lenStartPrb-lenNumOfPrb:]
 				}
 
 				firstLine = false
@@ -508,7 +515,8 @@ func (p *BipTraceParser) parse(fn string) {
 					bipEvent = true
 					icomRec = false
 
-					if len(fields) > 0 {
+					// SKipping event DlData_EmptySendReq
+					if len(fields) > 0 && event != "DlData_EmptySendReq" {
 						mapEventRecord[event].Add(ts, fields)
 
 						// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
@@ -538,6 +546,7 @@ func (p *BipTraceParser) parse(fn string) {
 					event = strings.Replace(event, ",", "_", -1)
 					event = strings.Replace(event, " ", "", -1)
 					event = strings.Split(event, "(")[0]
+
 
 					mapEventHeader[event] = make([]string, 0)
 					if _, exist := mapEventRecord[event]; !exist {

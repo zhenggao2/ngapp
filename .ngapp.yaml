@@ -103,23 +103,6 @@ kpi_before_lockdown:
   pmdb: D:\work\email\202105\twm_support\03-xinos\db
   stime: "20210507"
 logs:
-  chbw: 90m
-  debug: true
-  filter: both
-  gain: 110
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
-  maxgo: 7
-  pattern: .pcap
-  py2: /usr/bin
-  py3: /usr/bin
-  rat: nr
-  scs: 30k
-  snaptool: C:/snapshot_tool
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
-  tlog: bip
-  trace: /home/dabs/Documents/work/email/202105/twm_support/5gc2200_log/Third time/gNB_10.221.133.213_20210527_143642_BIP/
-  wshark: /usr/bin
-logs-ddr4:
   chbw: 30m
   debug: true
   filter: both
@@ -134,7 +117,24 @@ logs-ddr4:
   snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
   tlog: ddr4
-  trace: /home/dabs/Downloads/05-ddr4_iq_sample/SDMCC_ddr4/30m_no_blank/
+  trace: /home/dabs/Downloads/05-ddr4_iq_sample/SHMCC_ddr4/
+  wshark: /usr/bin
+logs-bip:
+  chbw: 30m
+  debug: true
+  filter: both
+  gain: 110
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/generated_luashark/
+  maxgo: 7
+  pattern: .pcap
+  py2: /usr/bin
+  py3: /usr/bin
+  rat: nr
+  scs: 15k
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/TLDA/
+  tlog: bip
+  trace: /home/dabs/Downloads/06-bip_log/SHMCC_bip/
   wshark: /usr/bin
 logs-l2trace:
   chbw: 30m
@@ -147,7 +147,7 @@ logs-l2trace:
   py2: /usr/bin
   py3: /usr/bin
   rat: nr
-  scs: 30k
+  scs: 15k
   snaptool: C:/snapshot_tool
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/TLDA/
   tlog: l2trace
