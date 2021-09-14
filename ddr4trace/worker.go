@@ -382,7 +382,9 @@ func (p *Ddr4TraceParser) Exec() {
 			pts2 := make(plotter.XYs, nbrPrb)
 			for i := range pts {
 				pts[i].X = float64(i)
-				pts[i].Y = math.Max(10 * math.Log10(m2.([]float64)[i]) - p.gain, -174 + 10 * math.Log10(15000))
+				// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+				// pts[i].Y = math.Max(10 * math.Log10(m2.([]float64)[i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
+				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]) - p.gain
 				rssiRe[symb][i] += m2.([]float64)[i]
 
 				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts[i].X, pts[i].Y))
@@ -397,7 +399,8 @@ func (p *Ddr4TraceParser) Exec() {
 
 			for i := range pts2 {
 				pts2[i].X = float64(i)
-				// pts2[i].Y = 10 * math.Log10(pts2[i].Y / 12 / math.Exp2(p.gain))
+				// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+				// pts2[i].Y = math.Max(10 * math.Log10(pts2[i].Y) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
 				pts2[i].Y = 10 * math.Log10(pts2[i].Y) - p.gain
 
 				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts2[i].X, pts2[i].Y))
@@ -492,13 +495,17 @@ func (p *Ddr4TraceParser) Exec() {
 		ptsPrb := make(plotter.XYs, len(rssiPrb[symb]))
 		for i := range ptsRe {
 			ptsRe[i].X = float64(i)
-			ptsRe[i].Y = math.Max(10 * math.Log10(rssiRe[symb][i]) - p.gain, -174 + 10 * math.Log10(15000))
+			// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+			// ptsRe[i].Y = math.Max(10 * math.Log10(rssiRe[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
+			ptsRe[i].Y = 10 * math.Log10(rssiRe[symb][i]) - p.gain
 
 			fout3.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsRe[i].X, ptsRe[i].Y))
 		}
 
 		for i := range ptsPrb {
 			ptsPrb[i].X = float64(i)
+			// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+			// ptsPrb[i].Y = math.Max(10 * math.Log10(rssiPrb[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
 			ptsPrb[i].Y = 10 * math.Log10(rssiPrb[symb][i]) - p.gain
 
 			fout4.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsPrb[i].X, ptsPrb[i].Y))
