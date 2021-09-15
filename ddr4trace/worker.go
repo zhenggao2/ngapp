@@ -58,6 +58,7 @@ type Ddr4TraceParser struct {
 	pattern       string
 	scs           string
 	chbw          string
+	filter string
 	maxgo         int
 	gain          float64
 	debug         bool
@@ -67,7 +68,7 @@ type Ddr4TraceParser struct {
 	rssiCount  cmap.ConcurrentMap
 }
 
-func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw string, maxgo, gain int, debug bool) {
+func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, scs, chbw, filter string, maxgo, gain int, debug bool) {
 	p.log = log
 	p.py3Path = py3
 	p.snapToolPath = snaptool
@@ -75,6 +76,11 @@ func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, s
 	p.pattern = pattern
 	p.scs = strings.ToLower(scs)
 	p.chbw = strings.ToLower(chbw)
+	p.filter = filter
+	if !(p.filter == "ul" || p.filter == "dl") {
+		p.writeLog(zapcore.ErrorLevel, "The --filter option should be either ul or dl for DDR4 parser!")
+		return
+	}
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.gain = float64(gain)
 	p.debug = debug
@@ -293,7 +299,7 @@ func (p *Ddr4TraceParser) Exec() {
 							amp = append(amp, cmplx.Abs(coeff[i]))
 						}
 
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Frame%v,Slot%v,Symbol%v: len=%v", irf, isl, isymb, len(amp)))
+						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v,Frame%v,Slot%v,Symbol%v: len=%v", ant, irf, isl, isymb, len(amp)))
 
 						key2 := fmt.Sprintf("symbol%v", isymb)
 						m, _ := p.rssiData.Get(ant)
@@ -564,7 +570,11 @@ func (p *Ddr4TraceParser) Exec() {
 	fout4.Close()
 
 	// RSSI per PRB by averaging per-Symbol RSSI
-	fout5, err5 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	var fnSuffix string
+	if p.filter == "dl" {
+		fnSuffix = "_unreliable"
+	}
+	fout5, err5 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_prb%v.csv", fnSuffix)), os.O_WRONLY|os.O_CREATE, 0664)
 	if err5 != nil {
 		p.writeLog(zapcore.ErrorLevel, err5.Error())
 		return
@@ -597,7 +607,7 @@ func (p *Ddr4TraceParser) Exec() {
 	pl.Y.Max = -60
 	pl.Legend.Top = true
 	plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
-	if err := pl.Save(8*vg.Inch, 4*vg.Inch, filepath.Join(outPath, "rssi_prb.png")); err != nil {
+	if err := pl.Save(8*vg.Inch, 4*vg.Inch, filepath.Join(outPath, fmt.Sprintf("rssi_prb%v.png", fnSuffix))); err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 }
@@ -634,7 +644,16 @@ func (p *Ddr4TraceParser) parse(fn string) {
 
 	// 2nd step: parsing ant_x.txt where x=0..nbrAntennaPorts-1
 	antFiles := make([]string, 0)
-	subcells, _ := filepath.Glob(filepath.Join(filepath.Join(decodedDir, "nr", "ul"), "subcellid*"))
+	var subcells []string
+	if p.filter == "ul" {
+		subcells, _ = filepath.Glob(filepath.Join(filepath.Join(decodedDir, "nr", "ul"), "subcellid*"))
+	} else if p.filter == "dl" {
+		subcells, _ = filepath.Glob(filepath.Join(filepath.Join(decodedDir, "nr", "dl"), "subcellid*", "*"))
+	} else {
+		p.writeLog(zapcore.ErrorLevel, "The --filter option should be either ul or dl for DDR4 parser!")
+		return
+	}
+
 	for _, sc := range subcells {
 		ants, _ := filepath.Glob(filepath.Join(sc, "ant*.txt"))
 		antFiles = append(antFiles, ants...)
@@ -660,6 +679,7 @@ func (p *Ddr4TraceParser) parse(fn string) {
 
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Loading per antenna I/Q samples... [%s]", fn))
 			key := strings.Replace(strings.Replace(strings.Replace(fn, filepath.Join(p.ddr4TracePath, "parsed_ddr4trace"), "ddr4", -1), "/", "_", -1), "\\", "_", -1)
+			key = fmt.Sprintf("%v%v", strings.Replace(key[:len(key)-len(filepath.Ext(key))], ".", "_", -1), filepath.Ext(key))
 			p.iqData.SetIfAbsent(key, make([]complex128, 0))
 
 			fin, err := os.Open(fn)

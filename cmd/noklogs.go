@@ -74,7 +74,7 @@ var logsCmd = &cobra.Command{
 		} else if tlog == "ddr4" && pattern == ".bin"{
 			// .bin is raw DDR4 from WebEM or gnb_logs
 			parser := new(ddr4trace.Ddr4TraceParser)
-			parser.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, maxgo, gain, debug)
+			parser.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, filter, maxgo, gain, debug)
 			parser.Exec()
 		} else {
 			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
