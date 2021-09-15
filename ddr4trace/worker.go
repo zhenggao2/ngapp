@@ -366,44 +366,44 @@ func (p *Ddr4TraceParser) Exec() {
 	fout2.WriteString("Antenna Port,Symbol,PRB,RSSI(dBm)\n")
 
 	// key = symbol, val = RSSI per RE or RSSI per PRB
-	rssiRe := make(map[string][]float64)
-	rssiPrb := make(map[string][]float64)
+	rssiSymbRe := make(map[string][]float64)
+	rssiSymbPrb := make(map[string][]float64)
 	for _, ant := range p.rssiData.Keys() {
 		m, _ := p.rssiData.Get(ant)
 		for _, symb := range m.(cmap.ConcurrentMap).Keys() {
 			m2, _ := m.(cmap.ConcurrentMap).Get(symb)
 
-			if _, e := rssiRe[symb]; !e {
-				rssiRe[symb] = make([]float64, len(m2.([]float64)))
-				rssiPrb[symb] = make([]float64, nbrPrb)
+			if _, e := rssiSymbRe[symb]; !e {
+				rssiSymbRe[symb] = make([]float64, len(m2.([]float64)))
+				rssiSymbPrb[symb] = make([]float64, nbrPrb)
 			}
 
-			pts := make(plotter.XYs, len(m2.([]float64)))
-			pts2 := make(plotter.XYs, nbrPrb)
-			for i := range pts {
-				pts[i].X = float64(i)
+			ptsAntSymbRe := make(plotter.XYs, len(m2.([]float64)))
+			ptsAntSymbPrb := make(plotter.XYs, nbrPrb)
+			for i := range ptsAntSymbRe {
+				ptsAntSymbRe[i].X = float64(i)
 				// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-				// pts[i].Y = math.Max(10 * math.Log10(m2.([]float64)[i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
-				pts[i].Y = 10 * math.Log10(m2.([]float64)[i]) - p.gain
-				rssiRe[symb][i] += m2.([]float64)[i]
+				// ptsAntSymbRe[i].Y = math.Max(10 * math.Log10(m2.([]float64)[i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
+				ptsAntSymbRe[i].Y = 10 * math.Log10(m2.([]float64)[i]) - p.gain
+				rssiSymbRe[symb][i] += m2.([]float64)[i]
 
-				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts[i].X, pts[i].Y))
+				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, ptsAntSymbRe[i].X, ptsAntSymbRe[i].Y))
 
 				if i >= firstRe && i < (firstRe+nbrRe) {
 					iprb := math.Floor(float64(i-firstRe) / 12)
 					j := int(iprb)
-					pts2[j].Y += m2.([]float64)[i]
-					rssiPrb[symb][j] += m2.([]float64)[i]
+					ptsAntSymbPrb[j].Y += m2.([]float64)[i]
+					rssiSymbPrb[symb][j] += m2.([]float64)[i]
 				}
 			}
 
-			for i := range pts2 {
-				pts2[i].X = float64(i)
+			for i := range ptsAntSymbPrb {
+				ptsAntSymbPrb[i].X = float64(i)
 				// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-				// pts2[i].Y = math.Max(10 * math.Log10(pts2[i].Y) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
-				pts2[i].Y = 10 * math.Log10(pts2[i].Y) - p.gain
+				// ptsAntSymbPrb[i].Y = math.Max(10 * math.Log10(ptsAntSymbPrb[i].Y) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
+				ptsAntSymbPrb[i].Y = 10 * math.Log10(ptsAntSymbPrb[i].Y) - p.gain
 
-				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, pts2[i].X, pts2[i].Y))
+				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, ptsAntSymbPrb[i].X, ptsAntSymbPrb[i].Y))
 			}
 
 			// save per ant/symb RSSI as .png using gonum/plot
@@ -424,14 +424,14 @@ func (p *Ddr4TraceParser) Exec() {
 						pl.X.Label.Text = "FFT Bin"
 						pl.X.Min = 0
 						pl.X.Max = float64(len(m2.([]float64)) - 1)
-						plotutil.AddLines(pl, "RSSI_per_RE", pts)
+						plotutil.AddLines(pl, "RSSI_per_RE", ptsAntSymbRe)
 					}
 
 					if i == 0 && j == 1 {
 						pl.X.Label.Text = "PRB"
 						pl.X.Min = 0
 						pl.X.Max = float64(nbrPrb - 1)
-						plotutil.AddLines(pl, "RSSI_per_PRB", pts2)
+						plotutil.AddLines(pl, "RSSI_per_PRB", ptsAntSymbPrb)
 					}
 
 					plots[j][i] = pl
@@ -490,25 +490,25 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 	fout4.WriteString("Symbol,PRB,RSSI(dBm)\n")
 
-	for symb := range rssiRe {
-		ptsRe := make(plotter.XYs, len(rssiRe[symb]))
-		ptsPrb := make(plotter.XYs, len(rssiPrb[symb]))
-		for i := range ptsRe {
-			ptsRe[i].X = float64(i)
+	for symb := range rssiSymbRe {
+		ptsSymbRe := make(plotter.XYs, len(rssiSymbRe[symb]))
+		ptsSymbPrb := make(plotter.XYs, len(rssiSymbPrb[symb]))
+		for i := range ptsSymbRe {
+			ptsSymbRe[i].X = float64(i)
 			// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-			// ptsRe[i].Y = math.Max(10 * math.Log10(rssiRe[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
-			ptsRe[i].Y = 10 * math.Log10(rssiRe[symb][i]) - p.gain
+			// ptsSymbRe[i].Y = math.Max(10 * math.Log10(rssiSymbRe[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 1000))
+			ptsSymbRe[i].Y = 10 * math.Log10(rssiSymbRe[symb][i]) - p.gain
 
-			fout3.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsRe[i].X, ptsRe[i].Y))
+			fout3.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsSymbRe[i].X, ptsSymbRe[i].Y))
 		}
 
-		for i := range ptsPrb {
-			ptsPrb[i].X = float64(i)
+		for i := range ptsSymbPrb {
+			ptsSymbPrb[i].X = float64(i)
 			// scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-			// ptsPrb[i].Y = math.Max(10 * math.Log10(rssiPrb[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
-			ptsPrb[i].Y = 10 * math.Log10(rssiPrb[symb][i]) - p.gain
+			// ptsSymbPrb[i].Y = math.Max(10 * math.Log10(rssiSymbPrb[symb][i]) - p.gain, -174 + 10 * math.Log10(scs * 12 * 1000))
+			ptsSymbPrb[i].Y = 10 * math.Log10(rssiSymbPrb[symb][i]) - p.gain
 
-			fout4.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsPrb[i].X, ptsPrb[i].Y))
+			fout4.WriteString(fmt.Sprintf("%v,%v,%v\n", symb, ptsSymbPrb[i].X, ptsSymbPrb[i].Y))
 		}
 
 		const rows, cols = 2, 1
@@ -527,15 +527,15 @@ func (p *Ddr4TraceParser) Exec() {
 				if i == 0 && j == 0 {
 					pl.X.Label.Text = "FFT Bin"
 					pl.X.Min = 0
-					pl.X.Max = float64(len(rssiRe[symb]) - 1)
-					plotutil.AddLines(pl, "RSSI_per_RE", ptsRe)
+					pl.X.Max = float64(len(rssiSymbRe[symb]) - 1)
+					plotutil.AddLines(pl, "RSSI_per_RE", ptsSymbRe)
 				}
 
 				if i == 0 && j == 1 {
 					pl.X.Label.Text = "PRB"
 					pl.X.Min = 0
-					pl.X.Max = float64(len(rssiPrb[symb]) - 1)
-					plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
+					pl.X.Max = float64(len(rssiSymbPrb[symb]) - 1)
+					plotutil.AddLines(pl, "RSSI_per_PRB", ptsSymbPrb)
 				}
 
 				plots[j][i] = pl
@@ -576,6 +576,44 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 	fout3.Close()
 	fout4.Close()
+
+	// RSSI per PRB by averaging per-Symbol RSSI
+	fout5, err5 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err5 != nil {
+		p.writeLog(zapcore.ErrorLevel, err5.Error())
+		return
+	}
+	fout5.WriteString("PRB,RSSI(dBm)\n")
+
+	ptsPrb := make(plotter.XYs, nbrPrb)
+	for i := range ptsPrb {
+		ptsPrb[i].X = float64(i)
+
+		for symb := range rssiSymbPrb {
+			ptsPrb[i].Y += rssiSymbPrb[symb][i]
+		}
+
+		ptsPrb[i].Y = 10 * math.Log10(ptsPrb[i].Y / float64(len(rssiSymbPrb))) - p.gain
+
+		fout5.WriteString(fmt.Sprintf("%v,%v\n", ptsPrb[i].X, ptsPrb[i].Y))
+	}
+
+	fout5.Close()
+
+	pl := plot.New()
+	pl.Add(plotter.NewGrid())
+	pl.Title.Text = "RSSI"
+	pl.X.Label.Text = "PRB"
+	pl.X.Min = 0
+	pl.X.Max = float64(nbrPrb - 1)
+	pl.Y.Label.Text = "RSSI(dBm)"
+	pl.Y.Min = -140
+	pl.Y.Max = -60
+	pl.Legend.Top = true
+	plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
+	if err := pl.Save(8*vg.Inch, 4*vg.Inch, path.Join(outPath, "rssi_prb.png")); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+	}
 }
 
 func (p *Ddr4TraceParser) parse(fn string) {
