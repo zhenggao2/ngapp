@@ -22,7 +22,7 @@ import (
 	"github.com/zhenggao2/ngapp/nokcm"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -59,7 +59,7 @@ var cmCmd = &cobra.Command{
 			}
 
 			// recreate output directory if necessary
-			out := path.Join(cmpath, fmt.Sprintf("parsed_%s", tcm))
+			out := filepath.Join(cmpath, fmt.Sprintf("parsed_%s", tcm))
 			os.RemoveAll(out)
 			if err := os.MkdirAll(out, 0775); err != nil {
 				panic(fmt.Sprintf("Fail to create directory: %v", err))
@@ -69,7 +69,7 @@ var cmCmd = &cobra.Command{
 			parser.Init(Logger, out, debug)
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
-				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".xml" {
+				if !file.IsDir() && strings.ToLower(filepath.Ext(file.Name())) == ".xml" {
 					for {
 						if runtime.NumGoroutine() >= maxgo {
 							time.Sleep(1 * time.Second)
@@ -78,7 +78,7 @@ var cmCmd = &cobra.Command{
 						}
 					}
 
-					xml := path.Join(cmpath, file.Name())
+					xml := filepath.Join(cmpath, file.Name())
 					wg.Add(1)
 					go func(fn string) {
 						defer wg.Done()
@@ -100,7 +100,7 @@ var cmCmd = &cobra.Command{
 
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
-				if !file.IsDir() && strings.ToLower(path.Ext(file.Name())) == ".ims2" {
+				if !file.IsDir() && strings.ToLower(filepath.Ext(file.Name())) == ".ims2" {
 					for {
 						if runtime.NumGoroutine() >= maxgo {
 							time.Sleep(1 * time.Second)
@@ -109,7 +109,7 @@ var cmCmd = &cobra.Command{
 						}
 					}
 
-					ims2 := path.Join(cmpath, file.Name())
+					ims2 := filepath.Join(cmpath, file.Name())
 					wg.Add(1)
 					go func(fn string) {
 						defer wg.Done()

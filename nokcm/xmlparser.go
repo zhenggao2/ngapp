@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -38,7 +38,6 @@ func (p *XmlParser) Init(log *zap.Logger, out string, debug bool) {
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing XML parser..."))
-
 }
 
 func (p *XmlParser) Parse(xml, txml string) {
@@ -64,7 +63,7 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No raml element, xml=[%s]", xml))
 		return
 	}
-	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), root.NamespaceURI(), root.GetPath(), root.Index(), root.Tag, root.Attr)
+	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", filepath.Base(xml), root.NamespaceURI(), root.GetPath(), root.Index(), root.Tag, root.Attr)
 	// root: tag=raml, attr=[{ version 2.1 0xc000686120} { xmlns raml21.xsd 0xc000686120}]
 
 	cm := root.SelectElement("cmData")
@@ -72,7 +71,7 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No cmData element, xml=[%s]", xml))
 		return
 	}
-	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), cm.NamespaceURI(), cm.GetPath(), cm.Index(), cm.Tag, cm.Attr)
+	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", filepath.Base(xml), cm.NamespaceURI(), cm.GetPath(), cm.Index(), cm.Tag, cm.Attr)
 	// cmData: tag=cmData, attr=[{ scope all 0xc0006861e0} { type actual 0xc0006861e0}]
 
 	data := make(map[string]*utils.OrderedMap)
@@ -148,8 +147,8 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 		}
 	}
 
-	xmlBn := path.Base(xml)
-	ofn := path.Join(p.out, fmt.Sprintf("%s.dat", xmlBn[:len(xmlBn)-len(path.Ext(xml))]))
+	xmlBn := filepath.Base(xml)
+	ofn := filepath.Join(p.out, fmt.Sprintf("%s.dat", xmlBn[:len(xmlBn)-len(filepath.Ext(xml))]))
 	fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
 	if err != nil {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))

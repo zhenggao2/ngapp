@@ -17,14 +17,14 @@ package l2trace
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"io/ioutil"
-	"fmt"
 	"os"
-	"path"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -53,8 +53,6 @@ type L2TraceParser struct {
 	pattern      string
 	maxgo int
 	debug        bool
-
-	traceFiles []string
 }
 
 func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pattern string, maxgo int, debug bool) {
@@ -68,24 +66,12 @@ func (p *L2TraceParser) Init(log *zap.Logger, py2, tlda, lua, wshark, trace, pat
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 trace parser...(working dir: %v)", p.l2TracePath))
-
-	fileInfo, err := ioutil.ReadDir(p.l2TracePath)
-	if err != nil {
-		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.l2TracePath))
-		return
-	}
-
-	for _, file := range fileInfo {
-		if !file.IsDir() && path.Ext(file.Name()) == p.pattern {
-			p.traceFiles = append(p.traceFiles, path.Join(p.l2TracePath, file.Name()))
-		}
-	}
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 trace parser...(working dir: %v)", trace))
 }
 
 func (p *L2TraceParser) Exec() {
 	// recreate dir for parsed l2 trace
-	outPath := path.Join(p.l2TracePath, "parsed_l2trace")
+	outPath := filepath.Join(p.l2TracePath, "parsed_l2trace")
 	if err := os.RemoveAll(outPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
 	}
@@ -103,7 +89,7 @@ func (p *L2TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && path.Ext(file.Name())[:len(".pcap")] == ".pcap" {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".pcap" {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)
@@ -126,9 +112,9 @@ func (p *L2TraceParser) Exec() {
 		var stdErr bytes.Buffer
 		var cmd *exec.Cmd
 		if runtime.GOOS == "linux" {
-			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON2_LINUX), path.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+			cmd = exec.Command(filepath.Join(p.py2Path, BIN_PYTHON2_LINUX), filepath.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
 		} else if runtime.GOOS == "windows" {
-			cmd = exec.Command(path.Join(p.py2Path, BIN_PYTHON2), path.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
+			cmd = exec.Command(filepath.Join(p.py2Path, BIN_PYTHON2), filepath.Join(p.tldaPath, PY2_TLDA), "--techlog_path", p.l2TracePath, "--only", "decode", "--components", "UPLANE", "-o", outPath)
 		} else {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 			return
@@ -146,7 +132,7 @@ func (p *L2TraceParser) Exec() {
 			p.writeLog(zapcore.DebugLevel, stdErr.String())
 		}
 
-		decodedDir := path.Join(outPath, "decoded", "UPLANE_snapshot_decoder", "decode")
+		decodedDir := filepath.Join(outPath, "decoded", "UPLANE_snapshot_decoder", "decode")
 		fileInfo, err := ioutil.ReadDir(decodedDir)
 		if err != nil {
 			p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", decodedDir))
@@ -155,7 +141,7 @@ func (p *L2TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && path.Ext(file.Name()) == ".pcap" {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".pcap" {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)
@@ -174,7 +160,7 @@ func (p *L2TraceParser) Exec() {
 		wg.Wait()
 
 		// remove decoded folder
-		decodedDir = path.Join(outPath, "decoded")
+		decodedDir = filepath.Join(outPath, "decoded")
 		if err := os.RemoveAll(decodedDir); err != nil {
 			panic(fmt.Sprintf("Fail to remove directory: %v", err))
 		}
@@ -192,16 +178,16 @@ func (p *L2TraceParser) parse(fn string) {
 
 func (p *L2TraceParser) convert2Pcap(fn string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("converting L2Trace using text2pcap... [%s]", fn))
-	outPath := path.Join(p.l2TracePath, "parsed_l2trace")
-	decodedDir := path.Join(outPath, "decoded", "UPLANE_snapshot_decoder", "decode")
+	outPath := filepath.Join(p.l2TracePath, "parsed_l2trace")
+	decodedDir := filepath.Join(outPath, "decoded", "UPLANE_snapshot_decoder", "decode")
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP_LINUX), "-u", "5678,0", path.Join(decodedDir, fn), path.Join(outPath, fn))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TEXT2PCAP_LINUX), "-u", "5678,0", filepath.Join(decodedDir, fn), filepath.Join(outPath, fn))
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TEXT2PCAP), "-u", "5678,0", path.Join(decodedDir, fn), path.Join(outPath, fn))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TEXT2PCAP), "-u", "5678,0", filepath.Join(decodedDir, fn), filepath.Join(outPath, fn))
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -222,7 +208,7 @@ func (p *L2TraceParser) convert2Pcap(fn string) {
 
 func (p *L2TraceParser) parseWithTshark(fn string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing L2Trace using tshark... [%s]", fn))
-	outPath := path.Join(p.l2TracePath, "parsed_l2trace")
+	outPath := filepath.Join(p.l2TracePath, "parsed_l2trace")
 
 	mapEventHeader := make(map[string][]string)
 	mapEventHeaderOk := make(map[string]bool)
@@ -232,9 +218,9 @@ func (p *L2TraceParser) parseWithTshark(fn string) {
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", path.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(outPath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -324,7 +310,7 @@ func (p *L2TraceParser) parseWithTshark(fn string) {
 		}
 
 		for k1, v1 := range mapEventHeader {
-			outFn := path.Join(outPath, fmt.Sprintf("%s_%s.csv", strings.Replace(path.Base(fn), "uplane_ttitrace_decoder_", "", -1), k1))
+			outFn := filepath.Join(outPath, fmt.Sprintf("%s_%s.csv", strings.Replace(filepath.Base(fn), "uplane_ttitrace_decoder_", "", -1), k1))
 			fout, err := os.OpenFile(outFn, os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
@@ -346,7 +332,7 @@ func (p *L2TraceParser) parseWithTshark(fn string) {
 	}
 
 	// remove intermediate pcap
-	os.Remove(path.Join(outPath, fn))
+	os.Remove(filepath.Join(outPath, fn))
 }
 
 func (p *L2TraceParser) writeLog(level zapcore.Level, s string) {

@@ -23,7 +23,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -83,13 +82,14 @@ func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug 
 	p.db = make(map[string]map[string]*utils.OrderedMap)
 	p.db2 = utils.NewOrderedMap()
 	p.debug = debug
+
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing CM differ..."))
 }
 
 func (p *CmDiffer) Compare() {
 	for _, fn := range p.ins {
 		for _, cmp := range p.cmpath {
-			dat := path.Join(cmp, fn)
+			dat := filepath.Join(cmp, fn)
 			p.parseDat(dat)
 		}
 	}
@@ -182,7 +182,7 @@ func (p *CmDiffer) Compare() {
 }
 
 func (p *CmDiffer) parseDat(dat string) {
-	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", path.Base(dat)))
+	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", filepath.Base(dat)))
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing CM file...[%s]", dat))
 
 	fin, err := os.Open(dat)

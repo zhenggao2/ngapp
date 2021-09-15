@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -51,6 +50,7 @@ func (p *CmFinder) Init(log *zap.Logger, cmpath, paras string, debug bool) {
 	p.paraDb = make(map[string][]string)
 	p.db = cmap.New()
 	p.debug = debug
+
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing CM Finder..."))
 }
 
@@ -78,7 +78,7 @@ func (p *CmFinder) Search() {
 				go func(fn, ts string) {
 					defer wg.Done()
 					p.parseDat(fn, ts)
-				}(path.Join(cmp, file.Name()), filepath.Base(cmp))
+				}(filepath.Join(cmp, file.Name()), filepath.Base(cmp))
 			}
 		}
 		wg.Wait()

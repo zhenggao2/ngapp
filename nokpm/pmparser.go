@@ -25,7 +25,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -341,7 +341,8 @@ func (p *PmParser) Init(log *zap.Logger, op, db string, debug bool) {
 	p.db = db
 	p.debug = debug
 	p.rawDat = cmap.New()
-	//p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing PM parser..."))
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing PM parser..."))
 }
 
 func (p *PmParser) Parse(pm, tpm string) {
@@ -356,7 +357,7 @@ func (p *PmParser) Parse(pm, tpm string) {
 func (p *PmParser) ArchiveRawPm() {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Archiving raw PMs..."))
 	for _, counter := range p.rawDat.Keys() {
-		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+		ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
 		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
@@ -389,10 +390,10 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("No OMeS element, xml=[%s]", xml))
 		return
 	}
-	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), omes.NamespaceURI(), omes.GetPath(), omes.Index(), omes.Tag, omes.Attr)
+	//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", filepath.Base(xml), omes.NamespaceURI(), omes.GetPath(), omes.Index(), omes.Tag, omes.Attr)
 
 	for _, pmSetup := range omes.FindElements("PMSetup") {
-		//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", path.Base(xml), pmSetup.NamespaceURI(), pmSetup.GetPath(), pmSetup.Index(), pmSetup.Tag, pmSetup.Attr)
+		//fmt.Printf("[%s]: ns=%v, path=%v, index=%v, tag=%v, attr=%v\n", filepath.Base(xml), pmSetup.NamespaceURI(), pmSetup.GetPath(), pmSetup.Index(), pmSetup.Tag, pmSetup.Attr)
 		startTime := pmSetup.SelectAttrValue("startTime", "")
 		t, _ := time.Parse("2006-01-02T15:04:05.000-07:00:00", startTime)
 		startTime = t.Format("20060102150405")
@@ -436,7 +437,7 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 
 	/*
 	for counter := range data {
-		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+		ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
 		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
@@ -452,7 +453,7 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 }
 
 func (p *PmParser) ParseSqlQueryCsv(csv string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing csv PM(operator:%s)...[%s]", p.op, path.Base(csv)))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing csv PM(operator:%s)...[%s]", p.op, filepath.Base(csv)))
 
 	fin, err := os.Open(csv)
 	if err != nil {
@@ -526,9 +527,9 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 
 		nline += 1
 		if nline >= maxLineToFlush {
-			//fmt.Printf("nline=%d, writing to gz...[%s]\n", nline, path.Base(csv))
+			//fmt.Printf("nline=%d, writing to gz...[%s]\n", nline, filepath.Base(csv))
 			for counter := range data {
-				ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+				ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
 				fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 				if err != nil {
 					p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
@@ -550,9 +551,9 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 
 	fin.Close()
 
-	fmt.Printf("writing last piece to gz...[%s]\n", path.Base(csv))
+	fmt.Printf("writing last piece to gz...[%s]\n", filepath.Base(csv))
 	for counter := range data {
-		ofn := path.Join(p.db, fmt.Sprintf("%s.gz", counter))
+		ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
 		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))

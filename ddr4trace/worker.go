@@ -35,7 +35,6 @@ import (
 	"math/cmplx"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -63,7 +62,6 @@ type Ddr4TraceParser struct {
 	gain          float64
 	debug         bool
 
-	traceFiles []string
 	iqData     cmap.ConcurrentMap
 	rssiData   cmap.ConcurrentMap
 	rssiCount  cmap.ConcurrentMap
@@ -81,28 +79,16 @@ func (p *Ddr4TraceParser) Init(log *zap.Logger, py3, snaptool, trace, pattern, s
 	p.gain = float64(gain)
 	p.debug = debug
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing DDR4 trace parser...(working dir: %v)", p.ddr4TracePath))
-
-	fileInfo, err := ioutil.ReadDir(p.ddr4TracePath)
-	if err != nil {
-		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.ddr4TracePath))
-		return
-	}
-
-	for _, file := range fileInfo {
-		if !file.IsDir() && path.Ext(file.Name()) == p.pattern {
-			p.traceFiles = append(p.traceFiles, path.Join(p.ddr4TracePath, file.Name()))
-		}
-	}
-
 	p.iqData = cmap.New()
 	p.rssiData = cmap.New()
 	p.rssiCount = cmap.New()
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing DDR4 trace parser...(working dir: %v)", trace))
 }
 
 func (p *Ddr4TraceParser) Exec() {
 	// recreate dir for parsed ddr4 trace
-	outPath := path.Join(p.ddr4TracePath, "parsed_ddr4trace")
+	outPath := filepath.Join(p.ddr4TracePath, "parsed_ddr4trace")
 	if err := os.RemoveAll(outPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
 	}
@@ -120,7 +106,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && path.Ext(file.Name())[:len(".bin")] == ".bin" {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".bin" {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)
@@ -351,14 +337,14 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 
 	// save per ant/symbol RSSI as rssi_per_ant_symbol_x.csv
-	fout, err := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout, err := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 		return
 	}
 	fout.WriteString("Antenna Port,Symbol,FFT Bin,RSSI(dBm)\n")
 
-	fout2, err2 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout2, err2 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err2 != nil {
 		p.writeLog(zapcore.ErrorLevel, err2.Error())
 		return
@@ -459,7 +445,7 @@ func (p *Ddr4TraceParser) Exec() {
 				}
 			}
 
-			w, err := os.Create(path.Join(outPath, fmt.Sprintf("rssi_%v_%v.png", ant, symb)))
+			w, err := os.Create(filepath.Join(outPath, fmt.Sprintf("rssi_%v_%v.png", ant, symb)))
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, err.Error())
 			}
@@ -476,14 +462,14 @@ func (p *Ddr4TraceParser) Exec() {
 	fout2.Close()
 
 	// save per symb RSSI as .png using gonum/plot and as rssi_per_symbol_x.csv
-	fout3, err3 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout3, err3 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err3 != nil {
 		p.writeLog(zapcore.ErrorLevel, err3.Error())
 		return
 	}
 	fout3.WriteString("Symbol,FFT Bin,RSSI(dBm)\n")
 
-	fout4, err4 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout4, err4 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err4 != nil {
 		p.writeLog(zapcore.ErrorLevel, err4.Error())
 		return
@@ -563,7 +549,7 @@ func (p *Ddr4TraceParser) Exec() {
 			}
 		}
 
-		w, err := os.Create(path.Join(outPath, fmt.Sprintf("rssi_%v.png", symb)))
+		w, err := os.Create(filepath.Join(outPath, fmt.Sprintf("rssi_%v.png", symb)))
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, err.Error())
 		}
@@ -578,7 +564,7 @@ func (p *Ddr4TraceParser) Exec() {
 	fout4.Close()
 
 	// RSSI per PRB by averaging per-Symbol RSSI
-	fout5, err5 := os.OpenFile(path.Join(outPath, fmt.Sprintf("rssi_per_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	fout5, err5 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err5 != nil {
 		p.writeLog(zapcore.ErrorLevel, err5.Error())
 		return
@@ -611,7 +597,7 @@ func (p *Ddr4TraceParser) Exec() {
 	pl.Y.Max = -60
 	pl.Legend.Top = true
 	plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
-	if err := pl.Save(8*vg.Inch, 4*vg.Inch, path.Join(outPath, "rssi_prb.png")); err != nil {
+	if err := pl.Save(8*vg.Inch, 4*vg.Inch, filepath.Join(outPath, "rssi_prb.png")); err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 }
@@ -619,16 +605,16 @@ func (p *Ddr4TraceParser) Exec() {
 func (p *Ddr4TraceParser) parse(fn string) {
 	// 1st step: parse DDR4(.bin) using Loki snapshot_tool
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("parsing DDR4 trace using Loki snapshot_tool... [%s]", fn))
-	outPath := path.Join(p.ddr4TracePath, "parsed_ddr4trace")
-	decodedDir := path.Join(outPath, strings.Split(fn, ".")[0]+"_result")
+	outPath := filepath.Join(p.ddr4TracePath, "parsed_ddr4trace")
+	decodedDir := filepath.Join(outPath, strings.Split(fn, ".")[0]+"_result")
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(path.Join(p.py3Path, BIN_PYTHON3_LINUX), path.Join(p.snapToolPath, "SnapshotAnalyzer.py"), "--iqdata", path.Join(p.ddr4TracePath, fn), "--output", decodedDir)
+		cmd = exec.Command(filepath.Join(p.py3Path, BIN_PYTHON3_LINUX), filepath.Join(p.snapToolPath, "SnapshotAnalyzer.py"), "--iqdata", filepath.Join(p.ddr4TracePath, fn), "--output", decodedDir)
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(path.Join(p.py3Path, BIN_PYTHON3), path.Join(p.snapToolPath, "SnapshotAnalyzer.py"), "--iqdata", path.Join(p.ddr4TracePath, fn), "--output", decodedDir)
+		cmd = exec.Command(filepath.Join(p.py3Path, BIN_PYTHON3), filepath.Join(p.snapToolPath, "SnapshotAnalyzer.py"), "--iqdata", filepath.Join(p.ddr4TracePath, fn), "--output", decodedDir)
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -648,9 +634,9 @@ func (p *Ddr4TraceParser) parse(fn string) {
 
 	// 2nd step: parsing ant_x.txt where x=0..nbrAntennaPorts-1
 	antFiles := make([]string, 0)
-	subcells, _ := filepath.Glob(path.Join(path.Join(decodedDir, "nr", "ul"), "subcellid*"))
+	subcells, _ := filepath.Glob(filepath.Join(filepath.Join(decodedDir, "nr", "ul"), "subcellid*"))
 	for _, sc := range subcells {
-		ants, _ := filepath.Glob(path.Join(sc, "ant*.txt"))
+		ants, _ := filepath.Glob(filepath.Join(sc, "ant*.txt"))
 		antFiles = append(antFiles, ants...)
 	}
 
@@ -673,7 +659,7 @@ func (p *Ddr4TraceParser) parse(fn string) {
 			defer wg.Done()
 
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Loading per antenna I/Q samples... [%s]", fn))
-			key := strings.Replace(strings.Replace(fn, path.Join(p.ddr4TracePath, "parsed_ddr4trace"), "ddr4", -1), "/", "_", -1)
+			key := strings.Replace(strings.Replace(strings.Replace(fn, filepath.Join(p.ddr4TracePath, "parsed_ddr4trace"), "ddr4", -1), "/", "_", -1), "\\", "_", -1)
 			p.iqData.SetIfAbsent(key, make([]complex128, 0))
 
 			fin, err := os.Open(fn)

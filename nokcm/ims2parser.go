@@ -31,7 +31,6 @@ func (p *Ims2Parser) Init(log *zap.Logger, debug bool) {
 	p.debug = debug
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing IMS2 parser..."))
-
 }
 
 func (p *Ims2Parser) Parse(ims2 string) {

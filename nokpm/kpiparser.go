@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"math"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -109,7 +109,7 @@ func (p *KpiParser) Init(log *zap.Logger, op, db string, maxgo int, debug bool) 
 }
 
 func (p *KpiParser) ParseKpiDef(kdf string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing KPI definitions...[%s]", path.Base(kdf)))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing KPI definitions...[%s]", filepath.Base(kdf)))
 
 	fin, err := os.Open(kdf)
 	if err != nil {
@@ -227,8 +227,8 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 			}
 		}
 
-		fn := path.Join(db, c + ".gz")
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Loading PM...[%s]", path.Base(fn)))
+		fn := filepath.Join(db, c + ".gz")
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Loading PM...[%s]", filepath.Base(fn)))
 
 		wg.Add(1)
 		go func(c, fn string) {
@@ -405,7 +405,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Generating KPI report..."))
 	for agg := range report {
-		ofn := path.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
+		ofn := filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
 		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
@@ -481,7 +481,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
 	}
 
-	workbook.SaveToFile(path.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp)))
+	workbook.SaveToFile(filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp)))
 	workbook.Close()
 }
 

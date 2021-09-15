@@ -25,22 +25,22 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 )
 
 type L2TtiTraceParser struct {
-	log *zap.Logger
-	ttiDir string
-	ttiPattern string
-	ttiRat string
-	ttiScs string
-	ttiFilter string
-	maxgo int
-	debug bool
-	nok21a bool
+	log          *zap.Logger
+	ttiTracePath string
+	ttiPattern   string
+	ttiRat       string
+	ttiScs       string
+	ttiFilter    string
+	maxgo        int
+	debug        bool
+	nok21a       bool
 
 	slotsPerRf int
 	ttiFiles []string
@@ -51,9 +51,9 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter string, maxgo int, debug bool) {
+func (p *L2TtiTraceParser) Init(log *zap.Logger, trace, pattern, rat, scs, filter string, maxgo int, debug bool) {
 	p.log = log
-	p.ttiDir = dir
+	p.ttiTracePath = trace
 	p.ttiPattern = strings.ToLower(pattern)
 	p.ttiRat = strings.ToLower(rat)
 	p.ttiScs = strings.ToLower(scs)
@@ -62,19 +62,19 @@ func (p *L2TtiTraceParser) Init(log *zap.Logger, dir, pattern, rat, scs, filter 
 	p.debug = debug
 	p.nok21a = false
 
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 TTI trace parser...(working dir: %v)", p.ttiDir))
-
-	fileInfo, err := ioutil.ReadDir(p.ttiDir)
+	fileInfo, err := ioutil.ReadDir(p.ttiTracePath)
 	if err != nil {
-		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.ttiDir))
+		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.ttiTracePath))
 		return
 	}
 
 	for _, file := range fileInfo {
-	    if !file.IsDir() && path.Ext(file.Name()) == p.ttiPattern {
-			p.ttiFiles = append(p.ttiFiles, path.Join(p.ttiDir, file.Name()))
+	    if !file.IsDir() && filepath.Ext(file.Name()) == p.ttiPattern {
+			p.ttiFiles = append(p.ttiFiles, filepath.Join(p.ttiTracePath, file.Name()))
 		}
 	}
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing L2 TTI trace parser...(working dir: %v)", trace))
 }
 
 // func (p *L2TtiTraceParser) onOkBtnClicked(checked bool) {
@@ -83,7 +83,7 @@ func (p *L2TtiTraceParser) Exec() {
 	p.slotsPerRf = scs2nslots[strings.ToLower(p.ttiScs)]
 
 	// recreate dir for parsed l2 tti trace
-	outPath := path.Join(p.ttiDir, "parsed_tti")
+	outPath := filepath.Join(p.ttiTracePath, "parsed_tti")
 	os.RemoveAll(outPath)
 	if err := os.MkdirAll(outPath, 0775); err != nil {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
@@ -229,7 +229,7 @@ func (p *L2TtiTraceParser) Exec() {
 							key = eventName
 						}
 
-						outFn := path.Join(outPath, fmt.Sprintf("%s.csv", key))
+						outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", key))
 						_, exist := mapFieldName[key]
 						if !exist {
 							mapFieldName[key] = make([]string, valStart)
@@ -1314,7 +1314,7 @@ func (p *L2TtiTraceParser) Exec() {
 		for _, k := range mapEventRecord["dlFdSchedData"].Keys() {
 			data := mapEventRecord["dlFdSchedData"].Val(k).(*TtiDlFdSchedData)
 
-			outFn := path.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
+			outFn := filepath.Join(outPath, fmt.Sprintf("dlSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
 			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			//defer fout3.Close()
 			if err != nil {
@@ -1556,7 +1556,7 @@ func (p *L2TtiTraceParser) Exec() {
 		for _, k := range mapEventRecord["ulFdSchedData"].Keys() {
 			data := mapEventRecord["ulFdSchedData"].Val(k).(*TtiUlFdSchedData)
 
-			outFn := path.Join(outPath, fmt.Sprintf("ulSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
+			outFn := filepath.Join(outPath, fmt.Sprintf("ulSchedAgg_pci%s_rnti%s.csv", data.PhysCellId, data.Rnti))
 			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			//defer fout3.Close()
 			if err != nil {

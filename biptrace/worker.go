@@ -33,7 +33,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -62,7 +62,6 @@ type BipTraceParser struct {
 	maxgo int
 	debug        bool
 
-	traceFiles []string
 	headerWritten cmap.ConcurrentMap
 }
 
@@ -76,27 +75,14 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern, scs,
 	p.chbw = strings.ToLower(chbw)
 	p.maxgo = utils.MaxInt([]int{2, maxgo})
 	p.debug = debug
-
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BIP trace parser...(working dir: %v)", p.bipTracePath))
-
-	fileInfo, err := ioutil.ReadDir(p.bipTracePath)
-	if err != nil {
-		p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.bipTracePath))
-		return
-	}
-
-	for _, file := range fileInfo {
-		if !file.IsDir() && path.Ext(file.Name()) == p.pattern {
-			p.traceFiles = append(p.traceFiles, path.Join(p.bipTracePath, file.Name()))
-		}
-	}
-
 	p.headerWritten = cmap.New()
+
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BIP trace parser...(working dir: %v)", trace))
 }
 
 func (p *BipTraceParser) Exec() {
 	// recreate dir for parsed bip trace
-	outPath := path.Join(p.bipTracePath, "parsed_biptrace")
+	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
 	if err := os.RemoveAll(outPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
 	}
@@ -114,7 +100,7 @@ func (p *BipTraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && path.Ext(file.Name())[:len(".pcap")] == ".pcap" {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".pcap" {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)
@@ -134,8 +120,8 @@ func (p *BipTraceParser) Exec() {
 
 		// write header
 		for _, event := range p.headerWritten.Keys() {
-			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", event))
-			tmpFn := path.Join(outPath, fmt.Sprintf("%s.csv.tmp", event))
+			outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", event))
+			tmpFn := filepath.Join(outPath, fmt.Sprintf("%s.csv.tmp", event))
 			fout, err := os.OpenFile(tmpFn, os.O_TRUNC|os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", tmpFn))
@@ -164,7 +150,7 @@ func (p *BipTraceParser) Exec() {
 	posMap := make(map[string]map[string][]int)
 	dataMap := make(map[string]map[string][]string)
 	for i, msg := range bipMsgs {
-		fin, err := os.Open(path.Join(outPath, msg))
+		fin, err := os.Open(filepath.Join(outPath, msg))
 		if err != nil {
 			p.writeLog(zapcore.ErrorLevel, err.Error())
 			// return
@@ -453,7 +439,7 @@ func (p *BipTraceParser) Exec() {
 		}
 	}
 
-	w, err := os.Create(path.Join(outPath, fmt.Sprintf("bip_noisePower.png")))
+	w, err := os.Create(filepath.Join(outPath, fmt.Sprintf("bip_noisePower.png")))
 	if err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
@@ -467,7 +453,7 @@ func (p *BipTraceParser) Exec() {
 
 func (p *BipTraceParser) parse(fn string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s]", fn))
-	outPath := path.Join(p.bipTracePath, "parsed_biptrace")
+	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
 
 	mapEventHeader := make(map[string][]string)
 	mapEventRecord := make(map[string]*utils.OrderedMap)
@@ -476,9 +462,9 @@ func (p *BipTraceParser) parse(fn string) {
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", path.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(path.Join(p.wsharkPath, BIN_TSHARK), "-r", path.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", path.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -597,7 +583,7 @@ func (p *BipTraceParser) parse(fn string) {
 				continue
 			}
 
-			outFn := path.Join(outPath, fmt.Sprintf("%s.csv", k1))
+			outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", k1))
 			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
 			if err != nil {
 				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))

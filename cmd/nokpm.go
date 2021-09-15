@@ -22,7 +22,7 @@ import (
 	"github.com/zhenggao2/ngapp/nokpm"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -71,7 +71,7 @@ var pmCmd = &cobra.Command{
 			wg := &sync.WaitGroup{}
 			for _, file := range fileInfo {
 				if !file.IsDir() {
-					ext := strings.ToLower(path.Ext(file.Name()))
+					ext := strings.ToLower(filepath.Ext(file.Name()))
 					if (tpm == "raw" && ext == ".xml") || (tpm == "sql" && ext == ".csv") {
 						for {
 							if runtime.NumGoroutine() >= maxgo {
@@ -85,7 +85,7 @@ var pmCmd = &cobra.Command{
 						go func(fn string) {
 							defer wg.Done()
 							parser.Parse(fn, tpm)
-						}(path.Join(pmpath, file.Name()))
+						}(filepath.Join(pmpath, file.Name()))
 					}
 				}
 			}
@@ -120,7 +120,7 @@ var kpiCmd = &cobra.Command{
 		}
 
 		// create output directory if necessary
-		if err := os.MkdirAll(path.Join(kpipath, "kpi_report"), 0775); err != nil {
+		if err := os.MkdirAll(filepath.Join(kpipath, "kpi_report"), 0775); err != nil {
 			panic(fmt.Sprintf("Fail to create directory: %v", err))
 		}
 
@@ -128,11 +128,11 @@ var kpiCmd = &cobra.Command{
 		parser.Init(Logger, op, pmdb, maxgo, debug)
 		for _, file := range fileInfo {
 			if !file.IsDir() {
-				parser.ParseKpiDef(path.Join(kpipath, file.Name()))
+				parser.ParseKpiDef(filepath.Join(kpipath, file.Name()))
 			}
 		}
 		parser.LoadPmDb(pmdb, btsid, stime, etime)
-		parser.CalcKpi(path.Join(kpipath, "kpi_report"))
+		parser.CalcKpi(filepath.Join(kpipath, "kpi_report"))
 	},
 }
 
