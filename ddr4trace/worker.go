@@ -48,6 +48,8 @@ const (
 	BIN_PYTHON3_LINUX   string = "python3"
 	PY3_SNAPSHOT_TOOL   string = "SnapshotAnalyzer.py"
 	LOKI_IQ_NORM_FACTOR int    = 16384
+	VG_IMG_WIDTH int = 6
+	VG_IMG_HEIGHT int = 3
 )
 
 type Ddr4TraceParser struct {
@@ -403,76 +405,76 @@ func (p *Ddr4TraceParser) Exec() {
 				fout2.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, ptsAntSymbPrb[key][i].X, ptsAntSymbPrb[key][i].Y))
 			}
 		}
+	}
 
-		// save per ant/symb RSSI as .png using gonum/plot
-		//rows, cols := len(ptsAntSymbRe) / len(p.rssiData.Keys()), 2 * len(p.rssiData.Keys())
-		rows, cols := 2*len(p.rssiData.Keys()), len(ptsAntSymbRe)/len(p.rssiData.Keys())
-		plots := make([][]*plot.Plot, rows)
-		for i := 0; i < rows; i++ {
-			ant := fmt.Sprintf("ant%v", i/2)
+	// save per ant/symb RSSI as .png using gonum/plot
+	//rows, cols := len(ptsAntSymbRe) / len(p.rssiData.Keys()), 2 * len(p.rssiData.Keys())
+	rows, cols := 2*len(p.rssiData.Keys()), len(ptsAntSymbRe)/len(p.rssiData.Keys())
+	plots := make([][]*plot.Plot, rows)
+	for i := 0; i < rows; i++ {
+		ant := fmt.Sprintf("ant%v", i/2)
 
-			plots[i] = make([]*plot.Plot, cols)
-			for j := 0; j < cols; j++ {
-				symb := fmt.Sprintf("symbol%v", j)
-				key := ant + "_" + symb
+		plots[i] = make([]*plot.Plot, cols)
+		for j := 0; j < cols; j++ {
+			symb := fmt.Sprintf("symbol%v", j)
+			key := ant + "_" + symb
 
-				pl := plot.New()
-				pl.Add(plotter.NewGrid())
-				pl.Title.Text = fmt.Sprintf("RSSI(%v-%v)", ant, symb)
-				pl.Y.Label.Text = "RSSI(dBm)"
-				pl.Y.Min = -140
-				pl.Y.Max = -60
-				pl.Legend.Top = true
+			pl := plot.New()
+			pl.Add(plotter.NewGrid())
+			pl.Title.Text = fmt.Sprintf("RSSI(%v-%v)", ant, symb)
+			pl.Y.Label.Text = "RSSI(dBm)"
+			pl.Y.Min = -140
+			pl.Y.Max = -60
+			pl.Legend.Top = true
 
-				if i%2 == 0 {
-					pl.X.Label.Text = "FFT Bin"
-					pl.X.Min = 0
-					pl.X.Max = float64(len(ptsAntSymbRe[key]) - 1)
-					plotutil.AddLines(pl, "RSSI_per_RE", ptsAntSymbRe[key])
-				} else if i%2 == 1 {
-					pl.X.Label.Text = "PRB"
-					pl.X.Min = 0
-					pl.X.Max = float64(nbrPrb - 1)
-					plotutil.AddLines(pl, "RSSI_per_PRB", ptsAntSymbPrb[key])
-				}
+			if i%2 == 0 {
+				pl.X.Label.Text = "FFT Bin"
+				pl.X.Min = 0
+				pl.X.Max = float64(len(ptsAntSymbRe[key]) - 1)
+				plotutil.AddLines(pl, "RSSI_per_RE", ptsAntSymbRe[key])
+			} else if i%2 == 1 {
+				pl.X.Label.Text = "PRB"
+				pl.X.Min = 0
+				pl.X.Max = float64(nbrPrb - 1)
+				plotutil.AddLines(pl, "RSSI_per_PRB", ptsAntSymbPrb[key])
+			}
 
-				plots[i][j] = pl
+			plots[i][j] = pl
+		}
+	}
+
+	width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*VG_IMG_WIDTH))
+	height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*VG_IMG_HEIGHT))
+	img := vgimg.New(width, height)
+	dc := draw.New(img)
+	t := draw.Tiles{
+		Rows:      rows,
+		Cols:      cols,
+		PadX:      vg.Millimeter,
+		PadY:      vg.Millimeter,
+		PadTop:    vg.Points(2),
+		PadBottom: vg.Points(2),
+		PadLeft:   vg.Points(2),
+		PadRight:  vg.Points(2),
+	}
+	canvases := plot.Align(plots, t, dc)
+	for j := 0; j < rows; j++ {
+		for i := 0; i < cols; i++ {
+			if plots[j][i] != nil {
+				plots[j][i].Draw(canvases[j][i])
 			}
 		}
+	}
 
-		width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*8))
-		height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*4))
-		img := vgimg.New(width, height)
-		dc := draw.New(img)
-		t := draw.Tiles{
-			Rows:      rows,
-			Cols:      cols,
-			PadX:      vg.Millimeter,
-			PadY:      vg.Millimeter,
-			PadTop:    vg.Points(2),
-			PadBottom: vg.Points(2),
-			PadLeft:   vg.Points(2),
-			PadRight:  vg.Points(2),
-		}
-		canvases := plot.Align(plots, t, dc)
-		for j := 0; j < rows; j++ {
-			for i := 0; i < cols; i++ {
-				if plots[j][i] != nil {
-					plots[j][i].Draw(canvases[j][i])
-				}
-			}
-		}
+	w, err := os.Create(filepath.Join(outPath, "rssi_per_ant_per_symb.png"))
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+	}
+	defer w.Close()
 
-		w, err := os.Create(filepath.Join(outPath, "rssi_per_ant_per_symb.png"))
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, err.Error())
-		}
-		defer w.Close()
-
-		png := vgimg.PngCanvas{Canvas: img}
-		if _, err := png.WriteTo(w); err != nil {
-			p.writeLog(zapcore.ErrorLevel, err.Error())
-		}
+	png := vgimg.PngCanvas{Canvas: img}
+	if _, err := png.WriteTo(w); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 
 	// save per symb RSSI as .png using gonum/plot and as rssi_per_symbol_x.csv
@@ -517,8 +519,8 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 
 	// rows, cols := len(ptsSymbRe), 2
-	rows, cols := 2, len(ptsSymbRe)
-	plots := make([][]*plot.Plot, rows)
+	rows, cols = 2, len(ptsSymbRe)
+	plots = make([][]*plot.Plot, rows)
 	for i := 0; i < rows; i++ {
 		plots[i] = make([]*plot.Plot, cols)
 		for j := 0; j < cols; j++ {
@@ -548,11 +550,11 @@ func (p *Ddr4TraceParser) Exec() {
 		}
 	}
 
-	width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*8))
-	height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*4))
-	img := vgimg.New(width, height)
-	dc := draw.New(img)
-	t := draw.Tiles{
+	width, _ = vg.ParseLength(fmt.Sprintf("%vin", cols*VG_IMG_WIDTH))
+	height, _ = vg.ParseLength(fmt.Sprintf("%vin", rows*VG_IMG_HEIGHT))
+	img = vgimg.New(width, height)
+	dc = draw.New(img)
+	t = draw.Tiles{
 		Rows:      rows,
 		Cols:      cols,
 		PadX:      vg.Millimeter,
@@ -562,7 +564,7 @@ func (p *Ddr4TraceParser) Exec() {
 		PadLeft:   vg.Points(2),
 		PadRight:  vg.Points(2),
 	}
-	canvases := plot.Align(plots, t, dc)
+	canvases = plot.Align(plots, t, dc)
 	for j := 0; j < rows; j++ {
 		for i := 0; i < cols; i++ {
 			if plots[j][i] != nil {
@@ -571,13 +573,13 @@ func (p *Ddr4TraceParser) Exec() {
 		}
 	}
 
-	w, err := os.Create(filepath.Join(outPath, "rssi_per_symbol.png"))
+	w, err = os.Create(filepath.Join(outPath, "rssi_per_symbol.png"))
 	if err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 	defer w.Close()
 
-	png := vgimg.PngCanvas{Canvas: img}
+	png = vgimg.PngCanvas{Canvas: img}
 	if _, err := png.WriteTo(w); err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
@@ -619,7 +621,9 @@ func (p *Ddr4TraceParser) Exec() {
 	pl.Y.Max = -60
 	pl.Legend.Top = true
 	plotutil.AddLines(pl, "RSSI_per_PRB", ptsPrb)
-	if err := pl.Save(8*vg.Inch, 4*vg.Inch, filepath.Join(outPath, fmt.Sprintf("rssi_prb%v.png", fnSuffix))); err != nil {
+	width, _ = vg.ParseLength(fmt.Sprintf("%vin", VG_IMG_WIDTH))
+	height, _ = vg.ParseLength(fmt.Sprintf("%vin", VG_IMG_HEIGHT))
+	if err := pl.Save(width, height, filepath.Join(outPath, fmt.Sprintf("rssi_prb%v.png", fnSuffix))); err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 }

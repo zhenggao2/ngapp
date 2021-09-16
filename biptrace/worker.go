@@ -42,13 +42,15 @@ import (
 )
 
 const (
-	BIN_TSHARK    string = "tshark.exe"
-	BIN_TSHARK_LINUX    string = "tshark"
-	LUA_LUASHARK  string = "luashark.lua"
-	BIP_PUCCH_REQ int = 0
-	BIP_PUCCH_RESP_PS int = 1
-	BIP_PUSCH_REQ int = 2
-	BIP_PUSCH_RESP_PS int = 3
+	BIN_TSHARK        string = "tshark.exe"
+	BIN_TSHARK_LINUX  string = "tshark"
+	LUA_LUASHARK      string = "luashark.lua"
+	BIP_PUCCH_REQ     int    = 0
+	BIP_PUCCH_RESP_PS int    = 1
+	BIP_PUSCH_REQ     int    = 2
+	BIP_PUSCH_RESP_PS int    = 3
+	VG_IMG_WIDTH      int    = 6
+	VG_IMG_HEIGHT     int    = 3
 )
 
 type BipTraceParser struct {
@@ -57,9 +59,9 @@ type BipTraceParser struct {
 	luasharkPath string
 	bipTracePath string
 	pattern      string
-	scs string
-	chbw string
-	maxgo int
+	scs          string
+	chbw         string
+	maxgo        int
 	debug        bool
 
 	headerWritten cmap.ConcurrentMap
@@ -91,7 +93,7 @@ func (p *BipTraceParser) Exec() {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
 
-	if p.pattern == ".pcap"  {
+	if p.pattern == ".pcap" {
 		fileInfo, err := ioutil.ReadDir(p.bipTracePath)
 		if err != nil {
 			p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.bipTracePath))
@@ -113,7 +115,7 @@ func (p *BipTraceParser) Exec() {
 				go func(fn string) {
 					defer wg.Done()
 					p.parse(fn)
-				} (file.Name())
+				}(file.Name())
 			}
 		}
 		wg.Wait()
@@ -235,13 +237,13 @@ func (p *BipTraceParser) Exec() {
 	}
 
 	/*
-	for msg := range dataMap {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("dataMap[%v] info:", msg))
-		for key := range dataMap[msg] {
-			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v;%v, val=%v", key, msg, dataMap[msg][key]))
+		for msg := range dataMap {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("dataMap[%v] info:", msg))
+			for key := range dataMap[msg] {
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v;%v, val=%v", key, msg, dataMap[msg][key]))
+			}
 		}
-	}
-	 */
+	*/
 
 	// key = scs_bw, val = PRB number
 	nbrPrbMap := map[string]int{
@@ -261,7 +263,7 @@ func (p *BipTraceParser) Exec() {
 		"120k_100m": 66,
 	}
 
-	nbrPrb := nbrPrbMap[p.scs + "_" + p.chbw]
+	nbrPrb := nbrPrbMap[p.scs+"_"+p.chbw]
 	pucchRssiMap := make(map[int][]float64)
 	puschRssiMap := make(map[int][]float64)
 	for i := 0; i < nbrPrb; i++ {
@@ -271,7 +273,7 @@ func (p *BipTraceParser) Exec() {
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUCCH_RESP_PS]] {
-		if strings.HasSuffix(key, "rnti"){
+		if strings.HasSuffix(key, "rnti") {
 			rntiPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][key]
 			startPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
 			numOfPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "numOfPrb", -1)]
@@ -308,7 +310,7 @@ func (p *BipTraceParser) Exec() {
 		}
 	}
 
-	pucchInfo:= make([]int, nbrPrb)
+	pucchInfo := make([]int, nbrPrb)
 	for i := 0; i < nbrPrb; i++ {
 		pucchInfo[i] = len(pucchRssiMap[i])
 	}
@@ -316,7 +318,7 @@ func (p *BipTraceParser) Exec() {
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUSCH_RESP_PS]] {
-		if strings.HasSuffix(key, "rnti"){
+		if strings.HasSuffix(key, "rnti") {
 			rntiPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][key]
 			startPrbPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
 			numOfPrbPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][strings.Replace(key, "rnti", "numOfPrb", -1)]
@@ -343,7 +345,7 @@ func (p *BipTraceParser) Exec() {
 		}
 	}
 
-	puschInfo:= make([]int, nbrPrb)
+	puschInfo := make([]int, nbrPrb)
 	for i := 0; i < nbrPrb; i++ {
 		puschInfo[i] = len(puschRssiMap[i])
 	}
@@ -352,18 +354,18 @@ func (p *BipTraceParser) Exec() {
 	rssi := make([]float64, nbrPrb)
 	for i := 0; i < nbrPrb; i++ {
 		for j := range pucchRssiMap[i] {
-			rssi[i] += math.Pow(10, pucchRssiMap[i][j] / 10)
+			rssi[i] += math.Pow(10, pucchRssiMap[i][j]/10)
 		}
 
 		for j := range puschRssiMap[i] {
-			rssi[i] += math.Pow(10, puschRssiMap[i][j] / 10)
+			rssi[i] += math.Pow(10, puschRssiMap[i][j]/10)
 		}
 
-		if len(pucchRssiMap[i]) + len(puschRssiMap[i]) > 0 {
-			rssi[i] = 10 * math.Log10(rssi[i] / float64(len(pucchRssiMap[i])+len(puschRssiMap[i])))
+		if len(pucchRssiMap[i])+len(puschRssiMap[i]) > 0 {
+			rssi[i] = 10 * math.Log10(rssi[i]/float64(len(pucchRssiMap[i])+len(puschRssiMap[i])))
 		} else {
 			scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-			rssi[i] = -174 + 10 * math.Log10(scs * 12 * 1000)
+			rssi[i] = -174 + 10*math.Log10(scs*12*1000)
 		}
 	}
 
@@ -418,7 +420,9 @@ func (p *BipTraceParser) Exec() {
 		}
 	}
 
-	img := vgimg.New(8*vg.Inch, 8*vg.Inch)
+	width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*VG_IMG_WIDTH))
+	height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*VG_IMG_HEIGHT))
+	img := vgimg.New(width, height)
 	dc := draw.New(img)
 	t := draw.Tiles{
 		Rows:      rows,
@@ -533,7 +537,6 @@ func (p *BipTraceParser) parse(fn string) {
 					event = strings.Replace(event, " ", "", -1)
 					event = strings.Split(event, "(")[0]
 
-
 					mapEventHeader[event] = make([]string, 0)
 					if _, exist := mapEventRecord[event]; !exist {
 						mapEventRecord[event] = utils.NewOrderedMap()
@@ -590,7 +593,7 @@ func (p *BipTraceParser) parse(fn string) {
 				break
 			}
 
-			for p := 0; p < mapEventRecord[k1].Len(); p += 1{
+			for p := 0; p < mapEventRecord[k1].Len(); p += 1 {
 				k2 := mapEventRecord[k1].Keys()[p].(string)
 				v2 := mapEventRecord[k1].Val(k2).(string)
 				fout.WriteString(v2 + "\n")
