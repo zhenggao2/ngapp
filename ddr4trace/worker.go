@@ -66,7 +66,10 @@ type Ddr4TraceParser struct {
 	debug         bool
 
 	iqData    cmap.ConcurrentMap
+
+	// key1 = ant, val1 = [key2 = symbol, val2 = list of FFT bins]]
 	rssiData  cmap.ConcurrentMap
+	// key1 = ant, val1 = [key2 = symbol, val2 = count of a specific symbol]]
 	rssiCount cmap.ConcurrentMap
 }
 
@@ -345,13 +348,13 @@ func (p *Ddr4TraceParser) Exec() {
 	}
 
 	// save per ant/symbol RSSI as rssi_per_ant_symbol_x.csv
-	fout, err := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
-	if err != nil {
-		p.writeLog(zapcore.ErrorLevel, err.Error())
+	fout1, err1 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_re.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err1 != nil {
+		p.writeLog(zapcore.ErrorLevel, err1.Error())
 		return
 	}
-	defer fout.Close()
-	fout.WriteString("Antenna Port,Symbol,FFT Bin,RSSI(dBm)\n")
+	defer fout1.Close()
+	fout1.WriteString("Antenna Port,Symbol,FFT Bin,RSSI(dBm)\n")
 
 	fout2, err2 := os.OpenFile(filepath.Join(outPath, fmt.Sprintf("rssi_per_ant_symbol_prb.csv")), os.O_WRONLY|os.O_CREATE, 0664)
 	if err2 != nil {
@@ -386,7 +389,7 @@ func (p *Ddr4TraceParser) Exec() {
 				ptsAntSymbRe[key][i].Y = 10*math.Log10(m2.([]float64)[i]) - p.gain
 				rssiSymbRe[symb][i] += m2.([]float64)[i]
 
-				fout.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, ptsAntSymbRe[key][i].X, ptsAntSymbRe[key][i].Y))
+				fout1.WriteString(fmt.Sprintf("%v,%v,%v,%v\n", ant, symb, ptsAntSymbRe[key][i].X, ptsAntSymbRe[key][i].Y))
 
 				if i >= firstRe && i < (firstRe+nbrRe) {
 					iprb := math.Floor(float64(i-firstRe) / 12)
