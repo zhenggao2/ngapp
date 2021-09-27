@@ -247,6 +247,7 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 			}
 
 			br := bufio.NewReader(gr)
+			tsMap := cmap.New()
 			for {
 				line, err := br.ReadString('\n')
 				if err != nil {
@@ -262,6 +263,16 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 					// TWM: Timestamp should be "2006-01-02"
 					// CMCC: Timestamp should be "startTime.interval"
 					ts := strings.Replace(tokens2[len(tokens2)-1], "-", "", -1)
+
+					// check duplication of ts field
+					_, e := tsMap.Get(ts)
+					if !e {
+						tsMap.SetIfAbsent(ts, true)
+					} else {
+						continue
+					}
+
+					// check against BTS ID
 					if len(btsList) > 0 && !utils.ContainsStr(btsList, bts) {
 						continue
 					}
