@@ -89,7 +89,7 @@ func (p *L2TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && filepath.Ext(file.Name()) == ".pcap" {
+			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)

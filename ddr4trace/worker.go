@@ -117,7 +117,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && filepath.Ext(file.Name()) == ".bin" {
+			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()),".bin") {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)

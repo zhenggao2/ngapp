@@ -102,7 +102,7 @@ func (p *BipTraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && filepath.Ext(file.Name()) == ".pcap" {
+			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)
@@ -541,7 +541,7 @@ func (p *BipTraceParser) parse(fn string) {
 					if _, exist := mapEventRecord[event]; !exist {
 						mapEventRecord[event] = utils.NewOrderedMap()
 					}
-				} else if strings.Contains(line, "ICMP") {
+				} else if strings.Contains(line, "ICMP") || strings.Contains(line, "ARP") {
 					bipEvent = false
 					icomRec = false
 				}

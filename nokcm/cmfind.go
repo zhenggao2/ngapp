@@ -19,7 +19,7 @@ import (
 	"bufio"
 	"fmt"
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/unidoc/unioffice/spreadsheet"
+	"github.com/xuri/excelize/v2"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -98,25 +98,24 @@ func (p *CmFinder) Search() {
 	 */
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Exporting results to excel..."))
-	workbook := spreadsheet.New()
-	wrapped := workbook.StyleSheet.AddCellStyle()
-	wrapped.SetWrapped(true)
+	wb:= excelize.NewFile()
 	for _, sname := range p.db.Keys() {
-		sheet := workbook.AddSheet()
-		sheet.SetName(sname)
-		// write header
-		row := sheet.AddRow()
+		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
+			wb.SetSheetName("Sheet1", sname)
+		} else {
+			wb.NewSheet(sname)
+		}
+
+		row := 1
 		mocName, _ := p.mocDb.Get(sname)
 		header := append([]string{fmt.Sprintf("DN(%v)", mocName.(string)), "TS"}, p.paraDb[sname]...)
-		for _, h := range header {
-			cell := row.AddCell()
-			cell.SetString(h)
-			cell.SetStyle(wrapped)
+		for i, h := range header {
+			wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), h)
 		}
 
 		m1, _ := p.db.Get(sname)
 		for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
-			row := sheet.AddRow()
+			row++
 
 			tokens := strings.Split(dn, ",")
 			tmp := strings.Split(tokens[1], "/")
@@ -137,20 +136,22 @@ func (p *CmFinder) Search() {
 				}
 			}
 
-			for _, d := range rowData{
-				row.AddCell().SetString(d)
+			for i, d := range rowData{
+				wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), d)
 			}
 		}
 
-		sheet.SetFrozen(true, true)
-		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+		wb.SetPanes(sname, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		wb.AutoFilter(sname, "A1", fmt.Sprintf("%v%v", p.int2Col(len(header)), row), "")
 	}
 
-	workbook.SaveToFile(filepath.Join(filepath.Dir(p.paras), fmt.Sprintf("cm_find_result_%s.xlsx", time.Now().Format("20060102_150405"))))
-	workbook.Close()
+	if err := wb.SaveAs(filepath.Join(filepath.Dir(p.paras), fmt.Sprintf("cm_find_result_%s.xlsx", time.Now().Format("20060102_150405")))); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
 }
 
-func (p *CmFinder) int2Col(i uint32) string {
+func (p *CmFinder) int2Col(i int) string {
 	var s string
 	for {
 		if i / 26 > 0 {
