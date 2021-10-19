@@ -141,7 +141,7 @@ func (p *BipTraceParser) Exec() {
 
 	// noisePower from BIP can be used to calculate offset of DDR4 RSSI
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Collecting PUCCH/PUSCH noisePower..."))
-	bipMsgs := []string{"UlData_PucchReceiveReq.csv", "UlData_PucchReceiveRespPs.csv", "UlData_PuschReceiveReq.csv", "UlData_PuschReceiveRespPs.csv"}
+	bipMsgs := []string{"PucchReceiveReq.csv", "PucchReceiveRespPs.csv", "PuschReceiveReq.csv", "PuschReceiveRespPs.csv"}
 	msgFields := [][]string{
 		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "rnti (Uint16)", "pucchFormat (Enum)", "startPrb (Uint16)", "numOfPrb (Uint8)", "frequencyHopping (Enum)", "secondHopPrb (Uint16)"},
 		{"timestamp", "sfn (Uint16)", "slot (Uint8)", "subcellId (Uint8)", "rnti (Uint16)", "noisePower (Float32)"},
@@ -205,6 +205,7 @@ func (p *BipTraceParser) Exec() {
 				for k := 0; k < 4; k++ {
 					pos := posMap[msg][msgFields[i][k]][0]
 					keyPrefix[k] = tokens[pos]
+					//p.writeLog(zapcore.DebugLevel, tokens[pos])
 					if k == 0 {
 						keyPrefix[k] = keyPrefix[k][:len("2006-01-02_15:04:05")]
 					} else {
@@ -466,9 +467,11 @@ func (p *BipTraceParser) parse(fn string) {
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		//cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		//cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -482,7 +485,7 @@ func (p *BipTraceParser) parse(fn string) {
 	if stdOut.Len() > 0 {
 		// TODO use bytes.Buffer.readString("\n") to postprocessing text files
 		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s]", fn))
-		bipEvent := false
+		//bipEvent := false
 		icomRec := false
 		var ts string
 		var event string
@@ -501,8 +504,8 @@ func (p *BipTraceParser) parse(fn string) {
 					continue
 				}
 
-				if strings.Contains(line, "ICOM_5G") {
-					bipEvent = true
+				if strings.HasPrefix(line, "Frame") && strings.Contains(line, "on wire") && strings.Contains(line, "captured") {
+					//bipEvent = false
 					icomRec = false
 
 					// SKipping event DlData_EmptySendReq
@@ -525,43 +528,38 @@ func (p *BipTraceParser) parse(fn string) {
 							}
 						}
 					}
-
-					tokens := strings.Split(line, "/")
-					// event = strings.Replace(tokens[len(tokens)-1], ",", "_", -1)
-					// special handing of event type
-					// event: ICOM_5G/DlData_SsBlockSendReq, MIB
-					// event: ICOM_5G/DlData_PdschPayloadTbSendReq (reassembled)
-					// event: ICOM_5G/PdschPayloadTbSendReq (fragment offset 0)
-					event = tokens[len(tokens)-1]
-					event = strings.Replace(event, ",", "_", -1)
-					event = strings.Replace(event, " ", "", -1)
-					event = strings.Split(event, "(")[0]
-
-					mapEventHeader[event] = make([]string, 0)
-					if _, exist := mapEventRecord[event]; !exist {
-						mapEventRecord[event] = utils.NewOrderedMap()
-					}
-				} else if strings.Contains(line, "ICMP") || strings.Contains(line, "ARP") {
-					bipEvent = false
-					icomRec = false
 				}
 
-				if bipEvent && strings.Split(line, ":")[0] == "Epoch Time" {
+				//if bipEvent && strings.Split(line, ":")[0] == "Epoch Time" {
+				if strings.Split(line, ":")[0] == "Epoch Time" {
 					// Epoch Time: 1621323617.322338000 seconds
 					tokens := strings.Split(strings.Split(line, " ")[2], ".")
 					sec, _ := strconv.ParseInt(tokens[0], 10, 64)
 					nsec, _ := strconv.ParseInt(tokens[1], 10, 64)
 					ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
+				}
+
+				//if bipEvent && line == "ICOM 5G Protocol" {
+				if line == "ICOM 5G Protocol" {
+					icomRec = true
+
+					nextLine, err := stdOut.ReadString('\n')
+					if err != nil {
+						break
+					}
+
+					event = strings.Split(strings.TrimSpace(nextLine), " ")[0]
+					mapEventHeader[event] = make([]string, 0)
+					if _, exist := mapEventRecord[event]; !exist {
+						mapEventRecord[event] = utils.NewOrderedMap()
+					}
 
 					mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
 					fields = fmt.Sprintf("%s,%s", event, ts)
 				}
 
-				if bipEvent && line == "ICOM 5G Protocol" {
-					icomRec = true
-				}
-
-				if bipEvent && icomRec {
+				//if bipEvent && icomRec {
+				if icomRec {
 					if strings.Contains(line, "padding") {
 						continue
 					}
