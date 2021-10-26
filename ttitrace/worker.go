@@ -84,16 +84,15 @@ func (p *L2TtiTraceParser) Exec() {
 
 	// recreate dir for parsed l2 tti trace
 	outPath := filepath.Join(p.ttiTracePath, "parsed_tti")
+	outPath2 := filepath.Join(p.ttiTracePath, "parsed_tti", "per_events")
 	os.RemoveAll(outPath)
-	if err := os.MkdirAll(outPath, 0775); err != nil {
+	if err := os.MkdirAll(outPath2, 0775); err != nil {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
 
 	// key=EventName_PCI_RNTI or EventName for both mapFieldName and mapSfnInfo
 	mapFieldName := make(map[string][]string)
-
 	eventId := 0
-	//eventQueue
 
 	// Field positions per event
 	// TODO - variable definition
@@ -234,7 +233,7 @@ func (p *L2TtiTraceParser) Exec() {
 							key = eventName
 						}
 
-						outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", key))
+						outFn := filepath.Join(outPath2, fmt.Sprintf("%s.csv", key))
 						if _, exist := mapFieldName[key]; !exist {
 							mapFieldName[key] = make([]string, valStart)
 							copy(mapFieldName[key], tokens[:valStart])
@@ -247,7 +246,7 @@ func (p *L2TtiTraceParser) Exec() {
 								break
 							}
 
-							// Step-1.1: write HSFN header field
+							// Step-1.1: write eventId header field
 							fout.WriteString("eventId,")
 
 							row := strings.Join(mapFieldName[key], ",")
@@ -274,7 +273,6 @@ func (p *L2TtiTraceParser) Exec() {
 						}
 
 						// Step-2.1: write hsfn
-						//fout2.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
 						fout2.WriteString(fmt.Sprintf("%v,", eventId))
 
 						row := strings.Join(tokens[valStart:], ",")
