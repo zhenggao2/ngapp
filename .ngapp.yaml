@@ -58,6 +58,23 @@ logs:
   chbw: 30m
   debug: true
   filter: both
+  gain: 105
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
+  maxgo: 48
+  pattern: .csv
+  py2: /usr/bin
+  py3: C:/Python38
+  rat: nr
+  scs: 15k
+  snaptool: C:/snapshot_tool
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
+  tlog: l2tti
+  trace: /home/dabs/Downloads/08-tti_log/gNB_10.164.134.101_20211026_161538_TTI/
+  wshark: /usr/bin
+logs-bip:
+  chbw: 30m
+  debug: true
+  filter: both
   gain: 110
   luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
   maxgo: 7
@@ -104,23 +121,6 @@ logs-l2trace:
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/TLDA/
   tlog: l2trace
   trace: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/hz_test/field/l2trace/
-  wshark: /usr/bin
-logs-l2tti:
-  chbw: 30m
-  debug: true
-  filter: both
-  gain: 105
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
-  maxgo: 12
-  pattern: .csv
-  py2: /usr/bin
-  py3: C:/Python38
-  rat: nr
-  scs: 15k
-  snaptool: C:/snapshot_tool
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
-  tlog: l2tti
-  trace: /home/dabs/Downloads/08-tti_log/gNB_10.164.188.13_20211025_182140_TTI_pdcch/
   wshark: /usr/bin
 nrrg:
   advanced:

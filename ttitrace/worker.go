@@ -91,8 +91,9 @@ func (p *L2TtiTraceParser) Exec() {
 
 	// key=EventName_PCI_RNTI or EventName for both mapFieldName and mapSfnInfo
 	mapFieldName := make(map[string][]string)
-	mapSfnInfo := make(map[string]SfnInfo)
-	glbHsfn := 1 // assume HSFN starts from 1
+
+	eventId := 0
+	//eventQueue
 
 	// Field positions per event
 	// TODO - variable definition
@@ -234,13 +235,9 @@ func (p *L2TtiTraceParser) Exec() {
 						}
 
 						outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", key))
-						_, exist := mapFieldName[key]
-						if !exist {
+						if _, exist := mapFieldName[key]; !exist {
 							mapFieldName[key] = make([]string, valStart)
 							copy(mapFieldName[key], tokens[:valStart])
-
-							sfn, _ := strconv.Atoi(tokens[valStart+posSfn])
-							mapSfnInfo[key] = SfnInfo{sfn, glbHsfn}
 
 							// Step-1: write event header only once
 							fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
@@ -251,7 +248,7 @@ func (p *L2TtiTraceParser) Exec() {
 							}
 
 							// Step-1.1: write HSFN header field
-							fout.WriteString("hsfn,")
+							fout.WriteString("eventId,")
 
 							row := strings.Join(mapFieldName[key], ",")
 							fout.WriteString(fmt.Sprintf("%s\n", row))
@@ -259,22 +256,13 @@ func (p *L2TtiTraceParser) Exec() {
 
 							// update dlSchedAggFields
 							if len(dlSchedAggFields) == 0 && eventName == "dlFdSchedData" {
-								dlSchedAggFields = "hsfn," + row
+								dlSchedAggFields = "eventId," + row
 							}
 
 							// update ulSchedAggFields
 							if len(ulSchedAggFields) == 0 && eventName == "ulFdSchedData" {
-								ulSchedAggFields = "hsfn," + row
+								ulSchedAggFields = "eventId," + row
 							}
-						} else {
-							curSfn, _ := strconv.Atoi(tokens[valStart+posSfn])
-							if mapSfnInfo[key].lastSfn > curSfn {
-								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn + 1}
-							} else {
-								mapSfnInfo[key] = SfnInfo{curSfn, mapSfnInfo[key].hsfn}
-							}
-							// update global HSFN
-							glbHsfn = mapSfnInfo[key].hsfn
 						}
 
 						// Step-2: write event record
@@ -286,7 +274,8 @@ func (p *L2TtiTraceParser) Exec() {
 						}
 
 						// Step-2.1: write hsfn
-						fout2.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
+						//fout2.WriteString(fmt.Sprintf("%d,", mapSfnInfo[key].hsfn))
+						fout2.WriteString(fmt.Sprintf("%v,", eventId))
 
 						row := strings.Join(tokens[valStart:], ",")
 						fout2.WriteString(fmt.Sprintf("%s\n", row))
@@ -302,11 +291,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlBeam.PosEventHeader.PosSlot]))
 							v := TtiDlBeamData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:   eventId,
 									Sfn:        tokens[valStart+posDlBeam.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlBeam.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlBeam.PosEventHeader.PosRnti],
@@ -324,7 +312,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "dlPreSchedData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlPreSchedData
 							if posDlPreSched.Ready == false {
@@ -334,11 +322,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlPreSched.PosEventHeader.PosSlot]))
 							v := TtiDlPreSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlPreSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlPreSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlPreSched.PosEventHeader.PosRnti],
@@ -354,7 +341,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "dlTdSchedSubcellData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlTdSchedSubcellData
 							if posDlTdSched.Ready == false {
@@ -364,11 +351,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlTdSched.PosEventHeader.PosSlot]))
 							v := TtiDlTdSchedSubcellData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlTdSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlTdSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlTdSched.PosEventHeader.PosRnti],
@@ -382,7 +368,7 @@ func (p *L2TtiTraceParser) Exec() {
 							for _, rsn := range posDlTdSched.PosRecordSequenceNumber {
 								n := 10 // Per UE in CS2 is statically defined for 10UEs
 								for k := 0; k < n; k += 1 {
-									posRnti := valStart + rsn + 1 + 3*k
+									posRnti := valStart + rsn + 1 + 3 * k
 									if posRnti > len(tokens) || len(tokens[posRnti]) == 0 {
 										break
 									}
@@ -394,7 +380,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "dlFdSchedData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlFdSchedData
 							if posDlFdSched.Ready == false {
@@ -404,11 +390,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlFdSched.PosEventHeader.PosSlot]))
 							v := TtiDlFdSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlFdSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlFdSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlFdSched.PosEventHeader.PosRnti],
@@ -425,15 +410,15 @@ func (p *L2TtiTraceParser) Exec() {
 							copy(v.AllFields, tokens[valStart:])
 
 							// count number of FD-Scheduled UEs
-							kfu := strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId}, "_")
+							kfu := strings.Join([]string{v.Sfn, v.Slot, v.PhysCellId}, "_")
 							if _, e := mapDlFdUes[kfu]; !e {
-								mapDlFdUes[kfu] = []string{v.TtiEventHeader.Rnti}
+								mapDlFdUes[kfu] = []string{v.Rnti}
 							} else {
-								mapDlFdUes[kfu] = append(mapDlFdUes[kfu], v.TtiEventHeader.Rnti)
+								mapDlFdUes[kfu] = append(mapDlFdUes[kfu], v.Rnti)
 							}
 
 							if len(mapDlFdUes[kfu]) > 4 {
-								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapDlFdUes=%v", key, v.TtiEventHeader.Hsfn, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapDlFdUes[kfu])))
+								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapDlFdUes=%v", key, v.TtiEventHeader.eventId, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapDlFdUes[kfu])))
 							}
 
 							// update SLIV field
@@ -519,7 +504,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if (eventName == "dlHarqRxData" || eventName == "dlHarqRxDataArray") && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlHarqRxData/dlHarqRxDataArray
 							if posDlHarq.Ready == false {
@@ -536,11 +521,10 @@ func (p *L2TtiTraceParser) Exec() {
 							}
 
 							if eventName == "dlHarqRxData" {
-								k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
 								v := TtiDlHarqRxData{
 									// event header
 									TtiEventHeader: TtiEventHeader{
-										Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+										eventId:    eventId,
 										Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
 										Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
 										Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti],
@@ -557,7 +541,7 @@ func (p *L2TtiTraceParser) Exec() {
 								if _, e := mapEventRecord["dlHarqRxData"][k2]; !e {
 									mapEventRecord["dlHarqRxData"][k2] = utils.NewOrderedMap()
 								}
-								mapEventRecord["dlHarqRxData"][k2].Add(strings.Join([]string{strconv.Itoa(k), v.DlHarqProcessIndex}, "_"), &v)
+								mapEventRecord["dlHarqRxData"][k2].Add(eventId, &v)
 							} else {
 								maxNumHarq := 32	// max 32 HARQ feedbacks per dlHarqRxDataArray
 								sizeDlHarqRecord := 14
@@ -567,11 +551,11 @@ func (p *L2TtiTraceParser) Exec() {
 										break
 									}
 
-									k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlHarq.PosEventHeader.PosSlot]))
 									v := TtiDlHarqRxData{
 										// event header
 										TtiEventHeader: TtiEventHeader{
-											Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+											//eventId:    strconv.Itoa(mapSfnInfo[key].hsfn),
+											eventId:   eventId,
 											Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
 											Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
 											Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti+ih*sizeDlHarqRecord],
@@ -588,7 +572,7 @@ func (p *L2TtiTraceParser) Exec() {
 									if _, e := mapEventRecord["dlHarqRxData"][k2]; !e {
 										mapEventRecord["dlHarqRxData"][k2] = utils.NewOrderedMap()
 									}
-									mapEventRecord["dlHarqRxData"][k2].Add(strings.Join([]string{strconv.Itoa(k), v.DlHarqProcessIndex}, "_"), &v)
+									mapEventRecord["dlHarqRxData"][k2].Add(eventId, &v)
 								}
 							}
 						} else if eventName == "dlLaAverageCqi" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
@@ -600,11 +584,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSlot]))
 							v := TtiDlLaAverageCqi{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlLaAvgCqi.PosEventHeader.PosRnti],
@@ -623,7 +606,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "csiSrReportData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - csiSrReportData
 							if posCsiSrReport.Ready == false {
@@ -633,11 +616,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posCsiSrReport.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posCsiSrReport.PosEventHeader.PosSlot]))
 							v := TtiCsiSrReportData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posCsiSrReport.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posCsiSrReport.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posCsiSrReport.PosEventHeader.PosRnti],
@@ -660,7 +642,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "dlFlowControlData" && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlFlowControlData
 							if posDlFlowControl.Ready == false {
@@ -670,11 +652,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlFlowControl.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlFlowControl.PosEventHeader.PosSlot]))
 							v := TtiDlFlowControlData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlFlowControl.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlFlowControl.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlFlowControl.PosEventHeader.PosRnti],
@@ -692,7 +673,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if (eventName == "dlLaDeltaCqi" || eventName == "dlLaDeltaCqiArray") && (p.ttiFilter == "dl" || p.ttiFilter == "both") {
 							// TODO - event aggregation - dlLaDeltaCqiArray
 							if posDlLaDeltaCqi.Ready == false {
@@ -709,11 +690,10 @@ func (p *L2TtiTraceParser) Exec() {
 							}
 
 							if eventName == "dlLaDeltaCqi" {
-								k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot]))
 								v := TtiDlLaDeltaCqi{
 									// event header
 									TtiEventHeader: TtiEventHeader{
-										Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+										eventId:    eventId,
 										Sfn:        tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn],
 										Slot:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot],
 										Rnti:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti],
@@ -732,7 +712,7 @@ func (p *L2TtiTraceParser) Exec() {
 								if _, e := mapEventRecord["dlLaDeltaCqi"][k2]; !e {
 									mapEventRecord["dlLaDeltaCqi"][k2] = utils.NewOrderedMap()
 								}
-								mapEventRecord["dlLaDeltaCqi"][k2].Add(k , &v)
+								mapEventRecord["dlLaDeltaCqi"][k2].Add(eventId, &v)
 							} else {
 								maxNumDlOlqc := 64	// max 64 DL LA deltaCqi records per dlHarqRxDataArray
 								sizeDlOlqcRecord := 8
@@ -742,11 +722,10 @@ func (p *L2TtiTraceParser) Exec() {
 										break
 									}
 
-									k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot]))
 									v := TtiDlLaDeltaCqi{
 										// event header
 										TtiEventHeader: TtiEventHeader{
-											Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+											eventId:    eventId,
 											Sfn:        tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSfn],
 											Slot:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosSlot],
 											Rnti:       tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti+ih*sizeDlOlqcRecord],
@@ -765,7 +744,7 @@ func (p *L2TtiTraceParser) Exec() {
 									if _, e := mapEventRecord["dlLaDeltaCqi"][k2]; !e {
 										mapEventRecord["dlLaDeltaCqi"][k2] = utils.NewOrderedMap()
 									}
-									mapEventRecord["dlLaDeltaCqi"][k2].Add(k , &v)
+									mapEventRecord["dlLaDeltaCqi"][k2].Add(eventId, &v)
 								}
 							}
 						} else if eventName == "ulBsrRxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
@@ -777,11 +756,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlBsr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlBsr.PosEventHeader.PosSlot]))
 							v := TtiUlBsrRxData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlBsr.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlBsr.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlBsr.PosEventHeader.PosRnti],
@@ -803,7 +781,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						}  else if eventName == "ulPreSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulPreSchedData
 							if posUlPreSched.Ready == false {
@@ -813,11 +791,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPreSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPreSched.PosEventHeader.PosSlot]))
 							v := TtiUlPreSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlPreSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlPreSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlPreSched.PosEventHeader.PosRnti],
@@ -832,7 +809,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulTdSchedSubcellData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulTdSchedSubcellData
 							if posUlTdSched.Ready == false {
@@ -842,11 +819,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlTdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlTdSched.PosEventHeader.PosSlot]))
 							v := TtiUlTdSchedSubcellData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlTdSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlTdSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlTdSched.PosEventHeader.PosRnti],
@@ -872,7 +848,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulFdSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulFdSchedData
 							if posUlFdSched.Ready == false {
@@ -882,11 +858,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlFdSched.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlFdSched.PosEventHeader.PosSlot]))
 							v := TtiUlFdSchedData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlFdSched.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlFdSched.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlFdSched.PosEventHeader.PosRnti],
@@ -903,15 +878,15 @@ func (p *L2TtiTraceParser) Exec() {
 							copy(v.AllFields, tokens[valStart:])
 
 							// count number of FD-Scheduled UEs
-							kfu := strings.Join([]string{strconv.Itoa(k), v.TtiEventHeader.PhysCellId}, "_")
+							kfu := strings.Join([]string{v.Sfn, v.Slot, v.PhysCellId}, "_")
 							if _, e := mapUlFdUes[kfu]; !e {
-								mapUlFdUes[kfu] = []string{v.TtiEventHeader.Rnti}
+								mapUlFdUes[kfu] = []string{v.Rnti}
 							} else {
-								mapUlFdUes[kfu] = append(mapUlFdUes[kfu], v.TtiEventHeader.Rnti)
+								mapUlFdUes[kfu] = append(mapUlFdUes[kfu], v.Rnti)
 							}
 
 							if len(mapUlFdUes[kfu]) > 4 {
-								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapUlFdUes=%v", key, v.TtiEventHeader.Hsfn, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapUlFdUes[kfu])))
+								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapUlFdUes=%v", key, v.TtiEventHeader.eventId, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapUlFdUes[kfu])))
 							}
 
 							// update SLIV field
@@ -951,7 +926,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulHarqRxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulHarqRxData
 							if posUlHarq.Ready == false {
@@ -961,11 +936,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlHarq.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlHarq.PosEventHeader.PosSlot]))
 							v := TtiUlHarqRxData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlHarq.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlHarq.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlHarq.PosEventHeader.PosRnti],
@@ -982,7 +956,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulIntraDlToUlDrxSyncDlData" {
 							// TODO - event aggregation - ulIntraDlToUlDrxSyncDlData
 							if posDrx.Ready == false {
@@ -992,11 +966,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posDrx.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posDrx.PosEventHeader.PosSlot]))
 							v := TtiUlIntraDlToUlDtxSyncDlData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDrx.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDrx.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDrx.PosEventHeader.PosRnti],
@@ -1012,7 +985,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulLaDeltaSinr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulLaDeltaSinr
 							if posUlLaDeltaSinr.Ready == false {
@@ -1022,11 +995,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSlot]))
 							v := TtiUlLaDeltaSinr{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosRnti],
@@ -1044,7 +1016,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulLaAverageSinr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulLaAverageSinr
 							if posUlLaAvgSinr.Ready == false {
@@ -1054,11 +1026,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSlot]))
 							v := TtiUlLaAverageSinr{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosRnti],
@@ -1077,7 +1048,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulLaPhr" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulLaPhr
 							if posUlLaPhr.Ready == false {
@@ -1087,11 +1058,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlLaPhr.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlLaPhr.PosEventHeader.PosSlot]))
 							v := TtiUlLaPhr{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlLaPhr.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlLaPhr.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlLaPhr.PosEventHeader.PosRnti],
@@ -1109,7 +1079,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulPucchReceiveRespPsData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulPucchReceiveRespPsData
 							if posUlPucch.Ready == false {
@@ -1119,11 +1089,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPucch.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPucch.PosEventHeader.PosSlot]))
 							v := TtiUlPucchReceiveRespPsData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlPucch.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlPucch.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlPucch.PosEventHeader.PosRnti],
@@ -1144,7 +1113,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulPuschReceiveRespPsData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulPuschReceiveRespPsData
 							if posUlPusch.Ready == false {
@@ -1154,11 +1123,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPusch.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPusch.PosEventHeader.PosSlot]))
 							v := TtiUlPuschReceiveRespPsData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlPusch.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlPusch.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlPusch.PosEventHeader.PosRnti],
@@ -1182,7 +1150,7 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						} else if eventName == "ulPduDemuxData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulPduDemuxData
 							if posUlPduDemux.Ready == false {
@@ -1192,11 +1160,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 							}
 
-							k := p.makeTimeStamp(mapSfnInfo[key].hsfn, p.unsafeAtoi(tokens[valStart+posUlPduDemux.PosEventHeader.PosSfn]), p.unsafeAtoi(tokens[valStart+posUlPduDemux.PosEventHeader.PosSlot]))
 							v := TtiUlPduDemuxData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									Hsfn:       strconv.Itoa(mapSfnInfo[key].hsfn),
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posUlPduDemux.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posUlPduDemux.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posUlPduDemux.PosEventHeader.PosRnti],
@@ -1225,8 +1192,10 @@ func (p *L2TtiTraceParser) Exec() {
 							if _, e := mapEventRecord[eventName][k2]; !e {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
-							mapEventRecord[eventName][k2].Add(k , &v)
+							mapEventRecord[eventName][k2].Add(eventId, &v)
 						}
+
+						eventId++
 					} else {
 						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Invalid event record detected: %s", line))
 					}
@@ -1243,11 +1212,11 @@ func (p *L2TtiTraceParser) Exec() {
 	for event := range mapEventRecord {
 		for dn := range mapEventRecord[event] {
 			for _, ts := range mapEventRecord[event][dn].Keys() {
-				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("k=%v, v=%v\n", ts, mapEventRecord[event][dn].Val(ts)))
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v,dn=%v,k=%v, v=%v\n", event, dn, ts, mapEventRecord[event][dn].Val(ts)))
 			}
 		}
 	}
- 	*/
+	 */
 
 	if p.ttiFilter == "dl" || p.ttiFilter == "both" {
 		// update dlSchedAggFields
@@ -1259,47 +1228,47 @@ func (p *L2TtiTraceParser) Exec() {
 
 		if len(mapEventRecord["dlBeamData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlBeam.hsfn", "dlBeam.sfn", "dlBeam.slot", "dlBeam.currentBestBeamId", "dlBeam.current2ndBeamId", "dlBeam.selectedBestBeamId", "dlBeam.selected2ndBeamid"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlBeam.eventId", "dlBeam.sfn", "dlBeam.slot", "dlBeam.currentBestBeamId", "dlBeam.current2ndBeamId", "dlBeam.selectedBestBeamId", "dlBeam.selected2ndBeamid"}, ",")
 		}
 
 		if len(mapEventRecord["dlPreSchedData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlPreSched.hsfn", "dlPreSched.sfn", "dlPreSched.slot", "dlPreSched.csListEvent", "dlPreSched.highestClassPriority", "dlPreSched.prachPreambleIndex"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlPreSched.eventId", "dlPreSched.sfn", "dlPreSched.slot", "dlPreSched.csListEvent", "dlPreSched.highestClassPriority", "dlPreSched.prachPreambleIndex"}, ",")
 		}
 
 		if len(mapEventRecord["dlTdSchedSubcellData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlTdSched.hsfn", "dlTdSched.sfn", "dlTdSched.slot", "dlTdSched.cs2List"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlTdSched.eventId", "dlTdSched.sfn", "dlTdSched.slot", "dlTdSched.cs2List"}, ",")
 		}
 
 		if len(mapEventRecord["dlHarqRxData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlHarq.hsfn", "dlHarq.sfn", "dlHarq.slot", "dlHarq.AckNack", "dlHarq.dlHarqProcessIndex", "dlHarq.pucchFormat"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlHarq.eventId", "dlHarq.sfn", "dlHarq.slot", "dlHarq.AckNack", "dlHarq.dlHarqProcessIndex", "dlHarq.pucchFormat"}, ",")
 		}
 
 		if len(mapEventRecord["ulIntraDlToUlDrxSyncDlData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
+			dlSchedAggFields += strings.Join([]string{"drx.eventId", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
 		}
 
 		if len(mapEventRecord["csiSrReportData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"csiSrReport.hsfn", "csiSrReport.sfn", "csiSrReport.slot", "csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
+			dlSchedAggFields += strings.Join([]string{"csiSrReport.eventId", "csiSrReport.sfn", "csiSrReport.slot", "csiSrReport.ulChannel", "csiSrReport.dtx", "csiSrReport.pucchFormat", "csiSrReport.cqi", "csiSrReport.pmiRank1", "csiSrReport.pmiRank2", "csiSrReport.ri", "csiSrReport.cri", "csiSrReport.li", "csiSrReport.sr"}, ",")
 		}
 
 		if len(mapEventRecord["dlLaDeltaCqi"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlLaDeltaCqi.hsfn", "dlLaDeltaCqi.sfn", "dlLaDeltaCqi.slot", "dlLaDeltaCqi.isDeltaCqiCalculated", "dlLaDeltaCqi.rrmPauseUeInDlScheduling", "dlLaDeltaCqi.harqFb", "dlLaDeltaCqi.rrmDeltaCqi", "dlLaDeltaCqi.rrmRemainingBucketLevel"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlLaDeltaCqi.eventId", "dlLaDeltaCqi.sfn", "dlLaDeltaCqi.slot", "dlLaDeltaCqi.isDeltaCqiCalculated", "dlLaDeltaCqi.rrmPauseUeInDlScheduling", "dlLaDeltaCqi.harqFb", "dlLaDeltaCqi.rrmDeltaCqi", "dlLaDeltaCqi.rrmRemainingBucketLevel"}, ",")
 		}
 
 		if len(mapEventRecord["dlLaAverageCqi"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.hsfn", "dlLaAvgCqi.sfn", "dlLaAvgCqi.slot", "dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlLaAvgCqi.eventId", "dlLaAvgCqi.sfn", "dlLaAvgCqi.slot", "dlLaAvgCqi.rrmInstCqi", "dlLaAvgCqi.rank", "dlLaAvgCqi.rrmAvgCqi", "dlLaAvgCqi.mcs", "dlLaAvgCqi.rrmDeltaCqi"}, ",")
 		}
 
 		if len(mapEventRecord["dlFlowControlData"]) > 0 {
 			dlSchedAggFields += ","
-			dlSchedAggFields += strings.Join([]string{"dlFlowControl.hsfn", "dlFlowControl.sfn", "dlFlowControl.slot", "dlFlowControl.lchId", "dlFlowControl.reportType", "dlFlowControl.scheduledBytes", "dlFlowControl.ethAvg", "dlFlowControl.ethScaled"}, ",")
+			dlSchedAggFields += strings.Join([]string{"dlFlowControl.eventId", "dlFlowControl.sfn", "dlFlowControl.slot", "dlFlowControl.lchId", "dlFlowControl.reportType", "dlFlowControl.scheduledBytes", "dlFlowControl.ethAvg", "dlFlowControl.ethScaled"}, ",")
 		}
 
 		dlSchedAggFields += "\n"
@@ -1312,6 +1281,16 @@ func (p *L2TtiTraceParser) Exec() {
 		for dn := range mapEventRecord["dlFdSchedData"] {
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("  processing DL UE(PCI_RNTI) = %v, nbrRecord=%v, please wait...", dn, mapEventRecord["dlFdSchedData"][dn].Len()))
 			for p1 := 0; p1 < mapEventRecord["dlFdSchedData"][dn].Len(); p1 += 1 {
+				/*
+				for {
+					if runtime.NumGoroutine() >= p.maxgo {
+						time.Sleep(1 * time.Second)
+					} else {
+						break
+					}
+				}
+				 */
+
 				wg.Add(1)
 
 				go func(dn string, p1 int) {
@@ -1323,7 +1302,7 @@ func (p *L2TtiTraceParser) Exec() {
 					dnRnti := strings.Split(dn, "_")[1]
 
 					// aggregate mapDlFdUes
-					ku := fmt.Sprintf("%v_%v", k1, dnPci)
+					ku := fmt.Sprintf("%v_%v_%v", v1.Sfn, v1.Slot, dnPci)
 					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(mapDlFdUes[ku]), strings.Join(mapDlFdUes[ku], ";")))
 
 					// aggregate dlBeamData
@@ -1333,7 +1312,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["dlBeamData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["dlBeamData"][dn].Val(k2).(*TtiDlBeamData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CurrentBestBeamId, v2.Current2ndBeamId, v2.SelectedBestBeamId, v2.Selected2ndBeamId}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1343,12 +1322,12 @@ func (p *L2TtiTraceParser) Exec() {
 
 					// aggregate dlPreSchedData
 					if _, e := mapEventRecord["dlPreSchedData"][dn]; e {
-						p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"][dn], mapEventRecord["dlTdSchedSubcellData"][dnPci], mapEventRecord["dlPreSchedData"][dn], p1)
+						p2 := p.findDlPreSched(mapEventRecord["dlFdSchedData"][dn], mapEventRecord["dlPreSchedData"][dn], p1)
 						if p2 >= 0 {
 							k2 := mapEventRecord["dlPreSchedData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["dlPreSchedData"][dn].Val(k2).(*TtiDlPreSchedData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority, v2.PrachPreambleIndex}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority, v2.PrachPreambleIndex}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1363,7 +1342,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["dlTdSchedSubcellData"][dnPci].Keys()[p2].(int)
 							v2 := mapEventRecord["dlTdSchedSubcellData"][dnPci].Val(k2).(*TtiDlTdSchedSubcellData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
 						}
@@ -1375,10 +1354,10 @@ func (p *L2TtiTraceParser) Exec() {
 					if _, e := mapEventRecord["dlHarqRxData"][dn]; e {
 						p2 := p.findDlHarq(mapEventRecord["dlFdSchedData"][dn], mapEventRecord["dlHarqRxData"][dn], p1)
 						if p2 >= 0 {
-							k2 := mapEventRecord["dlHarqRxData"][dn].Keys()[p2].(string)
+							k2 := mapEventRecord["dlHarqRxData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["dlHarqRxData"][dn].Val(k2).(*TtiDlHarqRxData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.AckNack, v2.DlHarqProcessIndex, v2.PucchFormat}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.AckNack, v2.DlHarqProcessIndex, v2.PucchFormat}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1393,7 +1372,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"][dn].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1408,7 +1387,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["csiSrReportData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["csiSrReportData"][dn].Val(k2).(*TtiCsiSrReportData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.UlChannel, v2.Dtx, v2.PucchFormat, v2.Cqi, v2.PmiRank1, v2.PmiRank2, v2.Ri, v2.Cri, v2.Li, v2.Sr}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1423,7 +1402,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["dlLaDeltaCqi"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["dlLaDeltaCqi"][dn].Val(k2).(*TtiDlLaDeltaCqi)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaCqiCalculated, v2.RrmPauseUeInDlScheduling, v2.HarqFb, v2.RrmDeltaCqi, v2.RrmRemainingBucketLevel}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaCqiCalculated, v2.RrmPauseUeInDlScheduling, v2.HarqFb, v2.RrmDeltaCqi, v2.RrmRemainingBucketLevel}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1438,7 +1417,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["dlLaAverageCqi"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["dlLaAverageCqi"][dn].Val(k2).(*TtiDlLaAverageCqi)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstCqi, v2.Rank, v2.RrmAvgCqi, v2.Mcs, v2.RrmDeltaCqi}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1453,7 +1432,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["dlFlowControlData"][dnRnti].Keys()[p2].(int)
 							v2 := mapEventRecord["dlFlowControlData"][dnRnti].Val(k2).(*TtiDlFlowControlData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.LchId, v2.ReportType, v2.ScheduledBytes, v2.EthAvg, v2.EthScaled}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.LchId, v2.ReportType, v2.ScheduledBytes, v2.EthAvg, v2.EthScaled}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1485,7 +1464,7 @@ func (p *L2TtiTraceParser) Exec() {
 					headerWritten[outFn] = true
 				}
 
-				fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+				fout.WriteString(fmt.Sprintf("%v,%v\n", data.eventId, strings.Join(data.AllFields, ",")))
 				fout.Close()
 			}
 		}
@@ -1500,57 +1479,57 @@ func (p *L2TtiTraceParser) Exec() {
 
 		if len(mapEventRecord["ulBsrRxData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulBsr.hsfn", "ulBsr.sfn", "ulBsr.slot", "ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulBsr.eventId", "ulBsr.sfn", "ulBsr.slot", "ulBsr.bsrFormat", "ulBsr.bufferSizeList"}, ",")
 		}
 
 		if len(mapEventRecord["ulPreSchedData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulPreSched.hsfn", "ulPreSched.sfn", "ulPreSched.slot", "ulPreSched.csListEvent", "ulPreSched.highestClassPriority"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulPreSched.eventId", "ulPreSched.sfn", "ulPreSched.slot", "ulPreSched.csListEvent", "ulPreSched.highestClassPriority"}, ",")
 		}
 
 		if len(mapEventRecord["ulTdSchedSubcellData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulTdSched.hsfn", "ulTdSched.sfn", "ulTdSched.slot", "ulTdSched.cs2List"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulTdSched.eventId", "ulTdSched.sfn", "ulTdSched.slot", "ulTdSched.cs2List"}, ",")
 		}
 
 		if len(mapEventRecord["ulHarqRxData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulHarq.hsfn", "ulHarq.sfn", "ulHarq.slot", "ulHarq.dtx", "ulHarq.crcResult", "ulHarq.ulHarqProcessIndex"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulHarq.eventId", "ulHarq.sfn", "ulHarq.slot", "ulHarq.dtx", "ulHarq.crcResult", "ulHarq.ulHarqProcessIndex"}, ",")
 		}
 
 		if len(mapEventRecord["ulIntraDlToUlDrxSyncDlData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"drx.hsfn", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
+			ulSchedAggFields += strings.Join([]string{"drx.eventId", "drx.sfn", "drx.slot", "drx.drxEnabled", "drx.dlDrxOnDurationTimerOn", "drx.dlDrxInactivityTimerOn"}, ",")
 		}
 
 		if len(mapEventRecord["ulLaDeltaSinr"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulLaDeltaSinr.hsfn", "ulLaDeltaSinr.sfn", "ulLaDeltaSinr.slot", "ulLaDeltaSinr.isDeltaSinrCalculated", "ulLaDeltaSinr.rrmPauseUeInUlScheduling", "ulLaDeltaSinr.crcFb", "ulLaDeltaSinr.rrmDeltaSinr"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulLaDeltaSinr.eventId", "ulLaDeltaSinr.sfn", "ulLaDeltaSinr.slot", "ulLaDeltaSinr.isDeltaSinrCalculated", "ulLaDeltaSinr.rrmPauseUeInUlScheduling", "ulLaDeltaSinr.crcFb", "ulLaDeltaSinr.rrmDeltaSinr"}, ",")
 		}
 
 		if len(mapEventRecord["ulLaAverageSinr"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulLaAvgSinr.hsfn", "ulLaAvgSinr.sfn", "ulLaAvgSinr.slot", "ulLaAvgSinr.rrmInstSinrRank", "ulLaAvgSinr.rrmNumOfSinrMeasurements", "ulLaAvgSinr.rrmInstSinr", "ulLaAvgSinr.rrmSinrCorrection", "ulLaAvgSinr.rrmAvgSinrUl"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulLaAvgSinr.eventId", "ulLaAvgSinr.sfn", "ulLaAvgSinr.slot", "ulLaAvgSinr.rrmInstSinrRank", "ulLaAvgSinr.rrmNumOfSinrMeasurements", "ulLaAvgSinr.rrmInstSinr", "ulLaAvgSinr.rrmSinrCorrection", "ulLaAvgSinr.rrmAvgSinrUl"}, ",")
 		}
 
 		if len(mapEventRecord["ulLaPhr"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulLaPhr.hsfn", "ulLaPhr.sfn", "ulLaPhr.slot", "ulLaPhr.isRrmPhrScaledCalculated", "ulLaPhr.phr", "ulLaPhr.rrmNumPuschPrb", "ulLaPhr.rrmPhrScaled"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulLaPhr.eventId", "ulLaPhr.sfn", "ulLaPhr.slot", "ulLaPhr.isRrmPhrScaledCalculated", "ulLaPhr.phr", "ulLaPhr.rrmNumPuschPrb", "ulLaPhr.rrmPhrScaled"}, ",")
 		}
 
 		if len(mapEventRecord["ulPucchReceiveRespPsData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulPucch.hsfn", "ulPucch.sfn", "ulPucch.slot", "ulPucch.pucchFormat", "ulPucch.startPrb", "ulPucch.rssi", "ulPucch.sinrLayer0", "ulPucch.sinrLayer1", "ulPucch.dtx", "ulPucch.srBit"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulPucch.eventId", "ulPucch.sfn", "ulPucch.slot", "ulPucch.pucchFormat", "ulPucch.startPrb", "ulPucch.rssi", "ulPucch.sinrLayer0", "ulPucch.sinrLayer1", "ulPucch.dtx", "ulPucch.srBit"}, ",")
 		}
 
 		if len(mapEventRecord["ulPuschReceiveRespPsData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulPusch.hsfn", "ulPusch.sfn", "ulPusch.slot", "ulPusch.rssi", "ulPusch.sinrLayer0", "ulPusch.sinrLayer1", "ulPusch.dtx", "ulPusch.ulRank", "ulPusch.ulPmiRank1", "ulPusch.ulPmiRank1Sinr",  "ulPusch.ulPmiRank2", "ulPusch.ulPmiRank2SinrLayer0", "ulPusch.ulPmiRank2SinrLayer1", "ulPusch.longTermRank"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulPusch.eventId", "ulPusch.sfn", "ulPusch.slot", "ulPusch.rssi", "ulPusch.sinrLayer0", "ulPusch.sinrLayer1", "ulPusch.dtx", "ulPusch.ulRank", "ulPusch.ulPmiRank1", "ulPusch.ulPmiRank1Sinr",  "ulPusch.ulPmiRank2", "ulPusch.ulPmiRank2SinrLayer0", "ulPusch.ulPmiRank2SinrLayer1", "ulPusch.longTermRank"}, ",")
 		}
 
 		if len(mapEventRecord["ulPduDemuxData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulPduDemux.hsfn", "ulPduDemux.sfn", "ulPduDemux.slot", "ulPduDemux.harqId", "ulPduDemux.isUlCcchData", "ulPduDemux.isTcpTraffic", "ulPduDemux.tempCrnti", "ulPduDemux.lcId", "ulPduDemux.rcvdBytes"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulPduDemux.eventId", "ulPduDemux.sfn", "ulPduDemux.slot", "ulPduDemux.harqId", "ulPduDemux.isUlCcchData", "ulPduDemux.isTcpTraffic", "ulPduDemux.tempCrnti", "ulPduDemux.lcId", "ulPduDemux.rcvdBytes"}, ",")
 		}
 
 		ulSchedAggFields += "\n"
@@ -1571,7 +1550,7 @@ func (p *L2TtiTraceParser) Exec() {
 					dnPci := strings.Split(dn, "_")[0]
 
 					// aggregate mapUlFdUes
-					ku := fmt.Sprintf("%v_%v", k1, dnPci)
+					ku := fmt.Sprintf("%v_%v_%v", v1.Sfn, v1.Slot, dnPci)
 					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(mapUlFdUes[ku]), strings.Join(mapUlFdUes[ku], ";")))
 
 					// aggregate ulBsrRxData
@@ -1581,7 +1560,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulBsrRxData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulBsrRxData"][dn].Val(k2).(*TtiUlBsrRxData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.BsrFormat, fmt.Sprintf("[%s]", strings.Join(v2.BufferSizeList, ";"))}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
 						}
@@ -1596,7 +1575,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulPreSchedData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulPreSchedData"][dn].Val(k2).(*TtiUlPreSchedData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.CsListEvent, v2.HighestClassPriority}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-"}...)
 						}
@@ -1611,7 +1590,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulTdSchedSubcellData"][dnPci].Keys()[p2].(int)
 							v2 := mapEventRecord["ulTdSchedSubcellData"][dnPci].Val(k2).(*TtiUlTdSchedSubcellData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, fmt.Sprintf("(%d)[%s]", len(v2.Cs2List), strings.Join(v2.Cs2List, ";"))}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-"}...)
 						}
@@ -1626,7 +1605,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulHarqRxData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulHarqRxData"][dn].Val(k2).(*TtiUlHarqRxData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Dtx, v2.CrcResult, v2.UlHarqProcessIndex}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Dtx, v2.CrcResult, v2.UlHarqProcessIndex}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1641,7 +1620,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulIntraDlToUlDrxSyncDlData"][dn].Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.DrxEnabled, v2.DlDrxOnDurationTimerOn, v2.DlDrxInactivityTimerOn}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1656,7 +1635,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulLaDeltaSinr"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulLaDeltaSinr"][dn].Val(k2).(*TtiUlLaDeltaSinr)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaSinrCalculated, v2.RrmPauseUeInUlScheduling, v2.CrcFb, v2.RrmDeltaSinr}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsDeltaSinrCalculated, v2.RrmPauseUeInUlScheduling, v2.CrcFb, v2.RrmDeltaSinr}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1671,7 +1650,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulLaAverageSinr"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulLaAverageSinr"][dn].Val(k2).(*TtiUlLaAverageSinr)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstSinrRank, v2.RrmNumOfSinrMeasurements, v2.RrmInstSinr, v2.RrmSinrCorrection, v2.RrmAvgSinrUl}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.RrmInstSinrRank, v2.RrmNumOfSinrMeasurements, v2.RrmInstSinr, v2.RrmSinrCorrection, v2.RrmAvgSinrUl}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1686,7 +1665,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulLaPhr"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulLaPhr"][dn].Val(k2).(*TtiUlLaPhr)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsRrmPhrScaledCalculated, v2.Phr, v2.RrmNumPuschPrb, v2.RrmPhrScaled}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.IsRrmPhrScaledCalculated, v2.Phr, v2.RrmNumPuschPrb, v2.RrmPhrScaled}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1701,7 +1680,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulPucchReceiveRespPsData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulPucchReceiveRespPsData"][dn].Val(k2).(*TtiUlPucchReceiveRespPsData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.PucchFormat, v2.StartPrb, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.SrBit}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.PucchFormat, v2.StartPrb, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.SrBit}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1716,7 +1695,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulPuschReceiveRespPsData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulPuschReceiveRespPsData"][dn].Val(k2).(*TtiUlPuschReceiveRespPsData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.UlRank, v2.UlPmiRank1, v2.UlPmiRank1Sinr, v2.UlPmiRank2, v2.UlPmiRank2SinrLayer0, v2.UlPmiRank2SinrLayer1, v2.LongTermRank}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.Rssi, v2.SinrLayer0, v2.SinrLayer1, v2.Dtx, v2.UlRank, v2.UlPmiRank1, v2.UlPmiRank1Sinr, v2.UlPmiRank2, v2.UlPmiRank2SinrLayer0, v2.UlPmiRank2SinrLayer1, v2.LongTermRank}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1731,7 +1710,7 @@ func (p *L2TtiTraceParser) Exec() {
 							k2 := mapEventRecord["ulPduDemuxData"][dn].Keys()[p2].(int)
 							v2 := mapEventRecord["ulPduDemuxData"][dn].Val(k2).(*TtiUlPduDemuxData)
 
-							v1.AllFields = append(v1.AllFields, []string{v2.TtiEventHeader.Hsfn, v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.HarqId, v2.IsUlCcchData, v2.IsTcpTraffic, v2.TempCrnti, fmt.Sprintf("[%s]", strings.Join(v2.LcIdList, ";")), fmt.Sprintf("[%s]", strings.Join(v2.RcvdBytesList, ";"))}...)
+							v1.AllFields = append(v1.AllFields, []string{strconv.Itoa(v2.TtiEventHeader.eventId), v2.TtiEventHeader.Sfn, v2.TtiEventHeader.Slot, v2.HarqId, v2.IsUlCcchData, v2.IsTcpTraffic, v2.TempCrnti, fmt.Sprintf("[%s]", strings.Join(v2.LcIdList, ";")), fmt.Sprintf("[%s]", strings.Join(v2.RcvdBytesList, ";"))}...)
 						} else {
 							v1.AllFields = append(v1.AllFields, []string{"-", "-", "-", "-", "-", "-", "-", "-", "-"}...)
 						}
@@ -1763,7 +1742,7 @@ func (p *L2TtiTraceParser) Exec() {
 					headerWritten2[outFn] = true
 				}
 
-				fout.WriteString(fmt.Sprintf("%s,%s\n", data.Hsfn, strings.Join(data.AllFields, ",")))
+				fout.WriteString(fmt.Sprintf("%v,%v\n", data.eventId, strings.Join(data.AllFields, ",")))
 				fout.Close()
 			}
 		}
@@ -1802,8 +1781,7 @@ func (p *L2TtiTraceParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlBeamData)
 
-		if k2 <= k1 {
-			//if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -1815,47 +1793,24 @@ func (p *L2TtiTraceParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlPreSched(m1,m2,m3 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
-	// find possible TD-scheduling opportunity
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
-		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
+		v2 := m2.Val(k2).(*TtiDlPreSchedData)
 
-		if k2 <= k1 {
-			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
-			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
-				p2 = i
-			}
-		} else {
-			break
-		}
-	}
-
-	if p2 < 0 {
-		return p2
-	}
-
-	// find possible Pre-scheduling opportunity
-	k1 = m2.Keys()[p2].(int)
-	p3 := -1
-	for i := 0; i < m3.Len(); i += 1 {
-		k2 := m3.Keys()[i].(int)
-		v2 := m3.Val(k2).(*TtiDlPreSchedData)
-
-		if k2 <= k1 {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
-				p3 = i
+				p2 = i
+				break
 			}
-		} else {
-			break
 		}
 	}
 
-	return p3
+	return p2
 }
 
 func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
@@ -1867,13 +1822,11 @@ func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
-		if k2 <= k1 {
-			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && v2.eventId <= v1.eventId {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
+				break
 			}
-		} else {
-			break
 		}
 	}
 
@@ -1883,18 +1836,14 @@ func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 func (p *L2TtiTraceParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
-	hsfn, sfn, slot := p.incSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
-	harq := p.makeTimeStamp(hsfn, sfn, slot)
+	_, sfn, slot := p.incSlot(1, p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
 
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
-		// key = "Timestamp_HarqProcessIndex"
-		k2 := m2.Keys()[i].(string)
-		k2ts := p.unsafeAtoi(strings.Split(k2, "_")[0])
+		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlHarqRxData)
 
-		if k2ts == harq {
-			//if v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqSubcellId+v2.DlHarqProcessIndex {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId >= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.DlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.DlHarqProcessIndex {
 				p2 = i
 				break
@@ -1914,7 +1863,7 @@ func (p *L2TtiTraceParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlLaAverageCqi)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
@@ -1935,7 +1884,7 @@ func (p *L2TtiTraceParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int 
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiCsiSrReportData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -1956,7 +1905,7 @@ func (p *L2TtiTraceParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) in
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlFlowControlData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.Rnti == v2.Rnti && p.contains(v1.LcIdList, v2.LchId) {
 				p2 = i
 			}
@@ -1977,7 +1926,7 @@ func (p *L2TtiTraceParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlLaDeltaCqi)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
@@ -1998,7 +1947,7 @@ func (p *L2TtiTraceParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlBsrRxData)
 
-		if k2 <= k1 {
+		if k2 <= k1 && v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 				p2 = i
 			}
@@ -2019,8 +1968,7 @@ func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
-		//if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.SubcellId+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.SubcellId+v2.UlHarqProcessIndex {
-		if k2 >= k1 && v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
+		if k2 >= k1 && v2.eventId >= v1.eventId && v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 			p2 = i
 			break
 		}
@@ -2038,7 +1986,7 @@ func (p *L2TtiTraceParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -2059,7 +2007,7 @@ func (p *L2TtiTraceParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlIntraDlToUlDtxSyncDlData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -2080,7 +2028,7 @@ func (p *L2TtiTraceParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) in
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlLaDeltaSinr)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
@@ -2101,7 +2049,7 @@ func (p *L2TtiTraceParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int 
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlLaAverageSinr)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
@@ -2122,7 +2070,7 @@ func (p *L2TtiTraceParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlLaPhr)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.CellDbIndex == v2.PhysCellId+v2.Rnti+v2.CellDbIndex {
 				p2 = i
 			}
@@ -2143,8 +2091,7 @@ func (p *L2TtiTraceParser) findUlPucchRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlPucchReceiveRespPsData)
 
-		if k2 <= k1 {
-			//if v1.PhysCellId+v1.Rnti+v1.SubcellId == v2.PhysCellId+v2.Rnti+v2.SubcellId {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -2165,7 +2112,7 @@ func (p *L2TtiTraceParser) findUlPuschRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlPuschReceiveRespPsData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 			}
@@ -2186,7 +2133,7 @@ func (p *L2TtiTraceParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlPduDemuxData)
 
-		if k2 <= k1 {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.HarqId {
 				p2 = i
 			}
@@ -2201,15 +2148,14 @@ func (p *L2TtiTraceParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
-	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
-	dci := p.makeTimeStamp(hsfn, sfn, slot)
+	_, sfn, slot := p.decSlot(1, p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
 
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlPreSchedData)
 
-		if k2 == dci {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 				break
@@ -2223,16 +2169,14 @@ func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 func (p *L2TtiTraceParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
-	hsfn, sfn, slot := p.decSlot(p.unsafeAtoi(v1.Hsfn), p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
-	dci := p.makeTimeStamp(hsfn, sfn, slot)
+	_, sfn, slot := p.decSlot(1, p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
 
 	p2 := -1
 	for i := 0; i < m2.Len(); i += 1 {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
 
-		if k2 == dci {
-			//if v1.PhysCellId+v1.SubcellId == v2.PhysCellId+v2.SubcellId  && p.contains(v2.Cs2List, v1.Rnti) {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId <= v1.eventId {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
 				break

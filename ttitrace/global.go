@@ -20,18 +20,18 @@ import (
 )
 
 type TtiEventHeader struct {
-	Hsfn string
-	Sfn string
-	Slot string
-	Rnti string
+	eventId    int
+	Sfn        string
+	Slot       string
+	Rnti       string
 	PhysCellId string
 }
 
 type TtiEventHeaderPos struct {
-	PosHsfn int
-	PosSfn  int
-	PosSlot int
-	PosRnti int
+	PosEventId    int
+	PosSfn        int
+	PosSlot       int
+	PosRnti       int
 	PosPhysCellId int
 }
 
@@ -39,10 +39,10 @@ func FindTtiEventHeaderPos(tokens []string) TtiEventHeaderPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiEventHeaderPos{
-		PosHsfn: -1,
-		PosSfn: -1,
-		PosSlot: -1,
-		PosRnti: -1,
+		PosEventId:    -1,
+		PosSfn:        -1,
+		PosSlot:       -1,
+		PosRnti:       -1,
 		PosPhysCellId: -1,
 	}
 
