@@ -244,7 +244,7 @@ func (p *BipTraceParser) Exec() {
 				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v;%v, val=%v", key, msg, dataMap[msg][key]))
 			}
 		}
-	*/
+	 */
 
 	// key = scs_bw, val = PRB number
 	nbrPrbMap := map[string]int{
@@ -276,7 +276,7 @@ func (p *BipTraceParser) Exec() {
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUCCH_RESP_PS]] {
-		subcell := strings.Split(key, "_")[3]
+		subcell := strings.Split(key, "_")[4] // timestamp has format of 2006-01-02_15:04:05
 		if _, e := pucchRssiMap[subcell]; !e {
 			pucchRssiMap[subcell] = make(map[int][]float64)
 			for i := 0; i < nbrPrb; i++ {
@@ -331,7 +331,7 @@ func (p *BipTraceParser) Exec() {
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUSCH_RESP_PS]] {
-		subcell := strings.Split(key, "_")[3]
+		subcell := strings.Split(key, "_")[4] // timestamp has format of 2006-01-02_15:04:05
 		if _, e := puschRssiMap[subcell]; !e {
 			puschRssiMap[subcell] = make(map[int][]float64)
 			for i := 0; i < nbrPrb; i++ {
