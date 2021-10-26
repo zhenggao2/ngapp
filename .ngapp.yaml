@@ -30,10 +30,11 @@ cmpdcch:
   - coreset1_120_1
   css:
   - type0a_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type1_110_n0_n0_n4_n2_n0_sl1_coreset0
+  - type1_110_n0_n0_n2_n1_n0_sl1_coreset0
   - type2_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_110_n0_n0_n4_n2_n0_sl1_coreset0
+  - type3_110_n1_n2_n2_n1_n0_sl1_coreset0
   debug: true
+  scs: 15k
   uss: uss_110_n2_n2_n2_n2_n0_sl1_coreset1
 kpi:
   btsid: all
@@ -68,7 +69,7 @@ logs:
   snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
   tlog: bip
-  trace: /home/dabs/Downloads/06-bip_log/SHMCC_bip/
+  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.218.200.225_20211026_100850_BIP/
   wshark: /usr/bin
 logs-ddr4:
   chbw: 30m

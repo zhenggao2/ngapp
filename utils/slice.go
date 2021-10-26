@@ -152,3 +152,13 @@ func RoundInt(x float64) int {
     return int(math.Floor(x + 0.5))
 }
 
+// SumInt returns sum of a int slice
+func SumInt(s []int) int {
+    sum := 0
+    for _, v := range s {
+        sum += v
+    }
+
+    return sum
+}
+

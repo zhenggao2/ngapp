@@ -37,9 +37,15 @@ var (
 	ignore string
 	paras string
 	bwpid int
-	coreset []string //coreset0_48_1,coreset1_120_1
-	css  []string // type0a_100_n0_n0_n2_n0_n0_sl1_coreset0,type1_110_n0_n0_n4_n2_n0_sl1_coreset0,type2_100_n0_n0_n2_n0_n0_sl1_corest0,type3_110_n0_n0_n4_n2_n0_sl1_coreset0
-	uss string // uss_110_n2_n2_n2_n2_n0_sl1_coreset1
+	// list of CORESET settings: coresetId_size_duration.
+	// For example: coreset0_48_1, coreset1_120_1
+	coreset []string
+	// list of Common search space settings: searchSpaceType_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId
+	// For example: type0a_100_n0_n0_n2_n0_n0_sl1_coreset0, type1_110_n0_n0_n4_n2_n0_sl1_coreset0, type2_100_n0_n0_n2_n0_n0_sl1_corest0, type3_110_n0_n0_n4_n2_n0_sl1_coreset0
+	css  []string
+	// list of UE-specific search space settings: searchSpaceType_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId
+	// For example: uss_110_n0_n0_n4_n0_n0_sl1_coreset1
+	uss string
 )
 
 // cmCmd represents the cm command
@@ -177,6 +183,10 @@ var cmPdcchCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
 		viper.WriteConfig()
+
+		validator := new(nokcm.CmPdcch)
+		validator.Init(Logger, scs, bwpid, coreset, css, uss, debug)
+		validator.Exec()
 	},
 }
 
@@ -231,12 +241,13 @@ func init() {
 	viper.BindPFlag("cmfind.paras", cmFindCmd.Flags().Lookup("paras"))
 	viper.BindPFlag("cmfind.debug", cmFindCmd.Flags().Lookup("debug"))
 
+	cmPdcchCmd.Flags().StringVar(&scs, "scs", "15k", "NRCELLGRP-scs[15k,30k,60k,120k]")
 	cmPdcchCmd.Flags().IntVar(&bwpid, "bwpid", 35, "bwpId of BWP_PROFILE")
 	cmPdcchCmd.Flags().StringSliceVar(&coreset, "coreset", []string{"coreset0_48_1", "coreset1_120_1"}, "CORESET settings as defined in MIB/PDCCH_CONFIG_DEDICATED")
-	//cmPdcchCmd.Flags().StringSliceVar(&css, "css", []string{"type0a_100_n0_n0_n2_n0_n0_sl1_coreset0", "type1_110_n0_n0_n4_n2_n0_sl1_coreset0", "type2_100_n0_n0_n2_n0_n0_sl1_coreset0", "type3_110_n0_n0_n4_n2_n0_sl1_coreset0"}, "CSS settings as defined in PDCCH_CONFIG_COMMON and PDCCH_CONFIG_DEDICATED")
 	cmPdcchCmd.Flags().StringSliceVar(&css, "css", []string{"type0a_100_n0_n0_n2_n0_n0_sl1_coreset0"}, "CSS settings as defined in PDCCH_CONFIG_COMMON and PDCCH_CONFIG_DEDICATED")
-	cmPdcchCmd.Flags().StringVar(&uss, "uss", "uss_110_n2_n2_n2_n2_n0_sl1_coreset1", "USS settings as defined in PDCCH_CONFIG_DEDICATED")
+	cmPdcchCmd.Flags().StringVar(&uss, "uss", "uss_110_n0_n0_n4_n0_n0_sl1_coreset1", "USS settings as defined in PDCCH_CONFIG_DEDICATED")
 	cmPdcchCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
+	viper.BindPFlag("cmpdcch.scs", cmPdcchCmd.Flags().Lookup("scs"))
 	viper.BindPFlag("cmpdcch.bwpid", cmPdcchCmd.Flags().Lookup("bwpid"))
 	viper.BindPFlag("cmpdcch.coreset", cmPdcchCmd.Flags().Lookup("coreset"))
 	viper.BindPFlag("cmpdcch.css", cmPdcchCmd.Flags().Lookup("css"))
@@ -266,6 +277,7 @@ func loadCmFindFlags() {
 }
 
 func loadCmPdcchFlags() {
+	scs = viper.GetString("cmpdcch.scs")
 	bwpid = viper.GetInt("cmpdcch.bwpid")
 	coreset = viper.GetStringSlice("cmpdcch.coreset")
 	css = viper.GetStringSlice("cmpdcch.css")
