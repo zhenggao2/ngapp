@@ -1,5 +1,5 @@
 cm:
-  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf/
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf_20211009/
   debug: true
   maxgo: 48
   tcm: scfc
@@ -19,71 +19,31 @@ cmdiff:
   ignore: sbts:MRBTSDESC,nrbts:NRREL
   ins: Configuration_scf_MRBTS-1619301_EShanXianXinYiDongDaLou-5NHX_20210902-1716.dat,Configuration_scf_MRBTS-1619304_YuanJiangXianJiangDong-5NHX_20210902-1742.dat
   moc: nrbts
-cmdiff-twm:
-  cmpath: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0525,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0609,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0622,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0629,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0630,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0709,/home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/parsed_scfc_0721
-  debug: true
-  ignore: sbts:MRBTSDESC,nrbts:NRREL
-  ins: SCF_1320103.dat,SCF_1649002.dat,SCF_1269006.dat
-  moc: nrbts,mnl,eqmr
-cmdiff-win:
-  cmpath: D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0525,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0609,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0622,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0629,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0630,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0709,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0721
-  debug: true
-  ignore: sbts:MRBTSDESC,nrbts:NRREL
-  ins: SCF_1721004.dat
-  moc: nrbts,mnl,eqmr
 cmfind:
-  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf/parsed_scfc
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf_20211009/parsed_scfc/
   debug: true
   paras: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/nr_para_list.txt
-cmfind-win:
-  cmpath: D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0525,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0609,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0622,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0629,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0630,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0709,D:\work\email\202105\twm_support\02-5g_scf\parsed_scfc_0721
+cmpdcch:
+  bwpid: 35
+  coreset:
+  - coreset0_48_1
+  - coreset1_120_1
+  css:
+  - type0a_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type1_110_n0_n0_n4_n2_n0_sl1_coreset0
+  - type2_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type3_110_n0_n0_n4_n2_n0_sl1_coreset0
   debug: true
-  paras: D:\work\email\202105\twm_support\02-5g_scf\nr_para_list.txt
+  uss: uss_110_n2_n2_n2_n2_n0_sl1_coreset1
 kpi:
-  btsid: 552400
+  btsid: all
   debug: true
-  etime: "202108252359"
+  etime: "202108312359"
   kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
   maxgo: 12
   op: cmcc
   pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/db/
-  stime: "202108250000"
-kpi-shandong:
-  btsid: 2598781
-  debug: true
-  etime: "2021081323"
-  kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
-  maxgo: 12
-  op: cmcc
-  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/04-kpis/db/
-  stime: "2021081200"
-kpi-twm:
-  btsid: 1320103
-  debug: true
-  etime: "20210801"
-  kpipath: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/5g_kpi/
-  maxgo: 12
-  op: twm
-  pmdb: /home/dabs/Documents/work/email/202105/twm_support/03-xinos/db/
-  stime: "20210801"
-kpi-win:
-  btsid: 1649002
-  debug: true
-  etime: "20210720"
-  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
-  maxgo: 12
-  op: twm
-  pmdb: D:\work\email\202105\twm_support\03-xinos\db
-  stime: "20210601"
-kpi_after_lockdown:
-  btsid: 1220151
-  debug: true
-  etime: "20210521"
-  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
-  maxgo: 12
-  op: twm
-  pmdb: D:\work\email\202105\twm_support\03-xinos\db
-  stime: "20210517"
+  stime: "202108010000"
 kpi_all:
   btsid: all
   debug: true
@@ -93,53 +53,27 @@ kpi_all:
   op: twm
   pmdb: D:\work\email\202105\twm_support\03-xinos\db
   stime: "20210705"
-kpi_before_lockdown:
-  btsid: 1220151
-  debug: true
-  etime: "20210511"
-  kpipath: D:\work\email\202105\twm_support\03-xinos\5g_kpi
-  maxgo: 12
-  op: twm
-  pmdb: D:\work\email\202105\twm_support\03-xinos\db
-  stime: "20210507"
 logs:
-  chbw: 30m
-  debug: true
-  filter: dl
-  gain: 110
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
-  maxgo: 48
-  pattern: .bin
-  py2: /usr/bin
-  py3: /usr/bin
-  rat: nr
-  scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000989_000000/snapshot_tool_989/
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
-  tlog: ddr4
-  trace: /home/dabs/Downloads/05-ddr4_iq_sample/YNMCC_ddr4/dl-subcell-0
-  wshark: /usr/bin
-logs-bip:
   chbw: 30m
   debug: true
   filter: both
   gain: 110
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/generated_luashark/
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
   maxgo: 7
   pattern: .pcap
   py2: /usr/bin
   py3: /usr/bin
   rat: nr
   scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/TLDA/
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
   tlog: bip
   trace: /home/dabs/Downloads/06-bip_log/SHMCC_bip/
   wshark: /usr/bin
-logs-ddr4-734:
+logs-ddr4:
   chbw: 30m
   debug: true
-  filter: both
+  filter: ul
   gain: 110
   luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
   maxgo: 48
@@ -148,10 +82,10 @@ logs-ddr4-734:
   py3: /usr/bin
   rat: nr
   scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000734_000000/snapshot_tool_734/
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
   tlog: ddr4
-  trace: /home/dabs/Downloads/05-ddr4_iq_sample/SDMCC_ddr4/30m_with_bip/
+  trace: /home/dabs/Downloads/05-ddr4_log/YNMCC_ddr4/gNB_10.164.189.37_20211022_141539_DDR4/
   wshark: /usr/bin
 logs-l2trace:
   chbw: 30m
@@ -170,45 +104,23 @@ logs-l2trace:
   tlog: l2trace
   trace: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/hz_test/field/l2trace/
   wshark: /usr/bin
-logs-linux-l2tti:
+logs-l2tti:
+  chbw: 30m
   debug: true
   filter: both
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
-  maxgo: 7
+  gain: 105
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
+  maxgo: 12
   pattern: .csv
   py2: /usr/bin
+  py3: C:/Python38
   rat: nr
-  scs: 30k
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
+  scs: 15k
+  snaptool: C:/snapshot_tool
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
   tlog: l2tti
-  trace: /home/dabs/Downloads/test_20210805/2.1-DL-1/tti_packed/fsp-2-6b-L2RT30_ttiTrace/
+  trace: /home/dabs/Downloads/08-tti_log/gNB_10.164.188.13_20211025_182140_TTI_pdcch/
   wshark: /usr/bin
-logs-win:
-  debug: true
-  filter: both
-  luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\generated_luashark
-  maxgo: 7
-  pattern: .pcap
-  py2: C:/Python27
-  rat: nr
-  scs: 30k
-  tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
-  tlog: bip
-  trace: D:\work\email\202105\twm_support\5gc2200_log\Fist time\gNB_10.221.133.213_20210527_113152_BIP
-  wshark: C:/Program Files/Wireshark
-logs_2200_off:
-  debug: true
-  filter: both
-  luashark: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\generated_luashark
-  maxgo: 7
-  pattern: .pcap
-  py2: C:/Python27
-  rat: nr
-  scs: 30k
-  tlda: D:\work\email\202103\5g21a_hz_ojt\tools\5G20B_10.1800.1180\TLDA
-  tlog: bip
-  trace: D:\work\email\202105\twm_support\5gc2200_log\Third time\gNB_10.221.133.213_20210527_143642_BIP
-  wshark: C:/Program Files/Wireshark
 nrrg:
   advanced:
     bestssb: 0

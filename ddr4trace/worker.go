@@ -424,7 +424,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 			pl := plot.New()
 			pl.Add(plotter.NewGrid())
-			pl.Title.Text = fmt.Sprintf("RSSI(%v-%v)", ant, symb)
+			pl.Title.Text = fmt.Sprintf("DDR4 RSSI(%v-%v)", ant, symb)
 			pl.Y.Label.Text = "RSSI(dBm)"
 			pl.Y.Min = -140
 			pl.Y.Max = -60
@@ -531,7 +531,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 			pl := plot.New()
 			pl.Add(plotter.NewGrid())
-			pl.Title.Text = fmt.Sprintf("RSSI(symbol%v)", j)
+			pl.Title.Text = fmt.Sprintf("DDR4 RSSI(symbol%v)", j)
 			pl.Y.Label.Text = "RSSI(dBm)"
 			pl.Y.Min = -140
 			pl.Y.Max = -60
@@ -615,7 +615,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 	pl := plot.New()
 	pl.Add(plotter.NewGrid())
-	pl.Title.Text = "RSSI"
+	pl.Title.Text = "DDR4 RSSI"
 	pl.X.Label.Text = "PRB"
 	pl.X.Min = 0
 	pl.X.Max = float64(nbrPrb - 1)

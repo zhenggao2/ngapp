@@ -265,15 +265,24 @@ func (p *BipTraceParser) Exec() {
 	}
 
 	nbrPrb := nbrPrbMap[p.scs+"_"+p.chbw]
-	pucchRssiMap := make(map[int][]float64)
-	puschRssiMap := make(map[int][]float64)
+	pucchRssiMap := make(map[string]map[int][]float64)
+	puschRssiMap := make(map[string]map[int][]float64)
+	/*
 	for i := 0; i < nbrPrb; i++ {
 		pucchRssiMap[i] = make([]float64, 0)
 		puschRssiMap[i] = make([]float64, 0)
 	}
+	 */
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUCCH_RESP_PS]] {
+		subcell := strings.Split(key, "_")[3]
+		if _, e := pucchRssiMap[subcell]; !e {
+			pucchRssiMap[subcell] = make(map[int][]float64)
+			for i := 0; i < nbrPrb; i++ {
+				pucchRssiMap[subcell][i] = make([]float64, 0)
+			}
+		}
 		if strings.HasSuffix(key, "rnti") {
 			rntiPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][key]
 			startPrbPucchReq := dataMap[bipMsgs[BIP_PUCCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
@@ -299,26 +308,36 @@ func (p *BipTraceParser) Exec() {
 				secondHopPrb, _ := strconv.ParseInt(secondHopPrbPucchReq[j], 10, 32)
 
 				for k := 0; k < int(numOfPrb); k++ {
-					pucchRssiMap[int(startPrb)+k] = append(pucchRssiMap[int(startPrb)+k], noisePower)
+					pucchRssiMap[subcell][int(startPrb)+k] = append(pucchRssiMap[subcell][int(startPrb)+k], noisePower)
 				}
 
 				if freqHop {
 					for k := 0; k < int(numOfPrb); k++ {
-						pucchRssiMap[int(secondHopPrb)+k] = append(pucchRssiMap[int(secondHopPrb)+k], noisePower)
+						pucchRssiMap[subcell][int(secondHopPrb)+k] = append(pucchRssiMap[subcell][int(secondHopPrb)+k], noisePower)
 					}
 				}
 			}
 		}
 	}
 
-	pucchInfo := make([]int, nbrPrb)
-	for i := 0; i < nbrPrb; i++ {
-		pucchInfo[i] = len(pucchRssiMap[i])
+	pucchInfo := make(map[string][]int)
+	for subcell := range pucchRssiMap {
+		pucchInfo[subcell] = make([]int, nbrPrb)
+		for i := 0; i < nbrPrb; i++ {
+			pucchInfo[subcell][i] = len(pucchRssiMap[subcell][i])
+		}
 	}
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("pucchInfo = %v", pucchInfo))
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUSCH_RESP_PS]] {
+		subcell := strings.Split(key, "_")[3]
+		if _, e := puschRssiMap[subcell]; !e {
+			puschRssiMap[subcell] = make(map[int][]float64)
+			for i := 0; i < nbrPrb; i++ {
+				puschRssiMap[subcell][i] = make([]float64, 0)
+			}
+		}
 		if strings.HasSuffix(key, "rnti") {
 			rntiPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][key]
 			startPrbPuschReq := dataMap[bipMsgs[BIP_PUSCH_REQ]][strings.Replace(key, "rnti", "startPrb", -1)]
@@ -340,119 +359,137 @@ func (p *BipTraceParser) Exec() {
 				numOfPrb, _ := strconv.ParseInt(numOfPrbPuschReq[j], 10, 32)
 
 				for k := 0; k < int(numOfPrb); k++ {
-					puschRssiMap[int(startPrb)+k] = append(puschRssiMap[int(startPrb)+k], noisePower)
+					puschRssiMap[subcell][int(startPrb)+k] = append(puschRssiMap[subcell][int(startPrb)+k], noisePower)
 				}
 			}
 		}
 	}
 
-	puschInfo := make([]int, nbrPrb)
-	for i := 0; i < nbrPrb; i++ {
-		puschInfo[i] = len(puschRssiMap[i])
+	puschInfo := make(map[string][]int)
+	for subcell := range puschRssiMap {
+		puschInfo[subcell] = make([]int, nbrPrb)
+		for i := 0; i < nbrPrb; i++ {
+			puschInfo[subcell][i] = len(puschRssiMap[subcell][i])
+		}
 	}
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("puschInfo = %v", puschInfo))
 
-	rssi := make([]float64, nbrPrb)
+	rssi := make(map[string][]float64)
+	for subcell := range puschRssiMap {
+		rssi[subcell] = make([]float64, nbrPrb)
+	}
 	for i := 0; i < nbrPrb; i++ {
-		for j := range pucchRssiMap[i] {
-			rssi[i] += math.Pow(10, pucchRssiMap[i][j]/10)
-		}
+		for subcell := range puschRssiMap {
+			for j := range pucchRssiMap[subcell][i] {
+				rssi[subcell][i] += math.Pow(10, pucchRssiMap[subcell][i][j]/10)
+			}
 
-		for j := range puschRssiMap[i] {
-			rssi[i] += math.Pow(10, puschRssiMap[i][j]/10)
-		}
+			for j := range puschRssiMap[subcell][i] {
+				rssi[subcell][i] += math.Pow(10, puschRssiMap[subcell][i][j]/10)
+			}
 
-		if len(pucchRssiMap[i])+len(puschRssiMap[i]) > 0 {
-			rssi[i] = 10 * math.Log10(rssi[i]/float64(len(pucchRssiMap[i])+len(puschRssiMap[i])))
-		} else {
-			scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
-			rssi[i] = -174 + 10*math.Log10(scs*12*1000)
+			if len(pucchRssiMap[subcell][i])+len(puschRssiMap[subcell][i]) > 0 {
+				rssi[subcell][i] = 10 * math.Log10(rssi[subcell][i]/float64(len(pucchRssiMap[subcell][i])+len(puschRssiMap[subcell][i])))
+			} else {
+				scs, _ := strconv.ParseFloat(strings.TrimSuffix(p.scs, "k"), 64)
+				rssi[subcell][i] = -174 + 10*math.Log10(scs*12*1000)
+			}
 		}
 	}
 
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("RSSI = %v", rssi))
 
 	// save per PRB RSSI as .png using gonum/plot
-	pts := make(plotter.XYs, nbrPrb)
-	pts2 := make(plotter.XYs, nbrPrb)
-	pts3 := make(plotter.XYs, nbrPrb)
-	for i := range pts {
-		pts[i].X = float64(i)
-		pts[i].Y = float64(pucchInfo[i])
-
-		pts2[i].X = float64(i)
-		pts2[i].Y = float64(puschInfo[i])
-
-		pts3[i].X = float64(i)
-		pts3[i].Y = rssi[i]
-	}
-
-	const rows, cols = 2, 1
-	plots := make([][]*plot.Plot, rows)
-	for j := 0; j < rows; j++ {
-		plots[j] = make([]*plot.Plot, cols)
-		for i := 0; i < cols; i++ {
-			pl := plot.New()
-			pl.Add(plotter.NewGrid())
-
-			pl.Legend.Top = true
-
-			if i == 0 && j == 0 {
-				pl.Title.Text = fmt.Sprintf("BIP PUCCH/PUSCH Usage")
-				pl.X.Label.Text = "PRB"
-				pl.Y.Label.Text = "Count(#)"
-				pl.X.Min = 0
-				pl.X.Max = float64(nbrPrb - 1)
-				plotutil.AddLines(pl, "PUCCH_count", pts, "PUSCH_count", pts2)
+	for subcell := range rssi {
+		pts := make(plotter.XYs, nbrPrb)
+		pts2 := make(plotter.XYs, nbrPrb)
+		pts3 := make(plotter.XYs, nbrPrb)
+		for i := range pts {
+			pts[i].X = float64(i)
+			if _, e := pucchInfo[subcell]; e {
+				pts[i].Y = float64(pucchInfo[subcell][i])
+			} else {
+				pts[i].Y = 0
 			}
 
-			if i == 0 && j == 1 {
-				pl.Title.Text = fmt.Sprintf("BIP noisePower(PUCCH/PUSCH)")
-				pl.X.Label.Text = "PRB"
-				pl.Y.Label.Text = "noisePower(dBm)"
-				pl.X.Min = 0
-				pl.X.Max = float64(nbrPrb - 1)
-				pl.Y.Min = -140
-				pl.Y.Max = -60
-				plotutil.AddLines(pl, "noisePower_per_PRB", pts3)
+			pts2[i].X = float64(i)
+			if _, e := puschInfo[subcell]; e {
+				pts2[i].Y = float64(puschInfo[subcell][i])
+			} else {
+				pts2[i].Y = 0
 			}
 
-			plots[j][i] = pl
+			pts3[i].X = float64(i)
+			pts3[i].Y = rssi[subcell][i]
 		}
-	}
 
-	width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*VG_IMG_WIDTH))
-	height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*VG_IMG_HEIGHT))
-	img := vgimg.New(width, height)
-	dc := draw.New(img)
-	t := draw.Tiles{
-		Rows:      rows,
-		Cols:      cols,
-		PadX:      vg.Millimeter,
-		PadY:      vg.Millimeter,
-		PadTop:    vg.Points(2),
-		PadBottom: vg.Points(2),
-		PadLeft:   vg.Points(2),
-		PadRight:  vg.Points(2),
-	}
-	canvases := plot.Align(plots, t, dc)
-	for j := 0; j < rows; j++ {
-		for i := 0; i < cols; i++ {
-			if plots[j][i] != nil {
-				plots[j][i].Draw(canvases[j][i])
+		const rows, cols = 2, 1
+		plots := make([][]*plot.Plot, rows)
+		for j := 0; j < rows; j++ {
+			plots[j] = make([]*plot.Plot, cols)
+			for i := 0; i < cols; i++ {
+				pl := plot.New()
+				pl.Add(plotter.NewGrid())
+
+				pl.Legend.Top = true
+
+				if i == 0 && j == 0 {
+					pl.Title.Text = fmt.Sprintf("BIP PUCCH/PUSCH Usage(subcell%v)", subcell)
+					pl.X.Label.Text = "PRB"
+					pl.Y.Label.Text = "Count(#)"
+					pl.X.Min = 0
+					pl.X.Max = float64(nbrPrb - 1)
+					plotutil.AddLines(pl, "PUCCH_count", pts, "PUSCH_count", pts2)
+				}
+
+				if i == 0 && j == 1 {
+					pl.Title.Text = fmt.Sprintf("BIP PUCCH/PUSCH noisePower(subcell%v)", subcell)
+					pl.X.Label.Text = "PRB"
+					pl.Y.Label.Text = "noisePower(dBm)"
+					pl.X.Min = 0
+					pl.X.Max = float64(nbrPrb - 1)
+					pl.Y.Min = -140
+					pl.Y.Max = -60
+					plotutil.AddLines(pl, "noisePower_per_PRB", pts3)
+				}
+
+				plots[j][i] = pl
 			}
 		}
-	}
 
-	w, err := os.Create(filepath.Join(outPath, fmt.Sprintf("bip_noisePower.png")))
-	if err != nil {
-		p.writeLog(zapcore.ErrorLevel, err.Error())
-	}
-	defer w.Close()
+		width, _ := vg.ParseLength(fmt.Sprintf("%vin", cols*VG_IMG_WIDTH))
+		height, _ := vg.ParseLength(fmt.Sprintf("%vin", rows*VG_IMG_HEIGHT))
+		img := vgimg.New(width, height)
+		dc := draw.New(img)
+		t := draw.Tiles{
+			Rows:      rows,
+			Cols:      cols,
+			PadX:      vg.Millimeter,
+			PadY:      vg.Millimeter,
+			PadTop:    vg.Points(2),
+			PadBottom: vg.Points(2),
+			PadLeft:   vg.Points(2),
+			PadRight:  vg.Points(2),
+		}
+		canvases := plot.Align(plots, t, dc)
+		for j := 0; j < rows; j++ {
+			for i := 0; i < cols; i++ {
+				if plots[j][i] != nil {
+					plots[j][i].Draw(canvases[j][i])
+				}
+			}
+		}
 
-	png := vgimg.PngCanvas{Canvas: img}
-	if _, err := png.WriteTo(w); err != nil {
-		p.writeLog(zapcore.ErrorLevel, err.Error())
+		w, err := os.Create(filepath.Join(outPath, fmt.Sprintf("bip_noisePower_subcell%v.png", subcell)))
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, err.Error())
+		}
+		defer w.Close()
+
+		png := vgimg.PngCanvas{Canvas: img}
+		if _, err := png.WriteTo(w); err != nil {
+			p.writeLog(zapcore.ErrorLevel, err.Error())
+		}
 	}
 }
 
