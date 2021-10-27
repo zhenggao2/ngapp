@@ -27,7 +27,7 @@ cmpdcch:
   bwpid: 35
   coreset:
   - coreset0_48_1
-  - coreset1_120_1
+  - coreset1_156_1
   css:
   - type0a_100_n0_n0_n2_n0_n0_sl1_coreset0
   - type1_110_n0_n0_n2_n1_n0_sl1_coreset0
@@ -35,7 +35,7 @@ cmpdcch:
   - type3_110_n1_n2_n2_n1_n0_sl1_coreset0
   debug: true
   scs: 15k
-  uss: uss_110_n2_n2_n2_n2_n0_sl1_coreset1
+  uss: uss_110_n1_n2_n4_n1_n0_sl1_coreset1
 kpi:
   btsid: all
   debug: true

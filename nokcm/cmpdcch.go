@@ -130,59 +130,61 @@ func (p *CmPdcch) Exec() {
 	// Validate against Table 10.1-3: Maximum number of non-overlapped CCEs per slot for a DL BWP
 	mapScs2MaxNonOverlapCcesPerSlot := map[string]int { "15k" : 56, "30k" : 56, "60k" : 48, "120k" : 32}
 	mapScs2SlotsPerRf:= map[string]int { "15k" : 10, "30k" : 20, "60k" : 40, "120k" : 80}
-	// key = coresetId_monitoringSymbol, val = per CCE flag (1=used,0=not used)
-	mapNonOverlapCces := make(map[string]map[int][]int)
-	for coresetId, coreset := range mapCoreset {
-		N_CCE := coreset.size / 6
-		mapNonOverlapCces[coresetId] = make(map[int][]int)
-		for i := 0; i < 3; i++ {
-			mapNonOverlapCces[coresetId][i] = make([]int, N_CCE)
-		}
+	// key = slot_coresetId_monitoringSymbol, val = per CCE flag (1=used,0=not used)
+	mapNonOverlapCces := make(map[int]map[string]map[int][]int)
+	for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++{
+		mapNonOverlapCces[ns] = make(map[string]map[int][]int)
 
-		for sstype, ss := range mapSearchSpace {
-			if ss.coreset != coresetId {
-				continue
+		for coresetId, coreset := range mapCoreset {
+			N_CCE := coreset.size / 6
+			mapNonOverlapCces[ns][coresetId] = make(map[int][]int)
+			for i := 0; i < 3; i++ {
+				mapNonOverlapCces[ns][coresetId][i] = make([]int, N_CCE)
 			}
 
-			for _, al := range []int{1,2,4,8,16} {
-				L := al
-				M := ss.mapCandidates[al]
-				if M > 0 {
-					if sstype != "uss" {
-						Y := 0
-						for m := 0; m < M; m++ {
-							startCce := p.CalcStartCceIndex(float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), -1)
-							for _, isymb := range ss.monitoringSymbs {
-								for ial := 0; ial < L; ial++ {
-									mapNonOverlapCces[coresetId][isymb][startCce+ial] = 1
+			for sstype, ss := range mapSearchSpace {
+				if ss.coreset != coresetId {
+					continue
+				}
+
+				for _, al := range []int{1,2,4,8,16} {
+					L := al
+					M := ss.mapCandidates[al]
+					if M > 0 {
+						if sstype != "uss" {
+							Y := 0
+							for m := 0; m < M; m++ {
+								startCce := p.CalcStartCceIndex(sstype, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
+								for _, isymb := range ss.monitoringSymbs {
+									for ial := 0; ial < L; ial++ {
+										mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
+									}
 								}
 							}
-						}
-					} else {
-						p_ := p.unsafeAtoi(coresetId[len("CORESETT"):])
-						var Ap int
-						switch p_ % 3 {
-						case 0:
-							Ap = 39827
-						case 1:
-							Ap = 39829
-						case 2:
-							Ap = 39839
-						}
+						} else {
+							p_ := p.unsafeAtoi(coresetId[len("CORESETT"):])
+							var Ap int
+							switch p_ % 3 {
+							case 0:
+								Ap = 39827
+							case 1:
+								Ap = 39829
+							case 2:
+								Ap = 39839
+							}
 
-						Y := make([]int, mapScs2SlotsPerRf[p.scs])
-						D := 65537
-						for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++ {
+							Y := make([]int, mapScs2SlotsPerRf[p.scs])
+							D := 65537
 							if ns == 0 {
 								Y[ns] = (Ap * 100) % D // assume RNTI=100 by default
 							} else {
 								Y[ns] = (Ap * Y[ns-1]) % D
 							}
 							for m := 0; m < M; m++ {
-								startCce := p.CalcStartCceIndex(float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
+								startCce := p.CalcStartCceIndex(sstype, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
 								for _, isymb := range ss.monitoringSymbs {
 									for ial := 0; ial < L; ial++ {
-										mapNonOverlapCces[coresetId][isymb][startCce+ial] = 1
+										mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
 									}
 								}
 							}
@@ -193,33 +195,31 @@ func (p *CmPdcch) Exec() {
 		}
 	}
 
-	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapNonOverlapCces = %v", mapNonOverlapCces))
-
-	mapNonOverlapCcesPerCoreset := make(map[string][]string)
-	totNonOverlapCcesPerSlot := 0
-	for coreset := range mapNonOverlapCces {
-		mapNonOverlapCcesPerCoreset[coreset] = make([]string, 0)
-		for symb := range mapNonOverlapCces[coreset] {
-			totNonOverlapCcesPerSlot += utils.SumInt(mapNonOverlapCces[coreset][symb])
-			mapNonOverlapCcesPerCoreset[coreset] = append(mapNonOverlapCcesPerCoreset[coreset], fmt.Sprintf("symbol%v_%vCCEs", symb, utils.SumInt(mapNonOverlapCces[coreset][symb])))
-		}
-	}
-
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs per slot is %v when scs = %v", mapScs2MaxNonOverlapCcesPerSlot[p.scs], p.scs))
-	if totNonOverlapCcesPerSlot > mapScs2MaxNonOverlapCcesPerSlot[p.scs] {
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation FAILED: mapNonOverlapCcesPerCoreset = %v and totNonOverlapCcesPerSlot = %v", mapNonOverlapCcesPerCoreset, totNonOverlapCcesPerSlot))
-	} else {
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation PASSED: mapNonOverlapCcesPerCoreset = %v and totNonOverlapCcesPerSlot = %v", mapNonOverlapCcesPerCoreset, totNonOverlapCcesPerSlot))
+	for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++ {
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapNonOverlapCces[ns=%v] = %v", ns, mapNonOverlapCces[ns]))
+
+		numNonOverlapPerSlot := 0
+		for coreset := range mapNonOverlapCces[ns] {
+			for symb := range mapNonOverlapCces[ns][coreset] {
+				numNonOverlapCces := utils.SumInt(mapNonOverlapCces[ns][coreset][symb])
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coreset=%v,symbol=%v: numNonOverlapCces=%v", ns, coreset, symb, numNonOverlapCces))
+
+				numNonOverlapPerSlot += numNonOverlapCces
+			}
+		}
+
+		if numNonOverlapPerSlot > mapScs2MaxNonOverlapCcesPerSlot[p.scs] {
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation FAILED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
+		} else {
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation PASSED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
+		}
 	}
 }
 
-func (p *CmPdcch) CalcStartCceIndex(N_CCE, L, M, m, Y float64, ns int) int {
+func (p *CmPdcch) CalcStartCceIndex(sstype string, N_CCE, L, M, m, Y float64, ns int) int {
 	startCce := int(L * math.Mod(Y + math.Floor(m * N_CCE / (L * M)), math.Floor(N_CCE / L)))
-	if ns < 0 {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=all, N_CCE=%v,L=%v,M=%v,m=%v,Y=%v -> startCce=%v", N_CCE, L, M, m, Y, startCce))
-	} else {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v, N_CCE=%v,L=%v,M=%v,m=%v,Y=%v -> startCce=%v", ns, N_CCE, L, M, m, Y, startCce))
-	}
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v, ns=%v, N_CCE=%v, L=%v, M=%v, m=%v, Y=%v -> startCce=%v", sstype, ns, N_CCE, L, M, m, Y, startCce))
 
 	return startCce
 }
