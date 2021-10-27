@@ -410,13 +410,13 @@ func (p *L2TtiTraceParser) Exec() {
 							// count number of FD-Scheduled UEs
 							kfu := strings.Join([]string{v.Sfn, v.Slot, v.PhysCellId}, "_")
 							if _, e := mapDlFdUes[kfu]; !e {
-								mapDlFdUes[kfu] = []string{v.Rnti}
+								mapDlFdUes[kfu] = []string{fmt.Sprintf("%v_%v", eventId, v.Rnti)}
 							} else {
-								mapDlFdUes[kfu] = append(mapDlFdUes[kfu], v.Rnti)
+								mapDlFdUes[kfu] = append(mapDlFdUes[kfu], fmt.Sprintf("%v_%v", eventId, v.Rnti))
 							}
 
 							if len(mapDlFdUes[kfu]) > 4 {
-								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapDlFdUes=%v", key, v.TtiEventHeader.eventId, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapDlFdUes[kfu])))
+								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapDlFdUes=%v", key, v.eventId, v.Sfn, v.Slot, v.PhysCellId, len(mapDlFdUes[kfu])))
 							}
 
 							// update SLIV field
@@ -878,13 +878,13 @@ func (p *L2TtiTraceParser) Exec() {
 							// count number of FD-Scheduled UEs
 							kfu := strings.Join([]string{v.Sfn, v.Slot, v.PhysCellId}, "_")
 							if _, e := mapUlFdUes[kfu]; !e {
-								mapUlFdUes[kfu] = []string{v.Rnti}
+								mapUlFdUes[kfu] = []string{fmt.Sprintf("%v_%v", eventId, v.Rnti)}
 							} else {
-								mapUlFdUes[kfu] = append(mapUlFdUes[kfu], v.Rnti)
+								mapUlFdUes[kfu] = append(mapUlFdUes[kfu], fmt.Sprintf("%v_%v", eventId, v.Rnti))
 							}
 
 							if len(mapUlFdUes[kfu]) > 4 {
-								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapUlFdUes=%v", key, v.TtiEventHeader.eventId, v.TtiEventHeader.Sfn, v.TtiEventHeader.Slot, v.TtiEventHeader.PhysCellId, len(mapUlFdUes[kfu])))
+								p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v, %v_%v_%v_%v: size of mapUlFdUes=%v", key, v.eventId, v.Sfn, v.Slot, v.PhysCellId, len(mapUlFdUes[kfu])))
 							}
 
 							// update SLIV field
@@ -1301,7 +1301,14 @@ func (p *L2TtiTraceParser) Exec() {
 
 					// aggregate mapDlFdUes
 					ku := fmt.Sprintf("%v_%v_%v", v1.Sfn, v1.Slot, dnPci)
-					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(mapDlFdUes[ku]), strings.Join(mapDlFdUes[ku], ";")))
+					dlFdUes := make([]string, 0)
+					for _, ue := range mapDlFdUes[ku] {
+						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
+						if math.Abs(float64(ueEventId - v1.eventId)) <= 16 {
+							dlFdUes = append(dlFdUes, ue)
+						}
+					}
+					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(dlFdUes), strings.Join(dlFdUes, ";")))
 
 					// aggregate dlBeamData
 					if _, e := mapEventRecord["dlBeamData"][dn]; e {
@@ -1549,7 +1556,14 @@ func (p *L2TtiTraceParser) Exec() {
 
 					// aggregate mapUlFdUes
 					ku := fmt.Sprintf("%v_%v_%v", v1.Sfn, v1.Slot, dnPci)
-					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(mapUlFdUes[ku]), strings.Join(mapUlFdUes[ku], ";")))
+					ulFdUes := make([]string, 0)
+					for _, ue := range mapUlFdUes[ku] {
+						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
+						if math.Abs(float64(ueEventId - v1.eventId)) <= 16 {
+							ulFdUes = append(ulFdUes, ue)
+						}
+					}
+					v1.AllFields = append(v1.AllFields, fmt.Sprintf("%v,[%v]", len(ulFdUes), strings.Join(ulFdUes, ";")))
 
 					// aggregate ulBsrRxData
 					if _, e := mapEventRecord["ulBsrRxData"][dn]; e {
