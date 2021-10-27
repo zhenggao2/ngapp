@@ -1814,11 +1814,13 @@ func (p *L2TtiTraceParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlPreSchedData)
 
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && v2.eventId <= v1.eventId {
+		//if v2.Sfn == v1.Sfn && v2.Slot == v1.Slot && v2.eventId <= v1.eventId {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
-				break
 			}
+		} else {
+			break
 		}
 	}
 
@@ -1834,11 +1836,13 @@ func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && v2.eventId <= v1.eventId {
+		//if v2.Sfn == v1.Sfn && v2.Slot == v1.Slot && v2.eventId <= v1.eventId {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
-				break
 			}
+		} else {
+			break
 		}
 	}
 
@@ -1959,7 +1963,7 @@ func (p *L2TtiTraceParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlBsrRxData)
 
-		if k2 <= k1 && v2.eventId <= v1.eventId {
+		if v2.eventId <= v1.eventId {
 			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 				p2 = i
 			}
@@ -1980,9 +1984,11 @@ func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
-		if k2 >= k1 && v2.eventId >= v1.eventId && v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
-			p2 = i
-			break
+		if v2.eventId >= v1.eventId {
+			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
+				p2 = i
+				break
+			}
 		}
 	}
 
