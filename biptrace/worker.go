@@ -35,6 +35,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +45,8 @@ import (
 const (
 	BIN_TSHARK        string = "tshark.exe"
 	BIN_TSHARK_LINUX  string = "tshark"
+	BIN_EDITCAP string = "editcap.exe"
+	BIN_EDITCAP_LINUX string = "editcap"
 	LUA_LUASHARK      string = "luashark.lua"
 	BIP_PUCCH_REQ     int    = 0
 	BIP_PUCCH_RESP_PS int    = 1
@@ -494,21 +497,25 @@ func (p *BipTraceParser) Exec() {
 }
 
 func (p *BipTraceParser) parse(fn string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s]", fn))
-	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace using editcap...[%s]", fn))
 
-	mapEventHeader := make(map[string][]string)
-	mapEventRecord := make(map[string]*utils.OrderedMap)
+	ecPath := filepath.Join(p.bipTracePath, strings.Replace(fn, ".", "_", -1))
+	/*
+	if err := os.RemoveAll(ecPath); err != nil {
+		panic(fmt.Sprintf("Fail to remove directory: %v", err))
+	}
+	 */
+	if err := os.MkdirAll(ecPath, 0775); err != nil {
+		panic(fmt.Sprintf("Fail to create directory: %v", err))
+	}
 
 	var stdOut bytes.Buffer
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		//cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP_LINUX), "-c", "1000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else if runtime.GOOS == "windows" {
-		//cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-P", "-V")
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", filepath.Join(p.bipTracePath, fn), "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP), "-c", "1000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -520,125 +527,192 @@ func (p *BipTraceParser) parse(fn string) {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 	}
 	if stdOut.Len() > 0 {
-		// TODO use bytes.Buffer.readString("\n") to postprocessing text files
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s]", fn))
-		//bipEvent := false
-		icomRec := false
-		var ts string
-		var event string
-		var fields string
+		p.writeLog(zapcore.DebugLevel, stdOut.String())
+	}
+	if stdErr.Len() > 0 {
+		p.writeLog(zapcore.DebugLevel, stdErr.String())
+	}
+
+	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
+	mapEventHeader := cmap.New()
+	mapEventRecord := cmap.New()
+
+	ecl, _ := filepath.Glob(filepath.Join(ecPath, "ec*.pcap"))
+	wg := &sync.WaitGroup{}
+	for _, ec := range ecl {
 		for {
-			line, err := stdOut.ReadString('\n')
-			if err != nil {
+			if runtime.NumGoroutine() >= p.maxgo {
+				time.Sleep(1 * time.Second)
+			} else {
 				break
 			}
+		}
 
-			// remove leading and tailing spaces
-			line = strings.TrimSpace(line)
-			if len(line) > 0 {
-				// skip [...] lines such as: [8 TB Payload fragments (65580 bytes): #33(8960), #34(8960), #35(8960), #36(8960), #37(8960), #39(8960), #40(8960), #41(2860)]
-				if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-					continue
-				}
+		wg.Add(1)
+		go func(ec string) {
+			defer wg.Done()
 
-				if strings.HasPrefix(line, "Frame") && strings.Contains(line, "on wire") && strings.Contains(line, "captured") {
-					//bipEvent = false
-					icomRec = false
-
-					// SKipping event DlData_EmptySendReq
-					if len(fields) > 0 && event != "DlData_EmptySendReq" {
-						mapEventRecord[event].Add(ts, fields)
-
-						// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
-						header := strings.Join(mapEventHeader[event], ",")
-						m, e := p.headerWritten.Get(event)
-						if !e {
-							p.headerWritten.Set(event, header)
-							// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
-						} else {
-							if len(header) == len(m.(string)) && header != m.(string) {
-								p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("event=%v, header mismatch while having same length", event))
-							}
-							if len(header) > len(m.(string)) && strings.HasPrefix(header, m.(string)) {
-								p.headerWritten.Set(event, header)
-								// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
-							}
-						}
-					}
-				}
-
-				//if bipEvent && strings.Split(line, ":")[0] == "Epoch Time" {
-				if strings.Split(line, ":")[0] == "Epoch Time" {
-					// Epoch Time: 1621323617.322338000 seconds
-					tokens := strings.Split(strings.Split(line, " ")[2], ".")
-					sec, _ := strconv.ParseInt(tokens[0], 10, 64)
-					nsec, _ := strconv.ParseInt(tokens[1], 10, 64)
-					ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
-				}
-
-				//if bipEvent && line == "ICOM 5G Protocol" {
-				if line == "ICOM 5G Protocol" {
-					icomRec = true
-
-					nextLine, err := stdOut.ReadString('\n')
+			var ecStdOut bytes.Buffer
+			var ecStdErr bytes.Buffer
+			var ecCmd *exec.Cmd
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s]", ec))
+			if runtime.GOOS == "linux" {
+				ecCmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", ec, "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
+			} else if runtime.GOOS == "windows" {
+				ecCmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK), "-r", ec, "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
+			} else {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+				return
+			}
+			ecCmd.Stdout = &ecStdOut
+			ecCmd.Stderr = &ecStdErr
+			p.writeLog(zapcore.DebugLevel, ecCmd.String())
+			if err := ecCmd.Run(); err != nil {
+				p.writeLog(zapcore.ErrorLevel, err.Error())
+			}
+			if ecStdOut.Len() > 0 {
+				// TODO use bytes.Buffer.readString("\n") to postprocessing text files
+				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s]", ec))
+				//bipEvent := false
+				icomRec := false
+				var ts string
+				var event string
+				var fields string
+				for {
+					line, err := ecStdOut.ReadString('\n')
 					if err != nil {
 						break
 					}
 
-					event = strings.Split(strings.TrimSpace(nextLine), " ")[0]
-					mapEventHeader[event] = make([]string, 0)
-					if _, exist := mapEventRecord[event]; !exist {
-						mapEventRecord[event] = utils.NewOrderedMap()
-					}
+					// remove leading and tailing spaces
+					line = strings.TrimSpace(line)
+					if len(line) > 0 {
+						// skip [...] lines such as: [8 TB Payload fragments (65580 bytes): #33(8960), #34(8960), #35(8960), #36(8960), #37(8960), #39(8960), #40(8960), #41(2860)]
+						if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+							continue
+						}
 
-					mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
-					fields = fmt.Sprintf("%s,%s", event, ts)
+						if strings.HasPrefix(line, "Frame") && strings.Contains(line, "on wire") && strings.Contains(line, "captured") {
+							//bipEvent = false
+							icomRec = false
+
+							// SKipping event DlData_EmptySendReq
+							if len(fields) > 0 && event != "DlData_EmptySendReq" {
+								//mapEventRecord[event].Add(ts, fields)
+								m, _ := mapEventRecord.Get(event)
+								m.(cmap.ConcurrentMap).Set(ts, fields)
+								mapEventRecord.Set(event, m)
+
+								// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
+								m2, _ := mapEventHeader.Get(event)
+								header := strings.Join(m2.([]string), ",")
+								m, e := p.headerWritten.Get(event)
+								if !e {
+									p.headerWritten.Set(event, header)
+									// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
+								} else {
+									if len(header) == len(m.(string)) && header != m.(string) {
+										p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("event=%v, header mismatch while having same length", event))
+									}
+									if len(header) > len(m.(string)) && strings.HasPrefix(header, m.(string)) {
+										p.headerWritten.Set(event, header)
+										// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v, headerWrittern=%v", event, header))
+									}
+								}
+							}
+						}
+
+						//if bipEvent && strings.Split(line, ":")[0] == "Epoch Time" {
+						if strings.Split(line, ":")[0] == "Epoch Time" {
+							// Epoch Time: 1621323617.322338000 seconds
+							tokens := strings.Split(strings.Split(line, " ")[2], ".")
+							sec, _ := strconv.ParseInt(tokens[0], 10, 64)
+							nsec, _ := strconv.ParseInt(tokens[1], 10, 64)
+							ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
+						}
+
+						//if bipEvent && line == "ICOM 5G Protocol" {
+						if line == "ICOM 5G Protocol" {
+							icomRec = true
+
+							nextLine, err := ecStdOut.ReadString('\n')
+							if err != nil {
+								break
+							}
+
+							event = strings.Split(strings.TrimSpace(nextLine), " ")[0]
+							//mapEventHeader[event] = make([]string, 0)
+							//if _, exist := mapEventRecord[event]; !exist {
+							if !mapEventRecord.Has(event) {
+								//mapEventRecord[event] = utils.NewOrderedMap()
+								mapEventRecord.Set(event, cmap.New())
+							}
+
+							//mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
+							mapEventHeader.Set(event, []string{"eventType", "timestamp"})
+							fields = fmt.Sprintf("%s,%s", event, ts)
+						}
+
+						//if bipEvent && icomRec {
+						if icomRec {
+							if strings.Contains(line, "padding") {
+								continue
+							}
+
+							if strings.Contains(line, "Structure") {
+								//mapEventHeader[event] = append(mapEventHeader[event], line)
+								m, _ := mapEventHeader.Get(event)
+								mapEventHeader.Set(event, append(m.([]string), line))
+								fields = fields + ",|"
+							}
+
+							tokens := strings.Split(line, ":")
+							if len(tokens) == 2 {
+								//mapEventHeader[event] = append(mapEventHeader[event], tokens[0])
+								m, _ := mapEventHeader.Get(event)
+								mapEventHeader.Set(event, append(m.([]string), tokens[0]))
+								fields = fields + "," + strings.Replace(strings.TrimSpace(tokens[1]), ",", "_", -1)
+							}
+						}
+					}
 				}
-
-				//if bipEvent && icomRec {
-				if icomRec {
-					if strings.Contains(line, "padding") {
-						continue
-					}
-
-					if strings.Contains(line, "Structure") {
-						mapEventHeader[event] = append(mapEventHeader[event], line)
-						fields = fields + ",|"
-					}
-
-					tokens := strings.Split(line, ":")
-					if len(tokens) == 2 {
-						mapEventHeader[event] = append(mapEventHeader[event], tokens[0])
-						fields = fields + "," + strings.Replace(strings.TrimSpace(tokens[1]), ",", "_", -1)
-					}
-				}
 			}
-		}
-
-		for k1 := range mapEventHeader {
-			// SKipping event DlData_EmptySendReq
-			if k1 == "DlData_EmptySendReq" {
-				continue
+			if ecStdErr.Len() > 0 {
+				p.writeLog(zapcore.DebugLevel, ecStdErr.String())
 			}
-
-			outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", k1))
-			fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-			if err != nil {
-				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
-				break
-			}
-
-			for p := 0; p < mapEventRecord[k1].Len(); p += 1 {
-				k2 := mapEventRecord[k1].Keys()[p].(string)
-				v2 := mapEventRecord[k1].Val(k2).(string)
-				fout.WriteString(v2 + "\n")
-			}
-
-			fout.Close()
-		}
+		} (ec)
 	}
-	if stdErr.Len() > 0 {
-		p.writeLog(zapcore.DebugLevel, stdErr.String())
+	wg.Wait()
+
+	for _, k1 := range mapEventHeader.Keys() {
+		// SKipping event DlData_EmptySendReq
+		if k1 == "DlData_EmptySendReq" {
+			continue
+		}
+
+		outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", k1))
+		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+		if err != nil {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
+			break
+		}
+
+		m, _ := mapEventRecord.Get(k1)
+		mks := m.(cmap.ConcurrentMap).Keys()
+		sort.Strings(mks)
+
+		for _, k2 := range mks {
+			//k2 := mapEventRecord[k1].Keys()[p].(string)
+			//v2 := mapEventRecord[k1].Val(k2).(string)
+			v2, _ := m.(cmap.ConcurrentMap).Get(k2)
+			fout.WriteString(v2.(string) + "\n")
+		}
+
+		fout.Close()
+	}
+
+	if err := os.RemoveAll(ecPath); err != nil {
+		panic(fmt.Sprintf("Fail to remove directory: %v", err))
 	}
 }
 
