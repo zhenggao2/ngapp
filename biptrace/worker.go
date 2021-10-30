@@ -103,6 +103,7 @@ func (p *BipTraceParser) Exec() {
 			return
 		}
 
+		/*
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
 			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
@@ -122,6 +123,13 @@ func (p *BipTraceParser) Exec() {
 			}
 		}
 		wg.Wait()
+		 */
+
+		for _, file := range fileInfo {
+			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
+				p.parse(file.Name())
+			}
+		}
 
 		// write header
 		for _, event := range p.headerWritten.Keys() {
@@ -500,11 +508,9 @@ func (p *BipTraceParser) parse(fn string) {
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace using editcap...[%s]", fn))
 
 	ecPath := filepath.Join(p.bipTracePath, strings.Replace(fn, ".", "_", -1))
-	/*
 	if err := os.RemoveAll(ecPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
 	}
-	 */
 	if err := os.MkdirAll(ecPath, 0775); err != nil {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
@@ -513,9 +519,9 @@ func (p *BipTraceParser) parse(fn string) {
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP_LINUX), "-c", "1000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP_LINUX), "-c", "50000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP), "-c", "1000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP), "-c", "50000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -534,8 +540,7 @@ func (p *BipTraceParser) parse(fn string) {
 	}
 
 	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
-	mapEventHeader := cmap.New()
-	mapEventRecord := cmap.New()
+	//mapEventRecord := cmap.New()
 
 	ecl, _ := filepath.Glob(filepath.Join(ecPath, "ec*.pcap"))
 	wg := &sync.WaitGroup{}
@@ -552,10 +557,13 @@ func (p *BipTraceParser) parse(fn string) {
 		go func(ec string) {
 			defer wg.Done()
 
+			mapEventHeader := cmap.New()
+			mapEventRecord := cmap.New()
+
 			var ecStdOut bytes.Buffer
 			var ecStdErr bytes.Buffer
 			var ecCmd *exec.Cmd
-			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s]", ec))
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing BIP trace using tshark... [%s/%s]", fn, filepath.Base(ec)))
 			if runtime.GOOS == "linux" {
 				ecCmd = exec.Command(filepath.Join(p.wsharkPath, BIN_TSHARK_LINUX), "-r", ec, "-X", fmt.Sprintf("lua_script:%s", filepath.Join(p.luasharkPath, LUA_LUASHARK)), "-V")
 			} else if runtime.GOOS == "windows" {
@@ -572,8 +580,7 @@ func (p *BipTraceParser) parse(fn string) {
 			}
 			if ecStdOut.Len() > 0 {
 				// TODO use bytes.Buffer.readString("\n") to postprocessing text files
-				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s]", ec))
-				//bipEvent := false
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Splitting BIP trace into csv... [%s/%s]", fn, filepath.Base(ec)))
 				icomRec := false
 				var ts string
 				var event string
@@ -593,17 +600,14 @@ func (p *BipTraceParser) parse(fn string) {
 						}
 
 						if strings.HasPrefix(line, "Frame") && strings.Contains(line, "on wire") && strings.Contains(line, "captured") {
-							//bipEvent = false
 							icomRec = false
 
 							// SKipping event DlData_EmptySendReq
-							if len(fields) > 0 && event != "DlData_EmptySendReq" {
-								//mapEventRecord[event].Add(ts, fields)
+							if len(fields) > 0 && event != "EmptySendReq" {
 								m, _ := mapEventRecord.Get(event)
 								m.(cmap.ConcurrentMap).Set(ts, fields)
 								mapEventRecord.Set(event, m)
 
-								// Map access is unsafe only when updates are occurring. As long as all goroutines are only reading—looking up elements in the map, including iterating through it using a for range loop—and not changing the map by assigning to elements or doing deletions, it is safe for them to access the map concurrently without synchronization.
 								m2, _ := mapEventHeader.Get(event)
 								header := strings.Join(m2.([]string), ",")
 								m, e := p.headerWritten.Get(event)
@@ -631,7 +635,6 @@ func (p *BipTraceParser) parse(fn string) {
 							ts = time.Unix(sec, nsec).Format("2006-01-02_15:04:05.999999999")
 						}
 
-						//if bipEvent && line == "ICOM 5G Protocol" {
 						if line == "ICOM 5G Protocol" {
 							icomRec = true
 
@@ -641,26 +644,20 @@ func (p *BipTraceParser) parse(fn string) {
 							}
 
 							event = strings.Split(strings.TrimSpace(nextLine), " ")[0]
-							//mapEventHeader[event] = make([]string, 0)
-							//if _, exist := mapEventRecord[event]; !exist {
 							if !mapEventRecord.Has(event) {
-								//mapEventRecord[event] = utils.NewOrderedMap()
 								mapEventRecord.Set(event, cmap.New())
 							}
 
-							//mapEventHeader[event] = append(mapEventHeader[event], []string{"eventType", "timestamp"}...)
 							mapEventHeader.Set(event, []string{"eventType", "timestamp"})
 							fields = fmt.Sprintf("%s,%s", event, ts)
 						}
 
-						//if bipEvent && icomRec {
 						if icomRec {
 							if strings.Contains(line, "padding") {
 								continue
 							}
 
 							if strings.Contains(line, "Structure") {
-								//mapEventHeader[event] = append(mapEventHeader[event], line)
 								m, _ := mapEventHeader.Get(event)
 								mapEventHeader.Set(event, append(m.([]string), line))
 								fields = fields + ",|"
@@ -668,7 +665,6 @@ func (p *BipTraceParser) parse(fn string) {
 
 							tokens := strings.Split(line, ":")
 							if len(tokens) == 2 {
-								//mapEventHeader[event] = append(mapEventHeader[event], tokens[0])
 								m, _ := mapEventHeader.Get(event)
 								mapEventHeader.Set(event, append(m.([]string), tokens[0]))
 								fields = fields + "," + strings.Replace(strings.TrimSpace(tokens[1]), ",", "_", -1)
@@ -680,36 +676,33 @@ func (p *BipTraceParser) parse(fn string) {
 			if ecStdErr.Len() > 0 {
 				p.writeLog(zapcore.DebugLevel, ecStdErr.String())
 			}
+
+			for _, k1 := range mapEventRecord.Keys() {
+				// SKipping event DlData_EmptySendReq
+				if k1 == "EmptySendReq" {
+					continue
+				}
+
+				outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", k1))
+				fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+				if err != nil {
+					p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
+					break
+				}
+
+				m, _ := mapEventRecord.Get(k1)
+				mks := m.(cmap.ConcurrentMap).Keys()
+				sort.Strings(mks)
+				for _, k2 := range mks {
+					v2, _ := m.(cmap.ConcurrentMap).Get(k2)
+					fout.WriteString(v2.(string) + "\n")
+				}
+
+				fout.Close()
+			}
 		} (ec)
 	}
 	wg.Wait()
-
-	for _, k1 := range mapEventHeader.Keys() {
-		// SKipping event DlData_EmptySendReq
-		if k1 == "DlData_EmptySendReq" {
-			continue
-		}
-
-		outFn := filepath.Join(outPath, fmt.Sprintf("%s.csv", k1))
-		fout, err := os.OpenFile(outFn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", outFn))
-			break
-		}
-
-		m, _ := mapEventRecord.Get(k1)
-		mks := m.(cmap.ConcurrentMap).Keys()
-		sort.Strings(mks)
-
-		for _, k2 := range mks {
-			//k2 := mapEventRecord[k1].Keys()[p].(string)
-			//v2 := mapEventRecord[k1].Val(k2).(string)
-			v2, _ := m.(cmap.ConcurrentMap).Get(k2)
-			fout.WriteString(v2.(string) + "\n")
-		}
-
-		fout.Close()
-	}
 
 	if err := os.RemoveAll(ecPath); err != nil {
 		panic(fmt.Sprintf("Fail to remove directory: %v", err))
