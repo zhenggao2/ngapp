@@ -46,6 +46,7 @@ var (
 	// list of UE-specific search space settings: searchSpaceType_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId
 	// For example: uss_110_n0_n0_n4_n0_n0_sl1_coreset1
 	uss string
+	rnti int
 )
 
 // cmCmd represents the cm command
@@ -185,7 +186,7 @@ var cmPdcchCmd = &cobra.Command{
 		viper.WriteConfig()
 
 		validator := new(nokcm.CmPdcch)
-		validator.Init(Logger, scs, bwpid, coreset, css, uss, debug)
+		validator.Init(Logger, scs, bwpid, coreset, css, uss, rnti, debug)
 		validator.Exec()
 	},
 }
@@ -246,12 +247,14 @@ func init() {
 	cmPdcchCmd.Flags().StringSliceVar(&coreset, "coreset", []string{"coreset0_48_1", "coreset1_120_1"}, "CORESET settings as defined in MIB/PDCCH_CONFIG_DEDICATED")
 	cmPdcchCmd.Flags().StringSliceVar(&css, "css", []string{"type0a_100_n0_n0_n2_n0_n0_sl1_coreset0"}, "CSS settings as defined in PDCCH_CONFIG_COMMON and PDCCH_CONFIG_DEDICATED")
 	cmPdcchCmd.Flags().StringVar(&uss, "uss", "uss_110_n0_n0_n4_n0_n0_sl1_coreset1", "USS settings as defined in PDCCH_CONFIG_DEDICATED")
+	cmPdcchCmd.Flags().IntVar(&rnti, "rnti", 100, "UE's C-RNTI")
 	cmPdcchCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("cmpdcch.scs", cmPdcchCmd.Flags().Lookup("scs"))
 	viper.BindPFlag("cmpdcch.bwpid", cmPdcchCmd.Flags().Lookup("bwpid"))
 	viper.BindPFlag("cmpdcch.coreset", cmPdcchCmd.Flags().Lookup("coreset"))
 	viper.BindPFlag("cmpdcch.css", cmPdcchCmd.Flags().Lookup("css"))
 	viper.BindPFlag("cmpdcch.uss", cmPdcchCmd.Flags().Lookup("uss"))
+	viper.BindPFlag("cmpdcch.rnti", cmPdcchCmd.Flags().Lookup("rnti"))
 	viper.BindPFlag("cmpdcch.debug", cmPdcchCmd.Flags().Lookup("debug"))
 }
 
@@ -282,6 +285,7 @@ func loadCmPdcchFlags() {
 	coreset = viper.GetStringSlice("cmpdcch.coreset")
 	css = viper.GetStringSlice("cmpdcch.css")
 	uss = viper.GetString("cmpdcch.uss")
+	rnti = viper.GetInt("cmpdcch.rnti")
 	debug = viper.GetBool("cmpdcch.debug")
 }
 

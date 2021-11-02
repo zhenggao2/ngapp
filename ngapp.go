@@ -22,7 +22,7 @@ import (
 	"runtime"
 )
 
-var swVersion = "v0.21.103001"
+var swVersion = "v0.21.110201"
 
 func init() {
 	err := license.SetMeteredKey("fb1b3cb24189879d60454c44462d70091e9cdb168e21205c9aa38cf0e413891d")

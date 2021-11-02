@@ -32,6 +32,7 @@ type CmPdcch struct {
 	coreset []string
 	css []string
 	uss string
+	rnti int
 	debug bool
 }
 
@@ -47,7 +48,7 @@ type SearchSpace struct {
 	coreset string
 }
 
-func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css []string, uss string, debug bool) {
+func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css []string, uss string, rnti int, debug bool) {
 	p.log = log
 	p.debug = debug
 	p.scs = scs
@@ -55,6 +56,7 @@ func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css []st
 	p.coreset = coreset
 	p.css = css
 	p.uss = uss
+	p.rnti = rnti
 }
 
 func (p *CmPdcch) Exec() {
@@ -176,7 +178,7 @@ func (p *CmPdcch) Exec() {
 							Y := make([]int, mapScs2SlotsPerRf[p.scs])
 							D := 65537
 							if ns == 0 {
-								Y[ns] = (Ap * 100) % D // assume RNTI=100 by default
+								Y[ns] = (Ap * p.rnti) % D
 							} else {
 								Y[ns] = (Ap * Y[ns-1]) % D
 							}
