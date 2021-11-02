@@ -134,6 +134,7 @@ func (p *CmPdcch) Exec() {
 	mapScs2SlotsPerRf:= map[string]int { "15k" : 10, "30k" : 20, "60k" : 40, "120k" : 80}
 	// key = slot_coresetId_monitoringSymbol, val = per CCE flag (1=used,0=not used)
 	mapNonOverlapCces := make(map[int]map[string]map[int][]int)
+	Y := make([]int, mapScs2SlotsPerRf[p.scs])
 	for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++{
 		mapNonOverlapCces[ns] = make(map[string]map[int][]int)
 
@@ -164,7 +165,7 @@ func (p *CmPdcch) Exec() {
 								}
 							}
 						} else {
-							p_ := p.unsafeAtoi(coresetId[len("CORESETT"):])
+							p_ := p.unsafeAtoi(coresetId[len("CORESET"):])
 							var Ap int
 							switch p_ % 3 {
 							case 0:
@@ -175,7 +176,6 @@ func (p *CmPdcch) Exec() {
 								Ap = 39839
 							}
 
-							Y := make([]int, mapScs2SlotsPerRf[p.scs])
 							D := 65537
 							if ns == 0 {
 								Y[ns] = (Ap * p.rnti) % D
