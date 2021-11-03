@@ -21,8 +21,7 @@ import (
 	"fmt"
 	"github.com/Knetic/govaluate"
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/unidoc/unioffice/schema/soo/sml"
-	"github.com/unidoc/unioffice/spreadsheet"
+	"github.com/xuri/excelize/v2"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -415,6 +414,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 	}
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Generating KPI report..."))
+	/*
 	for agg := range report {
 		ofn := filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
 		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
@@ -439,38 +439,30 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 		fout.Close()
 	}
+	 */
 
-	workbook := spreadsheet.New()
-	wrapped := workbook.StyleSheet.AddCellStyle()
-	wrapped.SetWrapped(true)
+	wb := excelize.NewFile()
 	for agg := range report {
-		sheet := workbook.AddSheet()
-		sheet.SetName(agg)
-
-		// write header
-		row := sheet.AddRow()
-		reportHeaderWiUnit[agg] = append(strings.Split(reportHeaderWiUnit[agg][0], ","), reportHeaderWiUnit[agg][1:]...)
-		for _, h := range reportHeaderWiUnit[agg] {
-			cell := row.AddCell()
-			cell.SetString(h)
-			cell.SetStyle(wrapped)
+		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
+			wb.SetSheetName("Sheet1", agg)
+		} else {
+			wb.NewSheet(agg)
 		}
 
-		frozen := false
-		for _, aggKey := range report[agg].Keys() {
-			row := sheet.AddRow()
-			tokens := strings.Split(aggKey.(string), "_")
-			for _, k := range tokens {
-				row.AddCell().SetString(k)
-			}
+		// write header
+		row := 1
+		reportHeaderWiUnit[agg] = append(strings.Split(reportHeaderWiUnit[agg][0], ","), reportHeaderWiUnit[agg][1:]...)
+		for i, h := range reportHeaderWiUnit[agg] {
+			wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(i+1), row), h)
+		}
 
-			if !frozen {
-				view := sheet.InitialView()
-				view.SetState(sml.ST_PaneStateFrozen)
-				view.SetYSplit(1)
-				view.SetXSplit(float64(len(tokens)))
-				view.SetTopLeft(fmt.Sprintf("%s%d", p.int2Col(len(tokens)), 2))
-				frozen = true
+		for _, aggKey := range report[agg].Keys() {
+			row++
+			//row := sheet.AddRow()
+			tokens := strings.Split(aggKey.(string), "_")
+			for i, k := range tokens {
+				//row.AddCell().SetString(k)
+				wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(i+1), row), k)
 			}
 
 			v := report[agg].Val(aggKey).(*utils.OrderedMap)
@@ -479,21 +471,24 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 					fv, err := strconv.ParseFloat(v.Val(reportHeader[agg][i]).(string), 64)
 					if err != nil {
 						p.writeLog(zapcore.WarnLevel, fmt.Sprintf("strconv.ParseFloat failed (v = %v, error=%v)", v, err.Error()))
-						row.AddCell().SetString("")
+						wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), "")
 					} else {
-						row.AddCell().SetNumber(fv)
+						wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), fv)
 					}
 				} else {
-					row.AddCell().SetString("-")
+					wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), "-")
 				}
 			}
 		}
 
-		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(int(sheet.MaxColumnIdx()+1)), len(sheet.Rows())))
+		wb.SetPanes(agg, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		wb.AutoFilter(agg, "A1", fmt.Sprintf("%v%v", p.int2Col(len(reportHeaderWiUnit[agg])), row), "")
 	}
 
-	workbook.SaveToFile(filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp)))
-	workbook.Close()
+	if err := wb.SaveAs(filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp))); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
 }
 
 func (p *KpiParser) int2Col(i int) string {
