@@ -118,13 +118,9 @@ func (p *CmDiffer) Compare() {
 	}
 
 	hasDiff := false
-	//workbook := spreadsheet.New()
-	//wrapped := workbook.StyleSheet.AddCellStyle()
-	//wrapped.SetWrapped(true)
 	wb := excelize.NewFile()
 	var sname string
 	for k1 := range p.db {
-		//sheet := workbook.AddSheet()
 		hasDiff = false
 		if len(k1) > 31 {
 			sname = k1[len(k1)-31:]
@@ -139,14 +135,6 @@ func (p *CmDiffer) Compare() {
 		}
 
 		// write header
-		/*
-		row := sheet.AddRow()
-		for _, h := range headerMap[k1] {
-			cell := row.AddCell()
-			cell.SetString(h)
-			cell.SetStyle(wrapped)
-		}
-		 */
 		row := 1
 		for i, h := range headerMap[k1] {
 			wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), h)
@@ -174,13 +162,6 @@ func (p *CmDiffer) Compare() {
 			}
 
 			// write row
-			/*
-			row := sheet.AddRow()
-			rowData := append([]string{k2, diff}, vals...)
-			for _, d := range rowData{
-				row.AddCell().SetString(d)
-			}
-			 */
 			row++
 			rowData := append([]string{k2, diff}, vals...)
 			for i, d := range rowData {
@@ -189,30 +170,15 @@ func (p *CmDiffer) Compare() {
 		}
 
 		// set sheet name
-		/*
-		sheetName := k1
-		if hasDiff {
-			sheetName += "#"
-		}
-		if len(sheetName) > 31 {
-			sheet.SetName(sheetName[len(sheetName)-31:])
-		} else {
-			sheet.SetName(sheetName)
-		}
-		 */
 		if hasDiff {
 			wb.SetSheetName(sname, sname + "#")
 			sname += "#"
 		}
 
-		//sheet.SetFrozen(true, true)
-		//sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
 		wb.SetPanes(sname, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
 		wb.AutoFilter(sname, "A1", fmt.Sprintf("%v%v", p.int2Col(len(headerMap[k1])), row), "")
 	}
 
-	//workbook.SaveToFile(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150405"))))
-	//workbook.Close()
 	if err := wb.SaveAs(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150405")))); err != nil {
 		p.writeLog(zapcore.ErrorLevel, err.Error())
 		return
