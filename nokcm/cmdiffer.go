@@ -18,7 +18,7 @@ package nokcm
 import (
 	"bufio"
 	"fmt"
-	"github.com/unidoc/unioffice/spreadsheet"
+	"github.com/xuri/excelize/v2"
 	"github.com/zhenggao2/ngapp/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -118,19 +118,38 @@ func (p *CmDiffer) Compare() {
 	}
 
 	hasDiff := false
-	workbook := spreadsheet.New()
-	wrapped := workbook.StyleSheet.AddCellStyle()
-	wrapped.SetWrapped(true)
+	//workbook := spreadsheet.New()
+	//wrapped := workbook.StyleSheet.AddCellStyle()
+	//wrapped.SetWrapped(true)
+	wb := excelize.NewFile()
+	var sname string
 	for k1 := range p.db {
-		sheet := workbook.AddSheet()
+		//sheet := workbook.AddSheet()
 		hasDiff = false
+		if len(k1) > 31 {
+			sname = k1[len(k1)-31:]
+		} else {
+			sname = k1
+		}
+
+		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
+			wb.SetSheetName("Sheet1", sname)
+		} else {
+			wb.NewSheet(sname)
+		}
 
 		// write header
+		/*
 		row := sheet.AddRow()
 		for _, h := range headerMap[k1] {
 			cell := row.AddCell()
 			cell.SetString(h)
 			cell.SetStyle(wrapped)
+		}
+		 */
+		row := 1
+		for i, h := range headerMap[k1] {
+			wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), h)
 		}
 
 		for k2 := range p.db[k1] {
@@ -155,14 +174,22 @@ func (p *CmDiffer) Compare() {
 			}
 
 			// write row
+			/*
 			row := sheet.AddRow()
 			rowData := append([]string{k2, diff}, vals...)
 			for _, d := range rowData{
 				row.AddCell().SetString(d)
 			}
+			 */
+			row++
+			rowData := append([]string{k2, diff}, vals...)
+			for i, d := range rowData {
+				wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), d)
+			}
 		}
 
 		// set sheet name
+		/*
 		sheetName := k1
 		if hasDiff {
 			sheetName += "#"
@@ -172,13 +199,24 @@ func (p *CmDiffer) Compare() {
 		} else {
 			sheet.SetName(sheetName)
 		}
+		 */
+		if hasDiff {
+			wb.SetSheetName(sname, sname + "#")
+			sname += "#"
+		}
 
-		sheet.SetFrozen(true, true)
-		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+		//sheet.SetFrozen(true, true)
+		//sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+		wb.SetPanes(sname, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		wb.AutoFilter(sname, "A1", fmt.Sprintf("%v%v", p.int2Col(len(headerMap[k1])), row), "")
 	}
 
-	workbook.SaveToFile(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150405"))))
-	workbook.Close()
+	//workbook.SaveToFile(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150405"))))
+	//workbook.Close()
+	if err := wb.SaveAs(filepath.Join(filepath.Dir(p.cmpath[0]), fmt.Sprintf("cm_diff_report_%s.xlsx", time.Now().Format("20060102_150405")))); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
 }
 
 func (p *CmDiffer) parseDat(dat string) {
@@ -269,14 +307,21 @@ func (p *CmDiffer) parseDat(dat string) {
 	fin.Close()
 }
 
-func (p *CmDiffer) int2Col(i uint32) string {
+func (p *CmDiffer) int2Col(i int) string {
 	var s string
+	azm := make(map[int]byte)
+	for i := 0; i < 26; i++ {
+		azm[i] = byte('A' + i)
+	}
+
 	for {
-		if i / 26 > 0 {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
-			i = (i - i % 26) / 26
+		if i > 26 {
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
+			i = (i - rem) / 26
 		} else {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
 			break
 		}
 	}

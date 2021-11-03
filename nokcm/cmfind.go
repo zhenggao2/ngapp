@@ -153,12 +153,19 @@ func (p *CmFinder) Search() {
 
 func (p *CmFinder) int2Col(i int) string {
 	var s string
+	azm := make(map[int]byte)
+	for i := 0; i < 26; i++ {
+		azm[i] = byte('A' + i)
+	}
+
 	for {
-		if i / 26 > 0 {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
-			i = (i - i % 26) / 26
+		if i > 26 {
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
+			i = (i - rem) / 26
 		} else {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
 			break
 		}
 	}

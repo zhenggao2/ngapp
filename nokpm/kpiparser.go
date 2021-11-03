@@ -469,7 +469,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 				view.SetState(sml.ST_PaneStateFrozen)
 				view.SetYSplit(1)
 				view.SetXSplit(float64(len(tokens)))
-				view.SetTopLeft(fmt.Sprintf("%s%d", p.int2Col(uint32(len(tokens))), 2))
+				view.SetTopLeft(fmt.Sprintf("%s%d", p.int2Col(len(tokens)), 2))
 				frozen = true
 			}
 
@@ -489,21 +489,28 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			}
 		}
 
-		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(sheet.MaxColumnIdx()+1), len(sheet.Rows())))
+		sheet.SetAutoFilter(fmt.Sprintf("A1:%s%d", p.int2Col(int(sheet.MaxColumnIdx()+1)), len(sheet.Rows())))
 	}
 
 	workbook.SaveToFile(filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s.xlsx", timestamp)))
 	workbook.Close()
 }
 
-func (p *KpiParser) int2Col(i uint32) string {
+func (p *KpiParser) int2Col(i int) string {
 	var s string
+	azm := make(map[int]byte)
+	for i := 0; i < 26; i++ {
+		azm[i] = byte('A' + i)
+	}
+
 	for {
-		if i / 26 > 0 {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
-			i = (i - i % 26) / 26
+		if i > 26 {
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
+			i = (i - rem) / 26
 		} else {
-			s = fmt.Sprintf("%s%s", string('A' + i % 26 - 1), s)
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
 			break
 		}
 	}
