@@ -31,7 +31,7 @@ type CmPdcch struct {
 	bwpid int
 	coreset []string
 	css []string
-	uss string
+	uss []string
 	rnti int
 	debug bool
 }
@@ -42,13 +42,15 @@ type Coreset struct {
 }
 
 type SearchSpace struct {
+	searchSpaceId int
+	searchSpaceType string
 	monitoringSymbs []int
 	mapCandidates map[int]int
 	period int
 	coreset string
 }
 
-func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css []string, uss string, rnti int, debug bool) {
+func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css, uss []string, rnti int, debug bool) {
 	p.log = log
 	p.debug = debug
 	p.scs = scs
@@ -60,8 +62,8 @@ func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css []st
 }
 
 func (p *CmPdcch) Exec() {
-	mapCoreset := make(map[string]Coreset)
-	mapSearchSpace := make(map[string]SearchSpace)
+	mapCoreset := make(map[string]Coreset) //key=coresetId, val=Coreset struct
+	mapSearchSpace := make(map[int]SearchSpace) //key=searchSpaceId, val=SearchSpace struct
 
 	for _, k := range p.coreset {
 		toks := strings.Split(k, "_")
@@ -75,14 +77,15 @@ func (p *CmPdcch) Exec() {
 		}
 	}
 
-	ss := append(p.css, p.uss)
+	ss := append(p.css, p.uss...)
 	for _, k := range ss {
 		toks := strings.Split(k, "_")
-		if len(toks) != 9 {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid SearchSpace settings: %v. Format should be: searchSpaceType_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId.", k))
+		if len(toks) != 10 {
+			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid SearchSpace settings: %v. Format should be: searchSpaceType_searchSpaceId_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId.", k))
 			return
 		}
-		monitoringSymbolWithinSlot := toks[1]
+		searchSpaceId := p.unsafeAtoi(toks[1])
+		monitoringSymbolWithinSlot := toks[2]
 		if len(monitoringSymbolWithinSlot) != 3 {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid monitoringSymbolWithinSlot: %v. Format should be: 110", k))
 			return
@@ -94,39 +97,84 @@ func (p *CmPdcch) Exec() {
 			}
 		}
 
-		mapSearchSpace[strings.ToLower(toks[0])] = SearchSpace {
+		//mapSearchSpace[strings.ToLower(toks[0])] = SearchSpace {
+		mapSearchSpace[searchSpaceId] = SearchSpace {
+			searchSpaceId: searchSpaceId,
+			searchSpaceType: toks[0],
 			monitoringSymbs: monitoringSymbs,
 			mapCandidates: map[int]int {
-				1 : p.unsafeAtoi(toks[2][1:]),
-				2 : p.unsafeAtoi(toks[3][1:]),
-				4 : p.unsafeAtoi(toks[4][1:]),
-				8 : p.unsafeAtoi(toks[5][1:]),
-				16 : p.unsafeAtoi(toks[6][1:]),
+				1 : p.unsafeAtoi(toks[3][1:]),
+				2 : p.unsafeAtoi(toks[4][1:]),
+				4 : p.unsafeAtoi(toks[5][1:]),
+				8 : p.unsafeAtoi(toks[6][1:]),
+				16 : p.unsafeAtoi(toks[7][1:]),
 			},
-			period : p.unsafeAtoi(toks[7][2:]),
-			coreset : toks[8],
+			period : p.unsafeAtoi(toks[8][2:]),
+			coreset : toks[9],
 		}
+
+		/*
+		if _, e := mapSearchSpace[strings.ToLower(toks[0])]; !e {
+			mapSearchSpace[strings.ToLower(toks[0])] = []SearchSpace{sss}
+		} else {
+			mapSearchSpace[strings.ToLower(toks[0])] = append(mapSearchSpace[strings.ToLower(toks[0])], sss)
+		}
+		 */
 	}
 
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapCoreset=%v\nmapSearchSpace=%v", mapCoreset, mapSearchSpace))
 
 	// Validate against Table 10.1-2: Maximum number of monitored PDCCH candidates per slot for a DL BWP
 	mapScs2MaxCandidatesPerSlot := map[string]int { "15k" : 44, "30k" : 36, "60k" : 22, "120k" : 20}
+	cssCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
+	ussCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
+	for coresetId := range mapCoreset {
+		cssCandidatesPerSymb[coresetId] = make(map[int]int)
+		ussCandidatesPerSymb[coresetId] = make(map[int]int)
+		for i := 0; i < 3; i++ {
+			cssCandidatesPerSymb[coresetId][i] = 0
+			ussCandidatesPerSymb[coresetId][i] = 0
+		}
 
-	cssMonitoringSymbs := utils.MaxInt([]int{len(mapSearchSpace["type0a"].monitoringSymbs), len(mapSearchSpace["type1"].monitoringSymbs), len(mapSearchSpace["type2"].monitoringSymbs), len(mapSearchSpace["type3"].monitoringSymbs)})
-	cssCandiatesPerSymb := 0
-	ussCandidatesPerSymb := 0
-	for _, al := range []int{1,2,4,8,16} {
-		cssCandiatesPerSymb += utils.MaxInt([]int{mapSearchSpace["type0a"].mapCandidates[al], mapSearchSpace["type1"].mapCandidates[al], mapSearchSpace["type2"].mapCandidates[al], mapSearchSpace["type3"].mapCandidates[al]})
-		ussCandidatesPerSymb += mapSearchSpace["uss"].mapCandidates[al]
+		for _, ss := range mapSearchSpace {
+			if ss.coreset != coresetId {
+				continue
+			}
+
+			if ss.searchSpaceType == "uss" {
+				for _, i  := range ss.monitoringSymbs {
+					for _, al := range []int{1,2,4,8,16} {
+						ussCandidatesPerSymb[coresetId][i] += ss.mapCandidates[al]
+					}
+				}
+			} else {
+				for _, i := range ss.monitoringSymbs {
+					totCandiates := 0
+					for _, al := range []int{1,2,4,8,16} {
+						totCandiates += ss.mapCandidates[al]
+					}
+					cssCandidatesPerSymb[coresetId][i] = utils.MaxInt([]int{cssCandidatesPerSymb[coresetId][i], totCandiates})
+				}
+			}
+		}
 	}
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of monitored PDCCH candidates per slot is %v when scs = %v", mapScs2MaxCandidatesPerSlot[p.scs], p.scs))
-	totCssCandidatesPerSlot := cssCandiatesPerSymb * cssMonitoringSymbs + ussCandidatesPerSymb * len(mapSearchSpace["uss"].monitoringSymbs) * 2
-	if totCssCandidatesPerSlot > mapScs2MaxCandidatesPerSlot[p.scs] {
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of monitored PDCCH candidates validation FAILED: cssCandiatesPerSymb = %v, cssMonitoringSymbs = %v, ussCandidatesPerSymb = %v, ussMonitoringSymbs = %v and totCandidatesPerSlot = %v", cssCandiatesPerSymb, cssMonitoringSymbs, ussCandidatesPerSymb, len(mapSearchSpace["uss"].monitoringSymbs), totCssCandidatesPerSlot))
+	totCandidatesPerCoreset := make(map[string]int) //key=coresetId, val=count
+	totCandidatesPerSlot := 0
+	for coresetId := range mapCoreset {
+		totCandidatesPerCoreset[coresetId] = 0
+		for i := 0; i < 3; i++ {
+			totCandidatesPerCoreset[coresetId] += (cssCandidatesPerSymb[coresetId][i] + ussCandidatesPerSymb[coresetId][i] * 2)
+		}
+		totCandidatesPerSlot += totCandidatesPerCoreset[coresetId]
+	}
+	//totCssCandidatesPerSlot := cssCandidatesPerSymb * cssMonitoringSymbs + ussCandidatesPerSymb * len(mapSearchSpace["uss"].monitoringSymbs) * 2
+	p.writeLog(zapcore.InfoLevel, "By YangYang's method:")
+	if totCandidatesPerSlot > mapScs2MaxCandidatesPerSlot[p.scs] {
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation FAILED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidatesPerSlot))
 	} else {
-		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of monitored PDCCH candidates validation PASSED: cssCandiatesPerSymb = %v, cssMonitoringSymbs = %v, ussCandidatesPerSymb = %v, ussMonitoringSymbs = %v and totCandidatesPerSlot = %v", cssCandiatesPerSymb, cssMonitoringSymbs, ussCandidatesPerSymb, len(mapSearchSpace["uss"].monitoringSymbs), totCssCandidatesPerSlot))
+		p.writeLog(zapcore.InfoLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation PASSED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidatesPerSlot))
 	}
 
 	// Validate against Table 10.1-3: Maximum number of non-overlapped CCEs per slot for a DL BWP
@@ -134,33 +182,48 @@ func (p *CmPdcch) Exec() {
 	mapScs2SlotsPerRf:= map[string]int { "15k" : 10, "30k" : 20, "60k" : 40, "120k" : 80}
 	// key = slot_coresetId_monitoringSymbol, val = per CCE flag (1=used,0=not used)
 	mapNonOverlapCces := make(map[int]map[string]map[int][]int)
+	// key = slot_coresetId_searchSpaceId_monitoringSymbol_al, val = startCce
+	mapStartCce := make(map[int]map[string]map[int]map[int]map[int][]int)
 	Y := make([]int, mapScs2SlotsPerRf[p.scs])
 	for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++{
 		mapNonOverlapCces[ns] = make(map[string]map[int][]int)
+		mapStartCce[ns] = make(map[string]map[int]map[int]map[int][]int)
 
 		for coresetId, coreset := range mapCoreset {
 			N_CCE := coreset.size / 6
 			mapNonOverlapCces[ns][coresetId] = make(map[int][]int)
+			mapStartCce[ns][coresetId] = make(map[int]map[int]map[int][]int)
 			for i := 0; i < 3; i++ {
 				mapNonOverlapCces[ns][coresetId][i] = make([]int, N_CCE)
 			}
 
-			for sstype, ss := range mapSearchSpace {
+			for _, ss := range mapSearchSpace {
 				if ss.coreset != coresetId {
 					continue
 				}
 
-				for _, al := range []int{1,2,4,8,16} {
+				mapStartCce[ns][coresetId][ss.searchSpaceId] = make(map[int]map[int][]int)
+				for i := 0; i < 3; i++ {
+					mapStartCce[ns][coresetId][ss.searchSpaceId][i] = make(map[int][]int)
+					for _, al := range []int{1, 2, 4, 8, 16} {
+						mapStartCce[ns][coresetId][ss.searchSpaceId][i][al] = make([]int, 0)
+					}
+				}
+
+				for _, al := range []int{1, 2, 4, 8, 16} {
 					L := al
 					M := ss.mapCandidates[al]
 					if M > 0 {
-						if sstype != "uss" {
+						if ss.searchSpaceType != "uss" {
 							Y := 0
 							for m := 0; m < M; m++ {
-								startCce := p.CalcStartCceIndex(sstype, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
+								startCce := p.CalcStartCceIndex(ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
 								for _, isymb := range ss.monitoringSymbs {
 									for ial := 0; ial < L; ial++ {
 										mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
+									}
+									if !utils.ContainsInt(mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al], startCce) {
+										mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al] = append(mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al], startCce)
 									}
 								}
 							}
@@ -183,14 +246,29 @@ func (p *CmPdcch) Exec() {
 								Y[ns] = (Ap * Y[ns-1]) % D
 							}
 							for m := 0; m < M; m++ {
-								startCce := p.CalcStartCceIndex(sstype, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
+								startCce := p.CalcStartCceIndex(ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
 								for _, isymb := range ss.monitoringSymbs {
 									for ial := 0; ial < L; ial++ {
 										mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
 									}
+									if !utils.ContainsInt(mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al], startCce) {
+										mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al] = append(mapStartCce[ns][coresetId][ss.searchSpaceId][isymb][al], startCce)
+									}
 								}
 							}
 						}
+					}
+				}
+			}
+		}
+	}
+
+	for ns := range mapStartCce {
+		for coresetId := range mapStartCce[ns] {
+			for searchSpaceId := range mapStartCce[ns][coresetId] {
+				for isymb := range mapStartCce[ns][coresetId][searchSpaceId] {
+					for al := range mapStartCce[ns][coresetId][searchSpaceId][isymb] {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,isymb=%v,al=AL%v,startCce=%v", ns, coresetId, searchSpaceId, isymb, al, mapStartCce[ns][coresetId][searchSpaceId][isymb][al]))
 					}
 				}
 			}
@@ -212,9 +290,9 @@ func (p *CmPdcch) Exec() {
 		}
 
 		if numNonOverlapPerSlot > mapScs2MaxNonOverlapCcesPerSlot[p.scs] {
-			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation FAILED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("-Max number of non-overlapped CCEs validation FAILED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
 		} else {
-			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Max number of non-overlapped CCEs validation PASSED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
+			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("-Max number of non-overlapped CCEs validation PASSED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, numNonOverlapPerSlot))
 		}
 	}
 }
