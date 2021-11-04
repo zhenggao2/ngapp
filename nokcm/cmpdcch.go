@@ -287,7 +287,7 @@ func (p *CmPdcch) Exec() {
 					}
 
 					if totCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb] > 0 {
-						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,searchSpaceType=%v,isymb=%v,totCandidatesPerSymb=%v", ns, coresetId, searchSpaceId, mapSearchSpace[searchSpaceId].searchSpaceType, isymb, totCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]))
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,searchSpaceType=%v,monitoringSymbol=%v,totCandidatesPerSymb=%v", ns, coresetId, searchSpaceId, mapSearchSpace[searchSpaceId].searchSpaceType, isymb, totCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]))
 					}
 					totCandidatesPerSlot[ns] += totCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]
 				}
