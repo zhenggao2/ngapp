@@ -185,7 +185,7 @@ func (p *CmPdcch) Exec() {
 		mapStartCce[ns] = make(map[string]map[int]map[int]map[int][]int)
 
 		for coresetId, coreset := range mapCoreset {
-			N_CCE := coreset.size / 6
+			N_CCE := (coreset.size * coreset.duration) / 6
 			mapNonOverlapCces[ns][coresetId] = make(map[int][]int)
 			mapStartCce[ns][coresetId] = make(map[int]map[int]map[int][]int)
 			for i := 0; i < 3; i++ {
@@ -377,7 +377,7 @@ func (p *CmPdcch) Exec() {
 		for coresetId, coreset := range mapCoreset {
 			cceBitmap[coresetId] = make(map[int][]int)
 			for i := 0; i < 3; i++ {
-				cceBitmap[coresetId][i] = make([]int, coreset.size / 6)
+				cceBitmap[coresetId][i] = make([]int, (coreset.size * coreset.duration) / 6)
 			}
 		}
 
@@ -419,7 +419,7 @@ func (p *CmPdcch) Exec() {
 			for coresetId, coreset := range mapCoreset {
 				ussCceBitmap[coresetId] = make(map[int][]int)
 				for i := 0; i < 3; i++ {
-					ussCceBitmap[coresetId][i] = make([]int, coreset.size / 6)
+					ussCceBitmap[coresetId][i] = make([]int, (coreset.size * coreset.duration) / 6)
 				}
 			}
 
