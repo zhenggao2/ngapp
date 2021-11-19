@@ -377,7 +377,7 @@ func (p *PmParser) ArchiveRawPm() {
 }
 
 func (p *PmParser) ParseRawPmXml(xml string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing raw PM...[%s]", xml))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("  Parsing raw PM...[%s]", xml))
 
 	doc := etree.NewDocument()
 	if err := doc.ReadFromFile(xml); err != nil {
@@ -405,7 +405,12 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 				dim := mo.SelectAttrValue("dimension", "")
 				subDn := mo.FindElement("DN")
 				if dim == "network_element" {
-					moList = append(moList, strings.SplitN(subDn.Text(), "/", 3)[2]) // remove PLMN-PLMN/MRBTS-xxx
+					if len(strings.Split(subDn.Text(), "/")) > 2 {
+						moList = append(moList, strings.SplitN(subDn.Text(), "/", 3)[2]) // remove PLMN-PLMN/MRBTS-xxx
+					} else {
+						// <PMMOResult><MO dimension="network_element"><DN>PLMN-PLMN/MRBTS-1619377</DN></MO><NE-WBTS_1.0 measurementType="SBTS_Energy_Consumption"><M40002C1>17472</M40002C1><M40002C2>22740</M40002C2><M40002C0>5268</M40002C0></NE-WBTS_1.0></PMMOResult>
+						moList = append(moList, strings.SplitN(subDn.Text(), "/", 3)[1]) // remove PLMN-PLMN
+					}
 				} else {
 					moList = append(moList, strings.SplitN(subDn.Text(), "/", 2)[1]) // remove PLMN-PLMN
 				}

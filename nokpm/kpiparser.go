@@ -263,10 +263,10 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 					// CMCC: Timestamp should be "startTime.interval"
 					ts := strings.Replace(tokens2[len(tokens2)-1], "-", "", -1)
 
-					// check duplication of ts field
-					_, e := tsMap.Get(ts)
+					// check duplication
+					_, e := tsMap.Get(tokens[0])
 					if !e {
-						tsMap.SetIfAbsent(ts, true)
+						tsMap.SetIfAbsent(tokens[0], true)
 					} else {
 						continue
 					}
@@ -458,10 +458,8 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 		for _, aggKey := range report[agg].Keys() {
 			row++
-			//row := sheet.AddRow()
 			tokens := strings.Split(aggKey.(string), "_")
 			for i, k := range tokens {
-				//row.AddCell().SetString(k)
 				wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(i+1), row), k)
 			}
 
@@ -473,7 +471,11 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 						p.writeLog(zapcore.WarnLevel, fmt.Sprintf("strconv.ParseFloat failed (v = %v, error=%v)", v, err.Error()))
 						wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), "")
 					} else {
-						wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), fv)
+						if math.IsNaN(fv) {
+							wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), "NA")
+						} else {
+							wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), fv)
+						}
 					}
 				} else {
 					wb.SetCellValue(agg, fmt.Sprintf("%v%v", p.int2Col(len(tokens)+i), row), "-")
