@@ -120,6 +120,11 @@ var aggPerMeasType = map[string]string {
 	"NRMOP" : "NRCELL", // new in 5G21B
 	"NRPFW" : "NRBTS", // new in 5G21B
 	"NCAD1" : "NRDU", // new in 5G21B
+	"NUSQ2" : "NRCELL", // new in 5G22R1
+	"NHRRC" : "NRCELL", // new in 5G22R1
+	"PDCPC" : "NRCELL", // new in 5G22R1
+	"DBWP" : "NRCELL", // new in 5G22R1
+	"NRCCD" : "NRCELL", // new in 5G22R1
 }
 
 // measId2MeasType is map between measurement ID and its type.
@@ -203,6 +208,11 @@ var measId2MeasType = map[string]string {
 	"M55348" : "NCAD1",
 	"M55604" : "RURWS",
 	"M55605" : "TRRW",
+	"M55340" : "NUSQ2", // new in 5G22R1
+	"M55349" : "NHRRC", // new in 5G22R1
+	"M55350" : "PDCPC", // new in 5G22R1
+	"M55351" : "DBWP", // new in 5G22R1
+	"M55166" : "NRCCD", // new in 5G22R1
 }
 
 // measType2MeasId is map between measurement type and its ID.
@@ -286,6 +296,11 @@ var measType2MeasId = map[string]string {
 	"NCAD1" : "M55348",
 	"RURWS" : "M55604",
 	"TRRW" : "M55605",
+	"NUSQ2" : "M55340", // new in 5G22R1
+	"NHRRC" : "M55349", // new in 5G22R1
+	"PDCPC" : "M55350", // new in 5G22R1
+	"DBWP" : "M55351", // new in 5G22R1
+	"NRCCD" : "M55166", // new in 5G22R1
 }
 
 // keyPatTwmXinos is map between token of the default key pattern and the field of TWM XINOS.
@@ -377,7 +392,7 @@ func (p *PmParser) ArchiveRawPm() {
 }
 
 func (p *PmParser) ParseRawPmXml(xml string) {
-	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("  Parsing raw PM...[%s]", xml))
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("  Parsing raw PM...[%s]", filepath.Base(xml)))
 
 	doc := etree.NewDocument()
 	if err := doc.ReadFromFile(xml); err != nil {

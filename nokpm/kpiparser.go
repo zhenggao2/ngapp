@@ -84,6 +84,8 @@ var PmAggMax = []string {
 	"M55138C00022",
 	"M55138C01007",
 	"M55138C01010",
+	"M55351C00001", // new in 5G22R1
+	"M55351C01001", // new in 5G22R1
 }
 
 var PmAggMin = []string {
@@ -483,7 +485,7 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 			}
 		}
 
-		wb.SetPanes(agg, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		//wb.SetPanes(agg, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
 		wb.AutoFilter(agg, "A1", fmt.Sprintf("%v%v", p.int2Col(len(reportHeaderWiUnit[agg])), row), "")
 	}
 
