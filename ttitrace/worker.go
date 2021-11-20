@@ -1985,7 +1985,7 @@ func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
 		//if v2.eventId >= v1.eventId {
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 100 {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 				p2 = i
 				break
@@ -2132,7 +2132,7 @@ func (p *L2TtiTraceParser) findUlPuschRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 		v2 := m2.Val(k2).(*TtiUlPuschReceiveRespPsData)
 
 		//if v2.eventId <= v1.eventId {
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 100 {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 				break
@@ -2175,7 +2175,7 @@ func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlPreSchedData)
 
 		// if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId <= v1.eventId {
-		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId - v1.eventId)) <= 100 {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 				break
@@ -2197,7 +2197,7 @@ func (p *L2TtiTraceParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
 
 		// if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId <= v1.eventId {
-		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId - v1.eventId)) <= 100 {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
 			if v1.PhysCellId == v2.PhysCellId  && p.contains(v2.Cs2List, v1.Rnti) {
 				p2 = i
 				break
