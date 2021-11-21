@@ -237,7 +237,8 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 
 			fin, err := os.Open(fn)
 			if err != nil {
-				p.writeLog(zapcore.ErrorLevel, err.Error())
+				p.writeLog(zapcore.DebugLevel, err.Error())
+				fmt.Printf("Fail to load PM: %v, please check NRPMRNL.\n", filepath.Base(fn))
 				return
 			}
 
