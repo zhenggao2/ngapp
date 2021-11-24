@@ -226,6 +226,10 @@ func (p *BipTraceParser) Exec() {
 				for _, field := range msgFields[i][4:] {
 					key := strings.Join(append(keyPrefix, strings.Split(field, " ")[0]), "_")
 					if len(posMap[msg][field]) == 1 {
+						if len(tokens) < posMap[msg][field][0] + 1 {
+							continue
+						}
+
 						val := strings.Split(tokens[posMap[msg][field][0]], " ")[0]
 						if strings.HasSuffix(val, ")") {
 							val = strings.Split(strings.TrimSuffix(val, ")"), "(")[1]
