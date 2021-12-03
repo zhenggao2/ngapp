@@ -69,8 +69,8 @@ func init() {
 	autobipCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("autobip.gnblist", autobipCmd.Flags().Lookup("gnblist"))
 	viper.BindPFlag("autobip.gnblogs", autobipCmd.Flags().Lookup("gnblogs"))
-	viper.BindPFlag("autobip.gnbtools", logsCmd.Flags().Lookup("gnbtools"))
-	viper.BindPFlag("autobip.wshark", logsCmd.Flags().Lookup("wshark"))
+	viper.BindPFlag("autobip.gnbtools", autobipCmd.Flags().Lookup("gnbtools"))
+	viper.BindPFlag("autobip.wshark", autobipCmd.Flags().Lookup("wshark"))
 	viper.BindPFlag("autobip.maxgo", autobipCmd.Flags().Lookup("maxgo"))
 	viper.BindPFlag("autobip.debug", autobipCmd.Flags().Lookup("debug"))
 }
@@ -80,6 +80,6 @@ func loadAutobipFlags() {
 	gnblogs = viper.GetString("autobip.gnblogs")
 	gnbtools = viper.GetString("autobip.gnbtools")
 	wshark = viper.GetString("autobip.wshark")
-	maxgo = viper.GetInt("logs.maxgo")
-	debug = viper.GetBool("logs.debug")
+	maxgo = viper.GetInt("autobip.maxgo")
+	debug = viper.GetBool("autobip.debug")
 }

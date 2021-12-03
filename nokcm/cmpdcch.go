@@ -365,6 +365,7 @@ func (p *CmPdcch) Exec() {
 
 	// Validate allocation of USS PDCCH candidates and non-overlapping CCEs
 	p.writeLog(zapcore.InfoLevel, "\nStep 3: Validate allocation of CSS/USS PDCCH candidates and non-overlapping CCEs:")
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapStartCce=%v", mapStartCce))
 	ssIds := make([]int, 0)
 	for searchSpaceId := range mapSearchSpace {
 		ssIds = append(ssIds, searchSpaceId)
@@ -391,7 +392,7 @@ func (p *CmPdcch) Exec() {
 			}
 			for isymb := range mapStartCce[ns][ss.coreset][searchSpaceId] {
 				for al := range mapStartCce[ns][ss.coreset][searchSpaceId][isymb] {
-					for startCce := range mapStartCce[ns][ss.coreset][searchSpaceId][isymb][al] {
+					for _, startCce := range mapStartCce[ns][ss.coreset][searchSpaceId][isymb][al] {
 						for i := 0; i < al; i++ {
 							if cceBitmap[ss.coreset][isymb][startCce+i] == 0 {
 								cceBitmap[ss.coreset][isymb][startCce+i] = 1
