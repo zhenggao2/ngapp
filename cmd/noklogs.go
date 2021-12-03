@@ -109,7 +109,7 @@ func init() {
 	logsCmd.Flags().StringVar(&tlda, "tlda", "C:/TLDA", "path of TLDA")
 	logsCmd.Flags().StringVar(&snaptool, "snaptool", "C:/snapshot_tool", "path of Loki snapshot tool")
 	logsCmd.Flags().StringVar(&luashark, "luashark", "C:/luashark", "path of luashark scripts")
-	logsCmd.Flags().StringVar(&wshark, "wshark", "C:/Program Files/Wireshark", "path of Tshark")
+	logsCmd.Flags().StringVar(&wshark, "wshark", "C:/Program Files/Wireshark", "path of tshark")
 	logsCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
 	logsCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat,.bin]")
 	logsCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
