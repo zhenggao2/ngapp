@@ -33,6 +33,7 @@ import (
 
 type L2TtiTraceParser struct {
 	log          *zap.Logger
+	py3Path string
 	ttiTracePath string
 	ttiPattern   string
 	ttiRat       string
@@ -51,8 +52,9 @@ type SfnInfo struct {
 	hsfn int
 }
 
-func (p *L2TtiTraceParser) Init(log *zap.Logger, trace, pattern, rat, scs, filter string, maxgo int, debug bool) {
+func (p *L2TtiTraceParser) Init(log *zap.Logger, py3, trace, pattern, rat, scs, filter string, maxgo int, debug bool) {
 	p.log = log
+	p.py3Path = py3
 	p.ttiTracePath = trace
 	p.ttiPattern = strings.ToLower(pattern)
 	p.ttiRat = strings.ToLower(rat)

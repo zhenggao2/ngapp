@@ -5,6 +5,16 @@ autobip:
   gnbtools: C:/gnb_tools
   maxgo: 3
   wshark: C:/Program Files/Wireshark
+bip:
+  chbw: 30m
+  debug: true
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000989_000000/generated_luashark/
+  maxgo: 12
+  pattern: .pcap
+  scs: 15k
+  tlog: bip
+  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.164.188.77_20211204_171443_m/
+  wshark: /usr/bin
 cm:
   cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/
   debug: true
@@ -35,6 +45,18 @@ cmpdcch:
   scs: 15k
   uss:
   - uss_8_110_n4_n2_n1_n1_n0_sl1_coreset1
+ddr4:
+  chbw: 30m
+  debug: true
+  filter: ul
+  gain: 110
+  maxgo: 48
+  pattern: .bin
+  py3: /usr/bin
+  scs: 15k
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
+  tlog: ddr4
+  trace: /home/dabs/Downloads/05-ddr4_log/YNMCC_ddr4/gNB_10.164.252.18_20211116_172921_DDR4/
 kpi:
   btsid: all
   debug: true
@@ -44,70 +66,12 @@ kpi:
   op: cmcc
   pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
   stime: "202111010000"
-logs:
-  chbw: 30m
+l2trace:
   debug: true
-  filter: both
-  gain: 105
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
-  maxgo: 48
-  pattern: .csv
-  py2: /usr/bin
-  py3: C:/Python38
-  rat: nr
-  scs: 15k
-  snaptool: C:/snapshot_tool
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
-  tlog: l2tti
-  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.164.134.57_20211203_184921_TTI/
-  wshark: /usr/bin
-logs-bip:
-  chbw: 30m
-  debug: true
-  filter: both
-  gain: 110
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001662_000000/generated_luashark/
-  maxgo: 12
-  pattern: .pcap
-  py2: /usr/bin
-  py3: /usr/bin
-  rat: nr
-  scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/TLDA/
-  tlog: bip
-  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.164.252.4_20211122_164305_m/
-  wshark: /usr/bin
-logs-ddr4:
-  chbw: 30m
-  debug: true
-  filter: ul
-  gain: 110
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/generated_luashark/
-  maxgo: 48
-  pattern: .bin
-  py2: /usr/bin
-  py3: /usr/bin
-  rat: nr
-  scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G20B_10.1800.1180/TLDA/
-  tlog: ddr4
-  trace: /home/dabs/Downloads/05-ddr4_log/YNMCC_ddr4/gNB_10.164.252.18_20211116_172921_DDR4/
-  wshark: /usr/bin
-logs-l2trace:
-  chbw: 30m
-  debug: true
-  filter: both
-  gain: 110
   luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/generated_luashark/
   maxgo: 5
   pattern: .dat
   py2: /usr/bin
-  py3: /usr/bin
-  rat: nr
-  scs: 15k
-  snaptool: C:/snapshot_tool
   tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/TLDA/
   tlog: l2trace
   trace: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/hz_test/field/l2trace/
@@ -794,3 +758,13 @@ pm:
   pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
   pmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/raw_pm_22r1/
   tpm: raw
+tti:
+  debug: true
+  filter: both
+  maxgo: 48
+  pattern: .csv
+  py3: /usr/bin
+  rat: nr
+  scs: 15k
+  tlog: l2tti
+  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.164.134.57_20211203_163952_TTI/

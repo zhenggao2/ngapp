@@ -56,11 +56,11 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// logsCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// tmpCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	//logsCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
+	//tmpCmd.Flags().StringP("trace", "d", "./trace_path", "path containing tti files")
 	autobipCmd.Flags().StringVar(&gnblist, "gnblist", "C:/gnb_list.txt", "file containing list of gNBs, format of per line should be:[gnb_id,gnb_ip,gnb_sw,scs,chbw]")
 	autobipCmd.Flags().StringVar(&gnblogs, "gnblogs", "C:/gnb_logs", "path of gnb_logs tool")
 	autobipCmd.Flags().StringVar(&gnbtools, "gnbtools", "C:/gnb_tools", "path of gNB tools, containing TLDA, generated_luashark, tti-dec-bin and snapshot_tool of each gNB SW load")
