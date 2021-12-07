@@ -192,7 +192,9 @@ func (p *CmPdcch) Exec() {
 
 		go func(rnti int) {
 			defer wg.Done()
-			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-->Validating RNTI = %v", rnti))
+			if rnti == p.rnti {
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-->Validating RNTI = %v", rnti))
+			}
 
 			mapScs2MaxCandidatesPerSlot := map[string]int{"15k": 44, "30k": 36, "60k": 22, "120k": 20}
 			mapScs2MaxNonOverlapCcesPerSlot := map[string]int{"15k": 56, "30k": 56, "60k": 48, "120k": 32}
@@ -234,7 +236,7 @@ func (p *CmPdcch) Exec() {
 								if ss.searchSpaceType != "uss" {
 									Y := 0
 									for m := 0; m < M; m++ {
-										startCce := p.CalcStartCceIndex(ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
+										startCce := p.CalcStartCceIndex(rnti, ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
 										for _, isymb := range ss.monitoringSymbs {
 											for ial := 0; ial < L; ial++ {
 												mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
@@ -262,7 +264,7 @@ func (p *CmPdcch) Exec() {
 										Y[ns] = (Ap * Y[ns-1]) % D
 									}
 									for m := 0; m < M; m++ {
-										startCce := p.CalcStartCceIndex(ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
+										startCce := p.CalcStartCceIndex(rnti, ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
 										for _, isymb := range ss.monitoringSymbs {
 											for ial := 0; ial < L; ial++ {
 												mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
@@ -280,8 +282,10 @@ func (p *CmPdcch) Exec() {
 			}
 
 			// Validate against Table 10.1-2: Maximum number of monitored PDCCH candidates per slot for a DL BWP
-			// p.writeLog(zapcore.DebugLevel, "Step 1: Validate Maximum number of monitored PDCCH candidates per slot for a DL BWP:")
-			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Max number of monitored PDCCH candidates per slot is %v when scs = %v", mapScs2MaxCandidatesPerSlot[p.scs], p.scs))
+			if rnti == p.rnti {
+				p.writeLog(zapcore.DebugLevel, "Step 1: Validate Maximum number of monitored PDCCH candidates per slot for a DL BWP:")
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Max number of monitored PDCCH candidates per slot is %v when scs = %v", mapScs2MaxCandidatesPerSlot[p.scs], p.scs))
+			}
 
 			// key = slot_coresetId_searchSpaceId_monitoringSymbol, val = count
 			totUssCandidatesPerSymb := make(map[int]map[string]map[int]map[int]int)
@@ -300,12 +304,16 @@ func (p *CmPdcch) Exec() {
 						for isymb := range mapStartCce[ns][coresetId][searchSpaceId] {
 							totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb] = 0
 							for al := range mapStartCce[ns][coresetId][searchSpaceId][isymb] {
-								//p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,isymb=%v,al=AL%v,startCce=%v", ns, coresetId, searchSpaceId, isymb, al, mapStartCce[ns][coresetId][searchSpaceId][isymb][al]))
+								if rnti == p.rnti {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,isymb=%v,al=AL%v,startCce=%v", ns, coresetId, searchSpaceId, isymb, al, mapStartCce[ns][coresetId][searchSpaceId][isymb][al]))
+								}
 								totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb] += 2 * len(mapStartCce[ns][coresetId][searchSpaceId][isymb][al])
 							}
 
 							if totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb] > 0 {
-								// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,searchSpaceType=%v,monitoringSymbol=%v,totUssCandidatesPerSymb=%v", ns, coresetId, searchSpaceId, mapSearchSpace[searchSpaceId].searchSpaceType, isymb, totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]))
+								if rnti == p.rnti {
+									p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coresetId=%v,searchSpaceId=%v,searchSpaceType=%v,monitoringSymbol=%v,totUssCandidatesPerSymb=%v", ns, coresetId, searchSpaceId, mapSearchSpace[searchSpaceId].searchSpaceType, isymb, totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]))
+								}
 							}
 							totCandidatesPerSlot[ns] += totUssCandidatesPerSymb[ns][coresetId][searchSpaceId][isymb]
 						}
@@ -349,7 +357,9 @@ func (p *CmPdcch) Exec() {
 					}
 				}
 			}
-			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("totUssCandidatesPerSymb = %v, totUssCandidatesPerSlot=%v, totCssCandidatesPerSymb = %v, totCssCandatesPerSlot = %v", totUssCandidatesPerSymb, totCandidatesPerSlot, totCssCandidatesPerSymb, totCssCandatesPerSlot))
+			if rnti == p.rnti {
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("totUssCandidatesPerSymb = %v, totUssCandidatesPerSlot=%v, totCssCandidatesPerSymb = %v, totCssCandatesPerSlot = %v", totUssCandidatesPerSymb, totCandidatesPerSlot, totCssCandidatesPerSymb, totCssCandatesPerSlot))
+			}
 
 			for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++ {
 				totCandidatesPerSlot[ns] += totCssCandatesPerSlot
@@ -358,7 +368,9 @@ func (p *CmPdcch) Exec() {
 			// p.writeLog(zapcore.DebugLevel, "By 3GPP 38.213's method:")
 			for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++ {
 				if totCandidatesPerSlot[ns] > mapScs2MaxCandidatesPerSlot[p.scs] {
-					// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation FAILED: ns=%v: M_CSS=%v, M_USS=%v, totCandidatesPerSlot = %v", ns, totCssCandatesPerSlot, totCandidatesPerSlot[ns]-totCssCandatesPerSlot, totCandidatesPerSlot[ns]))
+					if rnti == p.rnti {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation FAILED: ns=%v: M_CSS=%v, M_USS=%v, totCandidatesPerSlot = %v", ns, totCssCandatesPerSlot, totCandidatesPerSlot[ns]-totCssCandatesPerSlot, totCandidatesPerSlot[ns]))
+					}
 					if !failedRntis.Has(strconv.Itoa(rnti)) {
 						failedRntis.Set(strconv.Itoa(rnti), []string{fmt.Sprintf("step1_slot%v", ns)})
 					} else {
@@ -367,29 +379,39 @@ func (p *CmPdcch) Exec() {
 						failedRntis.Set(strconv.Itoa(rnti), m)
 					}
 				} else {
-					// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation PASSED: ns=%v: M_CSS=%v, M_USS=%v, totCandidatesPerSlot = %v", ns, totCssCandatesPerSlot, totCandidatesPerSlot[ns]-totCssCandatesPerSlot, totCandidatesPerSlot[ns]))
+					if rnti == p.rnti {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation PASSED: ns=%v: M_CSS=%v, M_USS=%v, totCandidatesPerSlot = %v", ns, totCssCandatesPerSlot, totCandidatesPerSlot[ns]-totCssCandatesPerSlot, totCandidatesPerSlot[ns]))
+					}
 				}
 			}
 
 			// Validate against Table 10.1-3: Maximum number of non-overlapped CCEs per slot for a DL BWP
-			// p.writeLog(zapcore.DebugLevel, "Step 2: Validate Maximum number of non-overlapped CCEs per slot for a DL BWP:")
-			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Max number of non-overlapping CCEs per slot is %v when scs = %v", mapScs2MaxNonOverlapCcesPerSlot[p.scs], p.scs))
+			if rnti == p.rnti {
+				p.writeLog(zapcore.DebugLevel, "Step 2: Validate Maximum number of non-overlapped CCEs per slot for a DL BWP:")
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Max number of non-overlapping CCEs per slot is %v when scs = %v", mapScs2MaxNonOverlapCcesPerSlot[p.scs], p.scs))
+			}
 			totNonOverlapCcesPerSlot := make(map[int]int)
 			for ns := 0; ns < mapScs2SlotsPerRf[p.scs]; ns++ {
-				// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapNonOverlapCces[ns=%v] = %v", ns, mapNonOverlapCces[ns]))
+				if rnti == p.rnti {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapNonOverlapCces[ns=%v] = %v", ns, mapNonOverlapCces[ns]))
+				}
 
 				totNonOverlapCcesPerSlot[ns] = 0
 				for coreset := range mapNonOverlapCces[ns] {
 					for symb := range mapNonOverlapCces[ns][coreset] {
 						numNonOverlapCces := utils.SumInt(mapNonOverlapCces[ns][coreset][symb])
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coreset=%v,symbol=%v: numNonOverlapCces=%v", ns, coreset, symb, numNonOverlapCces))
+						if rnti == p.rnti {
+							p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ns=%v,coreset=%v,symbol=%v: numNonOverlapCces=%v", ns, coreset, symb, numNonOverlapCces))
+						}
 
 						totNonOverlapCcesPerSlot[ns] += numNonOverlapCces
 					}
 				}
 
 				if totNonOverlapCcesPerSlot[ns] > mapScs2MaxNonOverlapCcesPerSlot[p.scs] {
-					// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of non-overlapping CCEs validation FAILED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, totNonOverlapCcesPerSlot[ns]))
+					if rnti == p.rnti {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of non-overlapping CCEs validation FAILED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, totNonOverlapCcesPerSlot[ns]))
+					}
 					if !failedRntis.Has(strconv.Itoa(rnti)) {
 						failedRntis.Set(strconv.Itoa(rnti), []string{fmt.Sprintf("step2_slot%v", ns)})
 					} else {
@@ -398,13 +420,17 @@ func (p *CmPdcch) Exec() {
 						failedRntis.Set(strconv.Itoa(rnti), m)
 					}
 				} else {
-					// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of non-overlapping CCEs validation PASSED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, totNonOverlapCcesPerSlot[ns]))
+					if rnti == p.rnti {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of non-overlapping CCEs validation PASSED: ns=%v: totNonOverlapCcesPerSlot=%v", ns, totNonOverlapCcesPerSlot[ns]))
+					}
 				}
 			}
 
 			// Validate allocation of USS PDCCH candidates and non-overlapping CCEs
-			// p.writeLog(zapcore.DebugLevel, "Step 3: Validate allocation of CSS/USS PDCCH candidates and non-overlapping CCEs:")
-			// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapStartCce=%v", mapStartCce))
+			if rnti == p.rnti {
+				p.writeLog(zapcore.DebugLevel, "Step 3: Validate allocation of CSS/USS PDCCH candidates and non-overlapping CCEs:")
+				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapStartCce=%v", mapStartCce))
+			}
 			ssIds := make([]int, 0)
 			for searchSpaceId := range mapSearchSpace {
 				ssIds = append(ssIds, searchSpaceId)
@@ -445,11 +471,16 @@ func (p *CmPdcch) Exec() {
 
 				M_USS := utils.MinInt([]int{mapScs2MaxCandidatesPerSlot[p.scs], totCandidatesPerSlot[ns]}) - M_CSS
 				C_USS := utils.MinInt([]int{mapScs2MaxNonOverlapCcesPerSlot[p.scs], totNonOverlapCcesPerSlot[ns]}) - C_CSS
-				// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("CSS allocation finished:ns=%v, M_CSS=%v, C_CSS=%v, M_USS=%v, C_USS=%v", ns, M_CSS, C_CSS, M_USS, C_USS))
-				// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("cssCceBitmap=%v", cceBitmap))
+				if rnti == p.rnti {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("CSS allocation finished:ns=%v, M_CSS=%v, C_CSS=%v, M_USS=%v, C_USS=%v", ns, M_CSS, C_CSS, M_USS, C_USS))
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("cssCceBitmap=%v", cceBitmap))
+				}
 
 				if M_USS > 0 && C_USS == 0 {
 					// when CSS/USS are defined in the same CORESET, skip USS allocation verification procedure
+					if rnti == p.rnti {
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("SKipping USS allocation procedure:ns=%v, M_USS =%v but C_USS=%v", ns, M_USS, C_USS))
+					}
 					continue
 				}
 
@@ -491,11 +522,15 @@ func (p *CmPdcch) Exec() {
 					if M <= M_USS && C <= C_USS {
 						M_USS -= M
 						C_USS -= C
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("USS allocation SUCCEED: ns=%v: searchSpaceId=%v, searchSpaceType=%v, coresetId=%v, M=%v, C=%v", ns, searchSpaceId, ss.searchSpaceType, ss.coreset, M, C))
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ussCceBitmap=%v", ussCceBitmap))
+						if rnti == p.rnti {
+							p.writeLog(zapcore.DebugLevel, fmt.Sprintf("USS allocation SUCCEED: ns=%v: searchSpaceId=%v, searchSpaceType=%v, coresetId=%v, M=%v, C=%v", ns, searchSpaceId, ss.searchSpaceType, ss.coreset, M, C))
+							p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ussCceBitmap=%v", ussCceBitmap))
+						}
 					} else {
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("USS allocation FAILED: ns=%v: searchSpaceId=%v, searchSpaceType=%v, coresetId=%v, M=%v, C=%v", ns, searchSpaceId, ss.searchSpaceType, ss.coreset, M, C))
-						// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ussCceBitmap=%v", ussCceBitmap))
+						if rnti == p.rnti {
+							p.writeLog(zapcore.DebugLevel, fmt.Sprintf("USS allocation FAILED: ns=%v: searchSpaceId=%v, searchSpaceType=%v, coresetId=%v, M=%v, C=%v", ns, searchSpaceId, ss.searchSpaceType, ss.coreset, M, C))
+							p.writeLog(zapcore.DebugLevel, fmt.Sprintf("ussCceBitmap=%v", ussCceBitmap))
+						}
 						if !failedRntis.Has(strconv.Itoa(rnti)) {
 							failedRntis.Set(strconv.Itoa(rnti), []string{fmt.Sprintf("step3_slot%v", ns)})
 						} else {
@@ -527,9 +562,11 @@ func (p *CmPdcch) Exec() {
 	}
 }
 
-func (p *CmPdcch) CalcStartCceIndex(sstype string, N_CCE, L, M, m, Y float64, ns int) int {
+func (p *CmPdcch) CalcStartCceIndex(rnti int, sstype string, N_CCE, L, M, m, Y float64, ns int) int {
 	startCce := int(L * math.Mod(Y + math.Floor(m * N_CCE / (L * M)), math.Floor(N_CCE / L)))
-	// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v, ns=%v, N_CCE=%v, L=%v, M=%v, m=%v, Y=%v -> startCce=%v", sstype, ns, N_CCE, L, M, m, Y, startCce))
+	if rnti == p.rnti {
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v, ns=%v, N_CCE=%v, L=%v, M=%v, m=%v, Y=%v -> startCce=%v", sstype, ns, N_CCE, L, M, m, Y, startCce))
+	}
 
 	return startCce
 }
