@@ -448,6 +448,11 @@ func (p *CmPdcch) Exec() {
 				// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("CSS allocation finished:ns=%v, M_CSS=%v, C_CSS=%v, M_USS=%v, C_USS=%v", ns, M_CSS, C_CSS, M_USS, C_USS))
 				// p.writeLog(zapcore.DebugLevel, fmt.Sprintf("cssCceBitmap=%v", cceBitmap))
 
+				if M_USS > 0 && C_USS == 0 {
+					// when CSS/USS are defined in the same CORESET, skip USS allocation verification procedure
+					continue
+				}
+
 				// allocate PDCCH candidates and non-overlapping CCEs for USS
 				for _, searchSpaceId := range ssIds {
 					ss := mapSearchSpace[searchSpaceId]
