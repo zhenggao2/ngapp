@@ -8,12 +8,12 @@ autobip:
 bip:
   chbw: 30m
   debug: true
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_000989_000000/generated_luashark/
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/generated_luashark/
   maxgo: 12
   pattern: .pcap
   scs: 15k
   tlog: bip
-  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.164.188.77_20211204_171443_m/
+  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.164.135.65_20211208_153450_m/
   wshark: /usr/bin
 cm:
   cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/
@@ -31,17 +31,36 @@ cmfind:
   debug: true
   paras: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/nr_para_list.txt
 cmpdcch:
+  bwpid: 31
+  coreset:
+  - coreset0_48_1
+  - coreset1_54_1
+  - coreset2_54_1
+  css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
+  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
+  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
+  debug: true
+  rnti: 57846
+  scs: 15k
+  uss:
+  - uss_8_110_n1_n2_n1_n1_n0_sl1_coreset1
+  - uss_9_110_n1_n1_n1_n1_n0_sl1_coreset2
+cmpdcch-20:
   bwpid: 20
   coreset:
   - coreset0_48_1
   - coreset1_102_1
   css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
   - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
   - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
   - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n1_n1_n2_n0_n0_sl1_coreset0
+  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
   debug: true
-  rnti: 1714
+  rnti: 57846
   scs: 15k
   uss:
   - uss_8_110_n2_n3_n3_n1_n0_sl1_coreset1
@@ -49,37 +68,21 @@ cmpdcch-21:
   bwpid: 21
   coreset:
   - coreset0_48_1
-  - coreset1_24_1
-  - coreset2_24_1
+  - coreset1_48_1
+  - coreset2_48_1
   css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
   - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
   - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
   - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n1_n2_n2_n0_n0_sl1_coreset0
+  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
   debug: true
-  rnti: 1714
+  rnti: 57846
   scs: 15k
   uss:
   - uss_8_110_n1_n2_n1_n0_n0_sl1_coreset1
   - uss_9_110_n1_n1_n1_n0_n0_sl1_coreset2
-  - uss_10_111_n0_n0_n0_n1_n0_sl1_coreset0
-cmpdcch-31:
-  bwpid: 31
-  coreset:
-  - coreset0_48_1
-  - coreset1_54_1
-  - coreset2_54_1
-  css:
-  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
-  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n1_n1_n2_n0_n0_sl1_coreset0
-  debug: true
-  rnti: 1714
-  scs: 15k
-  uss:
-  - uss_8_110_n1_n2_n1_n1_n0_sl1_coreset1
-  - uss_9_110_n1_n1_n1_n1_n0_sl1_coreset2
+  - uss_10_011_n0_n0_n1_n1_n0_sl1_coreset0
 ddr4:
   chbw: 30m
   debug: true
@@ -802,4 +805,4 @@ tti:
   rat: nr
   scs: 15k
   tlog: l2tti
-  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.164.134.57_20211203_163952_TTI/
+  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.218.200.225_20211208_173037_TTI/
