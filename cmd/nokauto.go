@@ -18,6 +18,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/zhenggao2/ngapp/biptrace"
 )
 
 var (
@@ -37,6 +38,10 @@ var autobipCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		laPrint(cmd, args)
 		viper.WriteConfig()
+
+		parser := new(biptrace.AutoBipParser)
+		parser.Init(Logger, gnblist, gnblogs, gnbtools, wshark, maxgo, debug)
+		parser.Exec()
 	},
 }
 

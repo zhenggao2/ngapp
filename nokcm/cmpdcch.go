@@ -236,7 +236,7 @@ func (p *CmPdcch) Exec() {
 								if ss.searchSpaceType != "uss" {
 									Y := 0
 									for m := 0; m < M; m++ {
-										startCce := p.CalcStartCceIndex(rnti, ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
+										startCce := p.CalcStartCceIndex(rnti, fmt.Sprintf("%v_id=%v", ss.searchSpaceType, ss.id), float64(N_CCE), float64(L), float64(M), float64(m), float64(Y), ns)
 										for _, isymb := range ss.monitoringSymbs {
 											for ial := 0; ial < L; ial++ {
 												mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1
@@ -264,7 +264,7 @@ func (p *CmPdcch) Exec() {
 										Y[ns] = (Ap * Y[ns-1]) % D
 									}
 									for m := 0; m < M; m++ {
-										startCce := p.CalcStartCceIndex(rnti, ss.searchSpaceType, float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
+										startCce := p.CalcStartCceIndex(rnti, fmt.Sprintf("%v_id=%v", ss.searchSpaceType, ss.id), float64(N_CCE), float64(L), float64(M), float64(m), float64(Y[ns]), ns)
 										for _, isymb := range ss.monitoringSymbs {
 											for ial := 0; ial < L; ial++ {
 												mapNonOverlapCces[ns][coresetId][isymb][startCce+ial] = 1

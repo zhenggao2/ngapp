@@ -16,6 +16,7 @@ limitations under the License.
 package biptrace
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"fmt"
@@ -29,6 +30,7 @@ import (
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
+	"io"
 	"io/ioutil"
 	"math"
 	"os"
@@ -47,6 +49,8 @@ const (
 	BIN_TSHARK_LINUX  string = "tshark"
 	BIN_EDITCAP string = "editcap.exe"
 	BIN_EDITCAP_LINUX string = "editcap"
+	BIN_GNBLOGS string = "gnb_logs.exe"
+	BIN_GNBLOGS_LINUX string = "gnb_logs"
 	LUA_LUASHARK      string = "luashark.lua"
 	BIP_PUCCH_REQ     int    = 0
 	BIP_PUCCH_RESP_PS int    = 1
@@ -54,6 +58,7 @@ const (
 	BIP_PUSCH_RESP_PS int    = 3
 	VG_IMG_WIDTH      int    = 6
 	VG_IMG_HEIGHT     int    = 3
+	NUM_GNB_INFO_FIELDS int = 5
 )
 
 type BipTraceParser struct {
@@ -85,7 +90,7 @@ func (p *BipTraceParser) Init(log *zap.Logger, lua, wshark, trace, pattern, scs,
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing BIP trace parser...(working dir: %v)", trace))
 }
 
-func (p *BipTraceParser) Exec() {
+func (p *BipTraceParser) Exec() (map[string][]int, map[string][]int, map[string][]float64) {
 	// recreate dir for parsed bip trace
 	outPath := filepath.Join(p.bipTracePath, "parsed_biptrace")
 	if err := os.RemoveAll(outPath); err != nil {
@@ -100,7 +105,7 @@ func (p *BipTraceParser) Exec() {
 		fileInfo, err := ioutil.ReadDir(p.bipTracePath)
 		if err != nil {
 			p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.bipTracePath))
-			return
+			return nil, nil, nil
 		}
 
 		/*
@@ -506,6 +511,8 @@ func (p *BipTraceParser) Exec() {
 			p.writeLog(zapcore.ErrorLevel, err.Error())
 		}
 	}
+
+	return pucchInfo, puschInfo, rssi
 }
 
 func (p *BipTraceParser) parse(fn string) {
@@ -734,3 +741,377 @@ func (p *BipTraceParser) writeLog(level zapcore.Level, s string) {
 		fmt.Println(s)
 	}
 }
+
+type GnbInfo struct {
+	id string
+	ip string
+	sw string
+	scs string
+	chbw string
+}
+
+type AutoBipParser struct {
+	log          *zap.Logger
+	gnblist string
+	gnblogs string
+	gnbtools string
+	wshark string
+	maxgo        int
+	debug        bool
+
+	gnbs cmap.ConcurrentMap
+	bips cmap.ConcurrentMap
+	pcaps cmap.ConcurrentMap
+
+	fpucch *os.File
+	fpusch *os.File
+	fnoise *os.File
+}
+
+func (p *AutoBipParser) Init(log *zap.Logger, gnblist, gnblogs, gnbtools, wshark string, maxgo int, debug bool) {
+	p.log = log
+	p.gnblist = gnblist
+	p.gnblogs = gnblogs
+	p.gnbtools = gnbtools
+	p.wshark = wshark
+	p.maxgo = utils.MaxInt([]int{2, maxgo})
+	p.debug = debug
+
+	p.gnbs = cmap.New()
+	p.bips = cmap.New()
+	p.pcaps = cmap.New()
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Initializing autobip parser...(working dir: %v)", filepath.Dir(p.gnblist)))
+}
+
+func (p *AutoBipParser) Exec() {
+	// parse gnb_list.txt
+	p.parseGnbList()
+
+	// create pucch_info.csv, pusch_info.csv and noisepower_info.csv
+	header := "BTSID,LCRID,BTSIP,BTSVER,SCS,TIME"
+	for i := 0; i < 273; i++ {
+		header += fmt.Sprintf(",PRB%v", i)
+	}
+
+	var err error
+	p.fpucch, err = os.OpenFile(filepath.Join(filepath.Dir(p.gnblist), fmt.Sprintf("pucch_info.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+	defer p.fpucch.Close()
+	p.fpucch.WriteString(header + "\n")
+
+	p.fpusch, err = os.OpenFile(filepath.Join(filepath.Dir(p.gnblist), fmt.Sprintf("pusch_info.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+	defer p.fpusch.Close()
+	p.fpusch.WriteString(header + "\n")
+
+	p.fnoise, err = os.OpenFile(filepath.Join(filepath.Dir(p.gnblist), fmt.Sprintf("noisepower_info.csv")), os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+	defer p.fnoise.Close()
+	p.fnoise.WriteString(header + "\n")
+
+	wg := &sync.WaitGroup{}
+	for _, gnb := range p.gnbs.Keys() {
+		for {
+			if runtime.NumGoroutine() >= p.maxgo {
+				time.Sleep(1 * time.Second)
+			} else {
+				break
+			}
+		}
+
+		wg.Add(1)
+		go func(gnb string) {
+			defer wg.Done()
+			// use gnb_logs to capture BIP log
+			p.captureBip(gnb)
+
+			// p.bips.SetIfAbsent("1606692", "/home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/05-DS_interference/bip_logs/bip_1606692_10.218.200.225/gNB_10.218.200.225_20211210_093550_m.zip")
+			if !p.bips.Has(gnb) {
+				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("No BIP log found for gNB %v, skipped!", gnb))
+			} else {
+				// prepare env for BIP parser
+				p.prepBip(gnb)
+				// use ngapp to parser BIP and collect noisePower
+				p.parseBip(gnb)
+			}
+		}(gnb)
+	}
+	wg.Wait()
+}
+
+func (p *AutoBipParser) captureBip(gnb string) {
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Capturing BIP using gnb_logs [%s]... ", filepath.Base(p.gnblogs)))
+	m, _ := p.gnbs.Get(gnb)
+	workDir := filepath.Dir(p.gnblist)
+	outPath := filepath.Join(workDir, "bip_logs", fmt.Sprintf("bip_%v_%v", gnb, m.(GnbInfo).ip))
+
+	var stdOut bytes.Buffer
+	var stdErr bytes.Buffer
+	var cmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command(filepath.Join(p.gnblogs, BIN_GNBLOGS_LINUX), m.(GnbInfo).ip, "-b", "10", "-N", outPath)
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.Command(filepath.Join(p.gnblogs, BIN_GNBLOGS),  m.(GnbInfo).ip, "-b", "10", "-N", outPath)
+	} else {
+		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
+		return
+	}
+	cmd.Stdout = &stdOut
+	cmd.Stderr = &stdErr
+	p.writeLog(zapcore.DebugLevel, cmd.String())
+	if err := cmd.Run(); err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+	}
+	if stdOut.Len() > 0 {
+		p.writeLog(zapcore.DebugLevel, stdOut.String())
+		for {
+			line, err := stdOut.ReadString('\n')
+			if err != nil {
+				break
+			}
+
+			// remove leading and tailing spaces
+			line = strings.TrimSpace(line)
+			//if len(line) > 0 && strings.Contains(line, "Log file downloaded:") {
+			if len(line) > 0 && strings.Contains(line, outPath) && strings.Contains(line, ".zip") {
+				tokens := strings.Split(line, " ")
+				for _, t := range tokens {
+					if strings.HasPrefix(t, outPath) && strings.HasSuffix(t, ".zip") {
+						p.bips.SetIfAbsent(gnb, t)
+					}
+				}
+			}
+		}
+	}
+	if stdErr.Len() > 0 {
+		p.writeLog(zapcore.DebugLevel, stdErr.String())
+	}
+}
+
+func (p *AutoBipParser) prepBip(gnb string) {
+	if !p.bips.Has(gnb) {
+		return
+	}
+
+	m, _ := p.bips.Get(gnb)
+
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("unzipping captured BIP of gNB %v: %v", gnb, m.(string)))
+	if pcaps, err := p.unzip(m.(string), filepath.Dir(m.(string))); err != nil {
+		p.writeLog(zapcore.InfoLevel, err.Error())
+	} else {
+		p.pcaps.SetIfAbsent(gnb, pcaps)
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("captured pcaps: [%v]", strings.Join(pcaps, ",")))
+	}
+}
+
+func (p *AutoBipParser) parseBip(gnb string) {
+	if !p.bips.Has(gnb) {
+		return
+	}
+
+	m, _ := p.bips.Get(gnb)
+	m2, _ := p.gnbs.Get(gnb)
+
+	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("parsing captured BIP of gNB %v: %v", gnb, m.(string)))
+	bip := new(BipTraceParser)
+	bip.Init(p.log, filepath.Join(p.gnbtools, m2.(GnbInfo).sw, "generated_luashark"), p.wshark, filepath.Dir(m.(string)), ".pcap", m2.(GnbInfo).scs, m2.(GnbInfo).chbw, p.maxgo, p.debug)
+	pucch, pusch, noise := bip.Exec()
+
+	// save .png figures
+	pngs, _ := filepath.Glob(filepath.Join(filepath.Dir(m.(string)), "parsed_biptrace", "bip*.png"))
+	for _, png := range pngs {
+		in, err := ioutil.ReadFile(png)
+		if err != nil {
+			p.writeLog(zapcore.DebugLevel, err.Error())
+			continue
+		}
+
+		err = ioutil.WriteFile(filepath.Join(filepath.Dir(p.gnblist), fmt.Sprintf("%v_%v_%v", m2.(GnbInfo).id, m2.(GnbInfo).ip, filepath.Base(png))), in, 0644)
+		if err != nil {
+			p.writeLog(zapcore.DebugLevel, err.Error())
+			continue
+		}
+	}
+
+	// get timestamp
+	tokens := strings.Split(filepath.Base(m.(string)), "_")
+	var ts string
+	if len(tokens) == 5 {
+		ts = tokens[2] + "_" + tokens[3]
+	} else {
+		ts = "NA"
+	}
+
+	// save PUCCH info
+	for subcell := range pucch {
+		line := fmt.Sprintf("%v,%v,%v,%v,%v,%v", m2.(GnbInfo).id, subcell, m2.(GnbInfo).ip, m2.(GnbInfo).sw, m2.(GnbInfo).scs, ts)
+		for _, count := range pucch[subcell] {
+			line += fmt.Sprintf(",%v", count)
+		}
+		p.fpucch.WriteString(line + "\n")
+	}
+
+	// save PUSCH info
+	for subcell := range pusch {
+		line := fmt.Sprintf("%v,%v,%v,%v,%v,%v", m2.(GnbInfo).id, subcell, m2.(GnbInfo).ip, m2.(GnbInfo).sw, m2.(GnbInfo).scs, ts)
+		for _, count := range pusch[subcell] {
+			line += fmt.Sprintf(",%v", count)
+		}
+		p.fpusch.WriteString(line + "\n")
+	}
+
+	// store noisePower info
+	for subcell := range noise {
+		line := fmt.Sprintf("%v,%v,%v,%v,%v,%v", m2.(GnbInfo).id, subcell, m2.(GnbInfo).ip, m2.(GnbInfo).sw, m2.(GnbInfo).scs, ts)
+		for _, count := range noise[subcell] {
+			line += fmt.Sprintf(",%v", count)
+		}
+		p.fnoise.WriteString(line + "\n")
+	}
+
+	// remove parsed_biptrace dir and unzipped .pcap
+	os.RemoveAll(filepath.Join(filepath.Dir(m.(string)), "parsed_biptrace"))
+	pcaps, _ := p.pcaps.Get(gnb)
+	for _, pcap := range pcaps.([]string) {
+		os.Remove(pcap)
+	}
+}
+
+// unzip will decompress a zip archive, moving all files and folders within the zip file (src) to an output directory (dst).
+func (p *AutoBipParser) unzip(src string, dst string) ([]string, error) {
+	var filenames []string
+
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return filenames, err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		// Extract .pcap only
+		if !strings.HasPrefix(filepath.Ext(f.Name), ".pcap") {
+			continue
+		}
+
+		// Store filename/path for returning and using later on
+		// fpath := filepath.Join(dst, f.Name)
+		fpath := filepath.Join(dst, filepath.Base(f.Name))
+
+		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
+		if !strings.HasPrefix(fpath, filepath.Clean(dst) + string(os.PathSeparator)) {
+			return filenames, fmt.Errorf("%s: illegal file path", fpath)
+		}
+
+		filenames = append(filenames, fpath)
+
+		if f.FileInfo().IsDir() {
+			// Make Folder
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+
+		// Make File
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return filenames, err
+		}
+
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return filenames, err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return filenames, err
+		}
+
+		_, err = io.Copy(outFile, rc)
+
+		// Close the file without defer to close before next iteration of loop
+		outFile.Close()
+		rc.Close()
+
+		if err != nil {
+			return filenames, err
+		}
+	}
+
+	return filenames, nil
+}
+
+func (p *AutoBipParser) parseGnbList() {
+	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Parsing gnblist...[%s]", filepath.Base(p.gnblist)))
+
+	fin, err := os.Open(p.gnblist)
+	if err != nil {
+		p.writeLog(zapcore.ErrorLevel, err.Error())
+		return
+	}
+
+	reader := bufio.NewReader(fin)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		// remove leading and tailing spaces
+		line = strings.TrimSpace(line)
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		tokens := strings.Split(line, ",")
+		if len(tokens) != NUM_GNB_INFO_FIELDS {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Invalid gNB info: incorrect number of fields. (%s)", line))
+			continue
+		}
+
+		p.gnbs.SetIfAbsent(tokens[0], GnbInfo{
+			id:   tokens[0],
+			ip:   tokens[1],
+			sw:   tokens[2],
+			scs:  tokens[3],
+			chbw: tokens[4],
+		})
+	}
+
+	fin.Close()
+
+	for _, key := range p.gnbs.Keys() {
+		m, _ := p.gnbs.Get(key)
+		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("gNB info(id=%v): %v", key, m.(GnbInfo)))
+	}
+}
+
+func (p *AutoBipParser) writeLog(level zapcore.Level, s string) {
+	switch level {
+	case zapcore.DebugLevel:
+		p.log.Debug(s)
+	case zapcore.InfoLevel:
+		p.log.Info(s)
+	case zapcore.WarnLevel:
+		p.log.Warn(s)
+	case zapcore.ErrorLevel:
+		p.log.Error(s)
+	case zapcore.FatalLevel:
+		p.log.Fatal(s)
+	case zapcore.PanicLevel:
+		p.log.Panic(s)
+	default:
+	}
+
+	if level != zapcore.DebugLevel {
+		fmt.Println(s)
+	}
+}
+
