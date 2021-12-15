@@ -1,0 +1,803 @@
+autobip:
+  debug: true
+  gnblist: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/05-DS_interference/autobip/gnb_list.txt
+  gnblogs: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/gnb_logs_2.24/
+  gnbtools: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/
+  maxgo: 3
+  wshark: /usr/bin
+bip:
+  chbw: 30m
+  debug: true
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001836_000000/generated_luashark/
+  maxgo: 12
+  pattern: .pcap
+  scs: 15k
+  tlog: bip
+  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.218.200.225_20211210_093550_m/
+  wshark: /usr/bin
+cm:
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/
+  debug: true
+  maxgo: 48
+  tcm: scfc
+cmdiff:
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/parsed_scfc
+  debug: true
+  ignore: sbts:MRBTSDESC,nrbts:NRREL
+  ins: Full_Configuration_scf_MRBTS-1619377_通海县汉邑村公所（700）-5NHN_20211122-1406.dat,Full_Configuration_scf_MRBTS-1619515_通海县石碧（700）-5NHN_20211122-1405.dat
+  moc: nrbts
+cmfind:
+  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf_20211009/parsed_scfc/
+  debug: true
+  paras: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/nr_para_list.txt
+cmpdcch:
+  bwpid: 31
+  coreset:
+  - coreset0_48_1
+  css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
+  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type1_5_110_n0_n4_n4_n0_n0_sl1_coreset0
+  - type2_6_100_n1_n0_n4_n2_n0_sl1_coreset0
+  - type3_7_110_n0_n2_n2_n1_n0_sl1_coreset0
+  debug: true
+  rnti: 57952
+  scs: 15k
+  uss:
+  - uss_8_110_n0_n0_n4_n0_n0_sl1_coreset0
+cmpdcch-30:
+  bwpid: 30
+  coreset:
+  - coreset0_48_1
+  - coreset1_156_1
+  css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
+  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
+  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
+  debug: true
+  rnti: 57846
+  scs: 15k
+  uss:
+  - uss_8_110_n4_n2_n2_n1_n0_sl1_coreset1
+cmpdcch-31:
+  bwpid: 31
+  coreset:
+  - coreset0_48_1
+  - coreset1_54_1
+  css:
+  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
+  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
+  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
+  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
+  debug: true
+  rnti: 57952
+  scs: 15k
+  uss:
+  - uss_8_110_n3_n3_n2_n1_n0_sl1_coreset1
+ddr4:
+  chbw: 30m
+  debug: true
+  filter: ul
+  gain: 110
+  maxgo: 48
+  pattern: .bin
+  py3: /usr/bin
+  scs: 15k
+  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
+  tlog: ddr4
+  trace: /home/dabs/Downloads/05-ddr4_log/YNMCC_ddr4/gNB_10.218.200.225_20211026_101409_DDR4/
+kpi:
+  btsid: all
+  debug: true
+  etime: "202111302359"
+  kpipath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/5g_kpi/
+  maxgo: 12
+  op: cmcc
+  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
+  stime: "202111010000"
+l2trace:
+  debug: true
+  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/generated_luashark/
+  maxgo: 5
+  pattern: .dat
+  py2: /usr/bin
+  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/TLDA/
+  tlog: l2trace
+  trace: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/hz_test/field/l2trace/
+  wshark: /usr/bin
+nrrg:
+  advanced:
+    bestssb: 0
+    dsrres: 0
+    pdcchoccmsg2: 4
+    pdcchoccmsg4: 0
+    pdcchslotsib1: -1
+    prachoccmsg1: -1
+  bwp:
+    _bwpcp:
+    - normal
+    - normal
+    - normal
+    - normal
+    _bwpid:
+    - 0
+    - 1
+    - 0
+    - 1
+    _bwpscs:
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    - 30KHz
+    _bwptype:
+    - iniDlBwp
+    - dedDlBwp
+    - iniUlBwp
+    - dedUlBwp
+    bwplocandbw:
+    - 12925
+    - 1099
+    - 1099
+    - 1099
+    bwpnumrbs:
+    - 48
+    - 273
+    - 273
+    - 273
+    bwpstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
+  carriergrid:
+    _carriernumrbs: 273
+    _offsettocarrier: 0
+    bw: 100MHz
+    carrierscs: 30KHz
+  commonsetting:
+    _refscs: 30KHz
+    numueap: 2T
+    patnumdlslots:
+    - 7
+    patnumdlsymbs:
+    - 6
+    patnumulslots:
+    - 2
+    patnumulsymbs:
+    - 4
+    patperiod:
+    - 5ms
+    pci: 0
+  coreset1:
+    coreset1cceregmap: interleaved
+    coreset1duration: 1
+    coreset1freqres: "111111111111111111111111111111111111111111111"
+    coreset1interleaversize: n2
+    coreset1regbundlesize: n2
+    coreset1shiftind: 0
+  csiim:
+    _resid: 0
+    _ressetid: 0
+    csiimnumrbs: 276
+    csiimoffset: 10
+    csiimperiod: slots20
+    csiimrepattern: pattern0
+    csiimscloc: s8
+    csiimstartrb: 0
+    csiimsymbloc: 1
+  csireport:
+    _quantity: cri-RI-PMI-CQI
+    _repcfgid: 0
+    _repcfgtype: periodic
+    _resbwpid:
+    - 1
+    - 1
+    - 1
+    _rescfgid:
+    - 0
+    - 10
+    - 20
+    _rescfgidchnmeas: 0
+    _rescfgidcsiimintf: 10
+    _rescfgtype:
+    - NZP-CSI-RS
+    - CSI-IM
+    - TRS
+    _ressetid:
+    - 0
+    - 0
+    - 1
+    _restype:
+    - periodic
+    - periodic
+    - periodic
+    _ulbwpid: 1
+    csirepoffset: 7
+    csirepperiod: slots320
+    csireppucchres: 2
+  css0:
+    css0agglevel: 4
+    css0numcandidates: n4
+  dci01:
+    _actbwp: 1
+    _indicatedbwp: 1
+    _mupdcch: 1
+    _mupusch: 1
+    _rnti: C-RNTI
+    _tbs: 475584
+    dci01antports: 0
+    dci01cbtpminumlayers: 2
+    dci01fdfreqhop: disabled
+    dci01fdnumrbs: 273
+    dci01fdra: "0000001000100001"
+    dci01fdratype: raType1
+    dci01fdstartrb: 0
+    dci01mcscw0: 28
+    dci01ptrsdmrsmap: 0
+    dci01sri: ""
+    dci01tdk2: 1
+    dci01tdmappingtype: typeA
+    dci01tdnumsymbs: 14
+    dci01tdra: 16
+    dci01tdsliv: 27
+    dci01tdstartsymb: 0
+  dci10:
+    _fdbitwidthratype1:
+    - 11
+    - 11
+    - 11
+    _fdbundlesize:
+    - n2
+    - n2
+    - n2
+    _fdra:
+    - "00001011111"
+    - "00001011111"
+    - "00001011111"
+    _fdratype:
+    - raType1
+    - raType1
+    - raType1
+    _mupdcch:
+    - 1
+    - 1
+    - 1
+    _mupdsch:
+    - 1
+    - 1
+    - 1
+    _rnti:
+    - SI-RNTI
+    - RA-RNTI
+    - TC-RNTI
+    _tbs:
+    - 408
+    - 408
+    - 408
+    _tdk0:
+    - 0
+    - 0
+    - 0
+    _tdmappingtype:
+    - typeB
+    - typeB
+    - typeB
+    _tdnumsymbs:
+    - 2
+    - 2
+    - 2
+    _tdsliv:
+    - 26
+    - 26
+    - 26
+    _tdstartsymb:
+    - 12
+    - 12
+    - 12
+    dci10fdnumrbs:
+    - 48
+    - 48
+    - 48
+    dci10fdstartrb:
+    - 0
+    - 0
+    - 0
+    dci10fdvrbprbmappingtype:
+    - interleaved
+    - interleaved
+    - interleaved
+    dci10mcscw0:
+    - 2
+    - 2
+    - 2
+    dci10msg2tbscaling: 0
+    dci10msg4deltapri: 1
+    dci10msg4tdk1: 6
+    dci10tdra:
+    - 10
+    - 10
+    - 10
+  dci11:
+    _actbwp: 1
+    _dci11fdbitwidthratype0: 18
+    _dci11fdbitwidthratype1: 16
+    _indicatedbwp: 1
+    _mupdcch: 1
+    _mupdsch: 1
+    _rnti: C-RNTI
+    _tbs:
+    - 1277992
+    - -1
+    dci11antports: 10
+    dci11deltapri: 1
+    dci11fdbundlesize: n2
+    dci11fdnumrbs: 273
+    dci11fdra: "0000001000100001"
+    dci11fdratype: raType1
+    dci11fdstartrb: 0
+    dci11fdvrbprbmappingtype: interleaved
+    dci11mcscw0: 27
+    dci11mcscw1: -1
+    dci11tdk0: 0
+    dci11tdk1: 2
+    dci11tdmappingtype: typeA
+    dci11tdnumsymbs: 14
+    dci11tdra: 16
+    dci11tdsliv: 27
+    dci11tdstartsymb: 0
+  dmrscommon:
+    _cdmgroupswodata:
+    - 1
+    - 1
+    - 1
+    - 2
+    _dmrsaddpos:
+    - pos0
+    - pos0
+    - pos0
+    - pos1
+    _dmrsports:
+    - 1000
+    - 1000
+    - 1000
+    - 0
+    _dmrstype:
+    - type1
+    - type1
+    - type1
+    - type1
+    _fdk:
+    - "101010101010"
+    - "101010101010"
+    - "101010101010"
+    - "111111111111"
+    _maxlength:
+    - len1
+    - len1
+    - len1
+    - len1
+    _numfrontloadsymbs:
+    - 1
+    - 1
+    - 1
+    - 1
+    _schinfo:
+    - SIB1
+    - Msg2
+    - Msg4
+    - Msg3
+    _tdl:
+    - "0"
+    - "0"
+    - "0"
+    - 0;0
+  dmrspdsch:
+    _cdmgroupswodata: 2
+    _dmrsports:
+    - 1000
+    - 1001
+    - 1002
+    - 1003
+    _fdk: "111111111111"
+    _numfrontloadsymbs: 1
+    _tdl: "2"
+    pdschdmrsaddpos: pos0
+    pdschdmrstype: type1
+    pdschmaxlength: len1
+  dmrspusch:
+    _cdmgroupswodata: 1
+    _dmrsports:
+    - 0
+    - 1
+    _fdk: "101010101010"
+    _numfrontloadsymbs: 1
+    _tdl: "2"
+    puschdmrsaddpos: pos0
+    puschdmrstype: type1
+    puschmaxlength: len1
+  freqband:
+    _duplexmode: TDD
+    _freqrange: FR1
+    _maxdlfreq: 2690
+    opband: n41
+  mib:
+    _coreset0multiplexingpat: 1
+    _coreset0numrbs: 48
+    _coreset0numsymbs: 1
+    _coreset0offset: 16
+    _coreset0offsetlist:
+    - 16
+    commonscs: 30KHz
+    dmrstypeapos: pos2
+    hrf: 0
+    rmsicoreset0: 12
+    rmsicss0: 0
+    sfn: 0
+  msg3:
+    _fdratype: raType1
+    _fdsecondhopfreqoff: 68
+    _mupusch: 1
+    _tbs: 1544
+    _tddelta: 3
+    _tdk2: 1
+    _tdmappingtype: typeB
+    _tdnumsymbs: 6
+    _tdsliv: 74
+    _tdstartsymb: 4
+    msg3fdfreqhop: enabled
+    msg3fdnumrbs: 62
+    msg3fdra: "0100000100001101"
+    msg3fdstartrb: 0
+    msg3mcscw0: 2
+    msg3tdra: 6
+  nzpcsirs:
+    _cdmgrpindj:
+    - 0
+    - 1
+    _kap:
+    - 0
+    - 1
+    _kbarlbar:
+    - "0_0"
+    - "2_0"
+    _ki:
+    - 0
+    - 0
+    _lap:
+    - 0
+    _li:
+    - 0
+    - 0
+    _resid: 0
+    _ressetid: 0
+    _row: 4
+    _trsinfo: false
+    nzpcsirscdmtype: fd-CDM2
+    nzpcsirsdensity: one
+    nzpcsirsfirstsymb: 1
+    nzpcsirsfirstsymb2: -1
+    nzpcsirsfreqallocbits: "001"
+    nzpcsirsfreqallocrow: row4
+    nzpcsirsnumports: p4
+    nzpcsirsnumrbs: 276
+    nzpcsirsoffset: 10
+    nzpcsirsperiod: slots20
+    nzpcsirsstartrb: 0
+  pdsch:
+    _rbgsize: 16
+    pdschaggfactor: n1
+    pdschmcstable: qam256
+    pdschrbgcfg: config1
+    pdschxoh: xOh0
+  ptrspdsch:
+    _dmrsports: 1000
+    pdschptrsenabled: true
+    pdschptrsfreqdensity: 2
+    pdschptrsreoffset: offset00
+    pdschptrstimedensity: 1
+  ptrspusch:
+    _dmrsports:
+    - 0
+    _dmrsportstp: []
+    _numgrpstp: 2
+    _samplespergrptp: 2
+    puschptrsenabled: true
+    puschptrsfreqdensity: 2
+    puschptrsgrppatterntp: p0
+    puschptrsmaxnumports: n1
+    puschptrsreoffset: offset00
+    puschptrstimedensity: 1
+    puschptrstimedensitytp: 1
+  pucch:
+    _dsrpucchres:
+    - 0
+    - 1
+    _dsrresid:
+    - 0
+    - 1
+    _pucchformat:
+    - format0
+    - format1
+    - format2
+    - format3
+    - format4
+    _pucchresid:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    _pucchressetid:
+    - 0
+    - 0
+    - 1
+    - 1
+    - 1
+    dsroffset:
+    - 8
+    - 0
+    dsrperiod:
+    - sl10
+    - sym6or7
+    pucchfmtcfgadddmrs: true
+    pucchfmtcfginterslotfreqhop: disabled
+    pucchfmtcfgnumslots: n2
+    pucchfmtcfgsimackcsi: true
+    pucchintraslotfreqhop:
+    - enabled
+    - enabled
+    - disabled
+    - disabled
+    - disabled
+    pucchnumrbs:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    pucchnumsymbs:
+    - 2
+    - 4
+    - 1
+    - 4
+    - 4
+    pucchsecondhopprb:
+    - 272
+    - 272
+    - -1
+    - -1
+    - -1
+    pucchstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    pucchstartsymb:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+  pusch:
+    _rbgsize: 16
+    puschaggfactor: n1
+    puschcbmaxranknoncbmaxlayers: 2
+    puschcbsubset: fullyAndPartialAndNonCoherent
+    puschfreqhopoffset: 0
+    puschmcstable: qam64
+    puschrbgcfg: config1
+    puschtp: disabled
+    puschtxcfg: codebook
+    puschxoh: xOh0
+  rach:
+    _raduration: 12
+    _raformat: B4
+    _rakbar: 2
+    _ralen: 139
+    _ranumoccasionsperslot: 1
+    _ranumrbs: 12
+    _ranumslotspersubffr1per60kslotfr2: 1
+    _rastartingsymb: 0
+    _rasubfnumfr1slotnumfr2:
+    - 9
+    _rax: 2
+    _ray:
+    - 1
+    cbpreambsperssb: 64
+    contrestimer: sf64
+    msg1fdm: 1
+    msg1freqstart: 0
+    msg1scs: 30KHz
+    msg3tp: disabled
+    prachconfid: 148
+    rarespwin: sl20
+    ssbperrachoccasion: one
+    totnumpreambs: 64
+  srs:
+    _dci01noncbsrslist:
+    - '-'
+    - ""
+    _msrsb:
+    - "48_16_8_4"
+    - "4_4_4_4"
+    - "4_4_4_4"
+    - "4_4_4_4"
+    _nb:
+    - "1_3_2_2"
+    - "1_1_1_1"
+    - "1_1_1_1"
+    - "1_1_1_1"
+    _resid:
+    - 0
+    - 1
+    - 2
+    - 3
+    _ressetid:
+    - 0
+    - 1
+    _restype:
+    - periodic
+    - periodic
+    _type:
+    - periodic
+    - periodic
+    - periodic
+    - periodic
+    _usage:
+    - codebook
+    - nonCodebook
+    srsbhop:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsbsrs:
+    - 1
+    - 0
+    - 0
+    - 0
+    srscomboff:
+    - 0
+    - 0
+    - 0
+    - 0
+    srscs:
+    - 11
+    - 0
+    - 0
+    - 0
+    srscsrs:
+    - 12
+    - 0
+    - 0
+    - 0
+    srsfreqpos:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsfreqshift:
+    - 0
+    - 0
+    - 0
+    - 0
+    srsnoncbptrsport:
+    - n0
+    - n0
+    - n0
+    - n0
+    srsnumcombs:
+    - n4
+    - n2
+    - n2
+    - n2
+    srsnumports:
+    - ports2
+    - port1
+    - port1
+    - port1
+    srsnumsymbs:
+    - n4
+    - n1
+    - n1
+    - n1
+    srsoffset:
+    - 7
+    - 0
+    - 0
+    - 0
+    srsperiod:
+    - sl10
+    - sl5
+    - sl5
+    - sl5
+    srsrepetition:
+    - n4
+    - n1
+    - n1
+    - n1
+    srssetresidlist:
+    - "0"
+    - "0_1_2_3"
+    srsstartpos:
+    - 3
+    - 0
+    - 0
+    - 0
+  ssbburst:
+    _maxl: 8
+    grppresence: ""
+    inonegrp: "11111111"
+    ssbperiod: 20ms
+  ssbgrid:
+    _ncrbssb: 32
+    _ssbpattern: Case C
+    kssb: 0
+    ssbscs: 30KHz
+  trs:
+    _cdmgrpindj:
+    - 0
+    - 0
+    - 0
+    _cdmtype: noCDM
+    _density: three
+    _firstresid: 100
+    _freqallocrow: row1
+    _kap:
+    - 0
+    _kbarlbar:
+    - "0_0"
+    - "4_0"
+    - "8_0"
+    _ki:
+    - 0
+    - 0
+    - 0
+    _lap:
+    - 0
+    _li:
+    - 0
+    - 0
+    - 0
+    _numports: p1
+    _ressetid: 1
+    _row: 1
+    _trsinfo: true
+    trsfirstsymbs:
+    - 5
+    - 9
+    trsfreqallocbits: "0001"
+    trsnumrbs: 276
+    trsoffset:
+    - 10
+    trsperiod: slots40
+    trsstartrb: 0
+  uss:
+    ussagglevel: 4
+    ussduration: 1
+    ussfirstsymbs: "10101010101010"
+    ussnumcandidates: n1
+    ussoffset: 0
+    ussperiod: sl1
+pm:
+  debug: true
+  maxgo: 48
+  op: cmcc
+  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
+  pmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/raw_pm_22r1/
+  tpm: raw
+tti:
+  debug: true
+  filter: both
+  maxgo: 48
+  pattern: .csv
+  py3: /usr/bin
+  rat: nr
+  scs: 15k
+  tlog: l2tti
+  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.218.200.225_20211209_151423_m/
+  ttidec: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001836_000000/tti-dec-bin/

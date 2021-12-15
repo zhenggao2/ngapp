@@ -61,7 +61,7 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.ngapp.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/ngapp.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -81,10 +81,10 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".ngapp" (without extension).
+		// Search config in home directory with name "ngapp" (without extension).
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
-		viper.SetConfigName(".ngapp")
+		viper.SetConfigName("ngapp")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

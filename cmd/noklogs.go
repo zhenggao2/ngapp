@@ -40,6 +40,7 @@ var (
 	chbw     string
 	gain     int
 	filter   string
+	ttidec string
 )
 
 // ttiCmd represents the tti command
@@ -58,7 +59,7 @@ var ttiCmd = &cobra.Command{
 			// .bin is raw L2TtiTrace from either Snapshot or gnb_logs
 			// .csv is output from L2TtiTrace EventDecoder
 			tti := new(ttitrace.L2TtiTraceParser)
-			tti.Init(Logger, py3, trace, pattern, rat, scs, filter, maxgo, debug)
+			tti.Init(Logger, py3, ttidec, trace, pattern, rat, scs, filter, maxgo, debug)
 			tti.Exec()
 		} else {
 			fmt.Printf("Unsupported tlog[=%s] or pattern[=%s].\n", tlog, pattern)
@@ -164,6 +165,7 @@ func init() {
 	// tti.Init(Logger, trace, pattern, rat, scs, filter, maxgo, debug)
 	ttiCmd.Flags().StringVar(&tlog, "tlog", "l2tti", "type of traces[l2tti,l2trace,bip,ddr4]")
 	ttiCmd.Flags().StringVar(&py3, "py3", "C:/Python38", "path of Python3")
+	ttiCmd.Flags().StringVar(&ttidec, "ttidec", "C:/tti-dec-bin", "path of tti-dec-bin tool")
 	ttiCmd.Flags().StringVar(&trace, "trace", "./data", "path containing trace files")
 	ttiCmd.Flags().StringVar(&pattern, "pattern", ".csv", "pattern of trace files[.csv,.pcap,.dat,.bin]")
 	ttiCmd.Flags().StringVar(&rat, "rat", "nr", "RAT info of traces[nr]")
@@ -173,6 +175,7 @@ func init() {
 	ttiCmd.Flags().BoolVar(&debug, "debug", false, "enable/disable debug mode")
 	viper.BindPFlag("tti.tlog", ttiCmd.Flags().Lookup("tlog"))
 	viper.BindPFlag("tti.py3", ttiCmd.Flags().Lookup("py3"))
+	viper.BindPFlag("tti.ttidec", ttiCmd.Flags().Lookup("ttidec"))
 	viper.BindPFlag("tti.trace", ttiCmd.Flags().Lookup("trace"))
 	viper.BindPFlag("tti.pattern", ttiCmd.Flags().Lookup("pattern"))
 	viper.BindPFlag("tti.rat", ttiCmd.Flags().Lookup("rat"))
@@ -247,9 +250,10 @@ func init() {
 }
 
 func loadTtiFlags() {
-	// tti.Init(Logger, py3, trace, pattern, rat, scs, filter, maxgo, debug)
+	// tti.Init(Logger, py3, ttidec, trace, pattern, rat, scs, filter, maxgo, debug)
 	tlog = viper.GetString("tti.tlog")
 	py3 = viper.GetString("tti.py3")
+	ttidec = viper.GetString("tti.ttidec")
 	trace = viper.GetString("tti.trace")
 	pattern = viper.GetString("tti.pattern")
 	rat = viper.GetString("tti.rat")
