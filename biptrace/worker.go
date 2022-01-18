@@ -834,7 +834,6 @@ func (p *AutoBipParser) Exec() {
 			// use gnb_logs to capture BIP log
 			p.captureBip(gnb)
 
-			// p.bips.SetIfAbsent("1606692", "/home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/05-DS_interference/bip_logs/bip_1606692_10.218.200.225/gNB_10.218.200.225_20211210_093550_m.zip")
 			if !p.bips.Has(gnb) {
 				p.writeLog(zapcore.InfoLevel, fmt.Sprintf("No BIP log found for gNB %v, skipped!", gnb))
 			} else {
@@ -882,11 +881,14 @@ func (p *AutoBipParser) captureBip(gnb string) {
 			// remove leading and tailing spaces
 			line = strings.TrimSpace(line)
 			//if len(line) > 0 && strings.Contains(line, "Log file downloaded:") {
-			if len(line) > 0 && strings.Contains(line, outPath) && strings.Contains(line, ".zip") {
+			//if len(line) > 0 && strings.Contains(line, outPath) && strings.Contains(line, ".zip") {
+			if len(line) > 0 && strings.Contains(line, m.(GnbInfo).ip) && strings.Contains(line, ".zip") {
 				tokens := strings.Split(line, " ")
 				for _, t := range tokens {
-					if strings.HasPrefix(t, outPath) && strings.HasSuffix(t, ".zip") {
-						p.bips.SetIfAbsent(gnb, t)
+					// if strings.HasPrefix(t, outPath) && strings.HasSuffix(t, ".zip") {
+					zip := filepath.Base(t)
+					if strings.Contains(zip, m.(GnbInfo).ip) && strings.HasSuffix(zip, ".zip") {
+						p.bips.SetIfAbsent(gnb, filepath.Join(outPath, zip))
 					}
 				}
 			}
