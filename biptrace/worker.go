@@ -556,7 +556,6 @@ func (p *BipTraceParser) parse(fn string) {
 	ecl, _ := filepath.Glob(filepath.Join(ecPath, "ec*.pcap"))
 	wg := &sync.WaitGroup{}
 	for _, ec := range ecl {
-		/*
 		for {
 			if runtime.NumGoroutine() >= p.maxgo {
 				time.Sleep(1 * time.Second)
@@ -564,7 +563,6 @@ func (p *BipTraceParser) parse(fn string) {
 				break
 			}
 		}
-		 */
 
 		wg.Add(1)
 		go func(ec string) {

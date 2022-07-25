@@ -190,7 +190,7 @@ type TtiDlTdSchedSubcellDataPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
 	PosSubcellId int
-	PosRecordSequenceNumber []int
+	PosRecordSequenceNumber int
 }
 
 func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos {
@@ -198,14 +198,14 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosSubcellId: -1,
-		PosRecordSequenceNumber: make([]int, 0),
+		PosRecordSequenceNumber: 0,
 	}
 
 	for pos, item := range tokens {
 		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
 			p.PosSubcellId = pos
 		} else if strings.ToLower(item) == "recordsequencenumber" {
-			p.PosRecordSequenceNumber = append(p.PosRecordSequenceNumber, pos)
+			p.PosRecordSequenceNumber = pos
 		}
 	}
 
@@ -220,6 +220,8 @@ type TtiDlFdSchedData struct {
 	TxNumber           string
 	DlHarqProcessIndex string
 	K1                 string
+	NumOfPrb string
+	StartPrb string
 	LcIdList           []string
 	AllFields          []string
 }
@@ -688,6 +690,8 @@ type TtiUlFdSchedData struct {
 	TxNumber           string
 	UlHarqProcessIndex string
 	K2                 string
+	NumOfPrb string
+	StartPrb string
 	AllFields          []string
 }
 
@@ -1335,7 +1339,7 @@ type TtiUlTdSchedSubcellDataPos struct {
 	Ready bool
 	PosEventHeader TtiEventHeaderPos
 	PosSubcellId int
-	PosRecordSequenceNumber []int
+	PosRecordSequenceNumber int
 }
 
 func FindTtiUlTdSchedSubcellDataPos(tokens []string) TtiUlTdSchedSubcellDataPos {
@@ -1343,14 +1347,14 @@ func FindTtiUlTdSchedSubcellDataPos(tokens []string) TtiUlTdSchedSubcellDataPos 
 		Ready: false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosSubcellId: -1,
-		PosRecordSequenceNumber: make([]int, 0),
+		PosRecordSequenceNumber: 0,
 	}
 
 	for pos, item := range tokens {
 		if strings.ToLower(item) == "subcellid" && p.PosSubcellId < 0 {
 			p.PosSubcellId = pos
 		} else if strings.ToLower(item) == "recordsequencenumber" {
-			p.PosRecordSequenceNumber = append(p.PosRecordSequenceNumber, pos)
+			p.PosRecordSequenceNumber = pos
 		}
 	}
 
