@@ -1827,14 +1827,14 @@ func (p *L2TtiTraceParser) unsafeAtoi(s string) int {
 
 func (p *L2TtiTraceParser) ttiDlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
-	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxVoip", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "voipTraffic", "drbTraffic", "deprioritizedVoip", "lastUnUsed"}
+	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "voipTraffic", "gbrTraffic", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "dtxOptimizedDrbTraffic", "lastUnUsed"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
 func (p *L2TtiTraceParser) ttiUlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
-	classPriority := []string {"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "ulProSched", "lastUnUsed", "unknown"}
+	classPriority := []string {"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "gbrTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "ulProSched", "lastUnUsed", "unknown"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
