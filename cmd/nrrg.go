@@ -575,23 +575,33 @@ var confFreqBandCmd = &cobra.Command{
 				fmt.Printf("Invalid frequency band(FreqBandIndicatorNR): %v\n", band)
 				return
 			}
+			fmt.Printf("nrgrid.FreqBandInfo [%v]: %v\n", band, *p)
 
+			// SDL and SUL are not supported!
 			if p.DuplexMode == "SUL" || p.DuplexMode == "SDL" {
-				fmt.Printf("%v is not supported!", p.DuplexMode)
-				return
+				fmt.Printf("%v is not supported!\n", p.DuplexMode)
+				//TODO return
 			}
 
-			fmt.Printf("nrgrid.FreqBandInfo: %v\n", *p)
+			// FR2-1 and FR2-2 are not supported!
+			v, _ := strconv.Atoi(band[1:])
+			if v > 256 {
+				fmt.Printf("FR2-1 and FR2-2 are not supported!\n")
+				//TODO return
+			}
 
 			// update band info
 			flags.freqBand._duplexMode = p.DuplexMode
 			flags.freqBand._maxDlFreq = p.MaxDlFreq
 
-			v, _ := strconv.Atoi(band[1:])
-			if v >= 1 && v <= 256 {
+			if v >= 1 && v <= 104 {
 				flags.freqBand._freqRange = "FR1"
+			} else if v >= 257 && v <= 262 {
+				flags.freqBand._freqRange = "FR2-1" // FR2-1	24250 MHz – 52600 MHz
+			} else if v == 263 {
+				flags.freqBand._freqRange = "FR2-2" // FR2-2	52600 MHz – 71000 MHz
 			} else {
-				flags.freqBand._freqRange = "FR2"
+				flags.freqBand._freqRange = "TBD" // TODO: 7125M ~ 24250M in future R18?
 			}
 
 			// update ssb scs
@@ -805,9 +815,9 @@ func validateCoreset0() error {
 			}
 		}
 	} else {
-		for i, v := range nrgrid.BandScs2BwFr2[key] {
+		for i, v := range nrgrid.BandScs2BwFr21[key] {
 			if v == 1 {
-				bwSubset = append(bwSubset, nrgrid.BwSetFr2[i])
+				bwSubset = append(bwSubset, nrgrid.BwSetFr21[i])
 			}
 		}
 	}
@@ -851,7 +861,7 @@ func validateCoreset0() error {
 		}
 		numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsInt][idx]
 	} else {
-		idx := utils.IndexStr(nrgrid.BwSetFr2, carrierBw)
+		idx := utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
 		if idx < 0 {
 			return errors.New(fmt.Sprintf("Invalid carrier bandwidth for FR2: carrierBw=%v\n", carrierBw))
 		}
