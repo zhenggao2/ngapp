@@ -575,43 +575,52 @@ var confFreqBandCmd = &cobra.Command{
 				fmt.Printf("Invalid frequency band(FreqBandIndicatorNR): %v\n", band)
 				return
 			}
-			fmt.Printf("nrgrid.FreqBandInfo [%v]: %v\n", band, *p)
 
-			// SDL and SUL are not supported!
-			if p.DuplexMode == "SUL" || p.DuplexMode == "SDL" {
-				fmt.Printf("%v is not supported!\n", p.DuplexMode)
-				//TODO return
+			v, _ := strconv.Atoi(band[1:])
+			var fr string
+			if v >= 1 && v <= 256 {
+				fr = "FR1"
+			} else if v >= 257 && v <= 262 {
+				fr = "FR2-1" // FR2-1	24250 MHz – 52600 MHz
+			} else {
+				fr = "FR2-2" // FR2-2	52600 MHz – 71000 MHz
 			}
 
-			// FR2-1 and FR2-2 are not supported!
-			v, _ := strconv.Atoi(band[1:])
-			if v > 256 {
-				fmt.Printf("FR2-1 and FR2-2 are not supported!\n")
-				//TODO return
+			if p.DuplexMode == "TDD" {
+				fmt.Printf("FreqBandInfo [%v]: UL/DL: %v, %v, %v\n", band, p.UlBand, p.DuplexMode, fr)
+			} else if p.DuplexMode == "FDD" {
+				fmt.Printf("FreqBandInfo [%v]: UL: %v, DL: %v, %v, %v\n", band, p.UlBand, p.DlBand, p.DuplexMode, fr)
+			} else if p.DuplexMode == "SDL" {
+				fmt.Printf("FreqBandInfo [%v]: DL: %v, %v, %v\n", band, p.DlBand, p.DuplexMode, fr)
+			} else {
+				fmt.Printf("FreqBandInfo [%v]: UL: %v, %v, %v\n", band, p.UlBand, p.DuplexMode, fr)
 			}
 
 			// update band info
 			flags.freqBand._duplexMode = p.DuplexMode
 			flags.freqBand._maxDlFreq = p.MaxDlFreq
+			flags.freqBand._freqRange = fr
 
-			if v >= 1 && v <= 104 {
-				flags.freqBand._freqRange = "FR1"
-			} else if v >= 257 && v <= 262 {
-				flags.freqBand._freqRange = "FR2-1" // FR2-1	24250 MHz – 52600 MHz
-			} else if v == 263 {
-				flags.freqBand._freqRange = "FR2-2" // FR2-2	52600 MHz – 71000 MHz
-			} else {
-				flags.freqBand._freqRange = "TBD" // TODO: 7125M ~ 24250M in future R18?
+			// FR2-1 and FR2-2 are not supported!
+			if v > 256 {
+				fmt.Printf("FR2-1 and FR2-2 are not supported!\n")
+				//TODO return
 			}
 
-			// update ssb scs
+			// SDL and SUL are not supported!
+			if p.DuplexMode == "SDL" || p.DuplexMode == "SUL" {
+				fmt.Printf("%v is not supported!\n", p.DuplexMode)
+				//TODO return
+			}
+
+			// get available SSB scs
 			var ssbScsSet []string
 			for _, v := range nrgrid.SsbRasters[band] {
 				ssbScsSet = append(ssbScsSet, v[0])
 			}
-			fmt.Printf("SSB scs range: %v\n", ssbScsSet)
+			fmt.Printf("Available SSB SCS: %v\n", ssbScsSet)
 
-			// update rmsi scs and carrier scs
+			// get available RMSI scs and carrier scs
 			var rmsiScsSet []string
 			var carrierScsSet []string
 			if flags.freqBand._freqRange == "FR1" {
@@ -631,12 +640,15 @@ var confFreqBandCmd = &cobra.Command{
 						carrierScsSet = append(carrierScsSet, fmt.Sprintf("%vKHz", scs))
 					}
 				}
-			} else {
+			} else if flags.freqBand._freqRange == "FR2-1" {
 				rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
 				carrierScsSet = append(carrierScsSet, []string{"60KHz", "120KHz"}...)
+			} else {
+				rmsiScsSet = ssbScsSet
+				carrierScsSet = append(carrierScsSet, []string{"120KHz", "480KHz", "960KHz"}...)
 			}
-			fmt.Printf("RMSI scs(subcarrierSpacingCommon of MIB) range: %v\n", rmsiScsSet)
-			fmt.Printf("Carrier scs(subcarrierSpacing of SCS-SpecificCarrier) range: %v\n", carrierScsSet)
+			fmt.Printf("Available RMSI SCS(subcarrierSpacingCommon of MIB): %v\n", rmsiScsSet)
+			fmt.Printf("Available Carrier SCS(subcarrierSpacing of SCS-SpecificCarrier): %v\n", carrierScsSet)
 
 			// update rach info
 			err := updateRach()
@@ -865,7 +877,7 @@ func validateCoreset0() error {
 		if idx < 0 {
 			return errors.New(fmt.Sprintf("Invalid carrier bandwidth for FR2: carrierBw=%v\n", carrierBw))
 		}
-		numRbsRmsiScs = nrgrid.NrbFr2[rmsiScsInt][idx]
+		numRbsRmsiScs = nrgrid.NrbFr21[rmsiScsInt][idx]
 	}
 
 	if numRbsRmsiScs < flags.mib._coreset0NumRbs {
