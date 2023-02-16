@@ -603,7 +603,7 @@ var ScsRaLongPrach = map[string]string{
 	"839_3": "5KHz",
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh80
 //  Table 6.3.3.2-1: Supported combinations of scsRA and scsPusch, and the corresponding value of kBar
 var NumRbsRaAndKBar = map[string][]int{
 	"839_1.25_15": {6, 7},
@@ -622,6 +622,30 @@ var NumRbsRaAndKBar = map[string][]int{
 	"139_60_120":  {6, 2},
 	"139_120_60":  {24, 2},
 	"139_120_120": {12, 2},
+	// new in vh80
+	"139_120_480" : {3, 1},
+	"139_120_960" : {2, 23},
+	"139_480_120" : {48, 2},
+	"139_480_480" : {12, 2},
+	"139_480_960" : {6, 2},
+	"139_960_120" : {96, 2},
+	"139_960_480" : {24, 2},
+	"139_960_960" : {12, 2},
+	"571_30_15" : {96, 2},
+	"571_30_30" : {48, 2},
+	"571_30_60" : {24, 2},
+	"571_120_120" : {48, 2},
+	"571_120_480" : {12, 1},
+	"571_120_960" : {7, 47},
+	"571_480_120" : {192, 2},
+	"571_480_480" : {48, 2},
+	"571_480_960" : {24, 2},
+	"1151_15_15" : {96, 1},
+	"1151_15_30" : {48, 1},
+	"1151_15_60" : {24, 1},
+	"1151_120_120" : {97, 6},
+	"1151_120_480" : {25, 23},
+	"1151_120_960" : {13, 45},
 }
 
 // RachInfo contains information for PRACH time-domain mapping.
@@ -636,7 +660,7 @@ type RachInfo struct {
 	Duration                        int
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh80
 //  Table 6.3.3.2-2: Random access configurations for FR1 and paired spectrum/supplementary uplink.
 var RaCfgFr1FddSUl = map[int]*RachInfo{
 	0:   {"0", 16, []int{1}, []int{1}, 0, 1, 1, 0},
@@ -897,7 +921,7 @@ var RaCfgFr1FddSUl = map[int]*RachInfo{
 	255: {"C2", 1, []int{0}, []int{1, 3, 5, 7, 9}, 0, 2, 2, 6},
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh80
 //  Table 6.3.3.2-3: Random access configurations for FR1 and unpaired spectrum.
 var RaCfgFr1Tdd = map[int]*RachInfo{
 	0:   {"0", 16, []int{1}, []int{9}, 0, 1, 1, 0},
@@ -1156,9 +1180,17 @@ var RaCfgFr1Tdd = map[int]*RachInfo{
 	253: {"A3/B3", 1, []int{0}, []int{3, 4, 8, 9}, 0, 2, 2, 6},
 	254: {"A3/B3", 1, []int{0}, []int{1, 3, 5, 7, 9}, 0, 1, 2, 6},
 	255: {"A3/B3", 1, []int{0}, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, 2, 1, 2, 6},
+	// new in vh80
+	256 : {"0", 16, []int{1}, []int{7}, 0, 1, 1, 0},
+	257 : {"0", 8, []int{1}, []int{7}, 0, 1, 1, 0},
+	258 : {"0", 4, []int{1}, []int{7}, 0, 1, 1, 0},
+	259 : {"0", 2, []int{0}, []int{7}, 0, 1, 1, 0},
+	260 : {"0", 2, []int{1}, []int{7}, 0, 1, 1, 0},
+	261 : {"0", 2, []int{0}, []int{2}, 0, 1, 1, 0},
+	262 : {"0", 2, []int{1}, []int{2}, 0, 1, 1, 0},
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh80
 //  Table 6.3.3.2-4: Random access configurations for FR2 and unpaired spectrum.
 var RaCfgFr2Tdd = map[int]*RachInfo{
 	0:  {"A1", 16, []int{1}, []int{4, 9, 14, 19, 24, 29, 34, 39}, 0, 2, 6, 2},

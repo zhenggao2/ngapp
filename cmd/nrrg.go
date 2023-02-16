@@ -82,7 +82,7 @@ type GridSettingFlags struct {
 	_kSsb        int
 	_nCrbSsb    int
 
-	// carrierGrid settings and mib settings(MIB-subCarrierSpacingCommon)
+	// carrierGrid settings and MIB-subCarrierSpacingCommon
 	carrierScs       string
 	bw               string
 	dlArfcn int
@@ -641,6 +641,12 @@ var confGridSettingCmd = &cobra.Command{
 				//TODO return
 			}
 
+			// NR-U is not supported!
+			if band == "n46" || band == "n96" || band == "n102" {
+				fmt.Printf("NR-U [Band n46/n96/n102] is not supported!\n")
+				//TODO return
+			}
+
 			// get available SSB scs
 			var ssbScsSet []string
 			for _, v := range nrgrid.SsbRasters[band] {
@@ -710,7 +716,7 @@ func updateRach() error {
 		return  errors.New(fmt.Sprintf("Invalid configurations for PRACH: %v,%v with prach-ConfigurationIndex=%v\n", flags.gridsetting._freqRange, flags.gridsetting._duplexMode, flags.rach.prachConfId))
 	}
 
-	fmt.Printf("nrgrid.RachInfo: %v\n", *p)
+	fmt.Printf("RachInfo: %v\n", *p)
 
 	flags.rach._raFormat = p.Format
 	flags.rach._raX = p.X
@@ -726,11 +732,13 @@ func updateRach() error {
 	} else {
 		if flags.gridsetting._freqRange == "FR1" {
 			raScsSet = append(raScsSet, []string{"15KHz", "30KHz"}...)
-		} else {
+		} else if flags.gridsetting._freqRange == "FR2-1" {
 			raScsSet = append(raScsSet, []string{"60KHz", "120KHz"}...)
+		} else {
+			raScsSet = append(raScsSet, []string{"120KHz", "480KHz", "960KHz"}...)
 		}
 	}
-	fmt.Printf("PRACH scs(msg1-SubcarrierSpacing of RACH-ConfigCommon) range: %v\n", raScsSet)
+	fmt.Printf("Available short PRACH SCS(msg1-SubcarrierSpacing of RACH-ConfigCommon): %v\n", raScsSet)
 
 	return nil
 }
@@ -2341,7 +2349,7 @@ func initConfGridSettingCmd() {
 	confGridSettingCmd.Flags().MarkHidden("_kSsb")
 	confGridSettingCmd.Flags().MarkHidden("_nCrbSsb")
 
-	// carrierGrid part and mib part(MIB-subCarrierSpacingCommon)
+	// carrierGrid part and MIB-subCarrierSpacingCommon
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.carrierScs, "carrierScs", "15KHz", "subcarrierSpacing of SCS-SpecificCarrier")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.dlArfcn, "dlArfcn", 154600, "DL ARFCN")
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.bw, "bw", "30MHz", "Transmission bandwidth(MHz)")
