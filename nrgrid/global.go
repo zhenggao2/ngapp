@@ -594,7 +594,7 @@ var Coreset0Fr2 = map[string]*Coreset0Info{
 	"240_120_15": nil,
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh80
 //  Table 6.3.3.1-1: PRACH preamble formats for L_RA=839 and scsRA={1.25k, 5k}
 var ScsRaLongPrach = map[string]string{
 	"839_0": "1.25KHz",
