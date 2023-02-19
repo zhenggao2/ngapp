@@ -409,11 +409,14 @@ type Coreset0Info struct {
 	OffsetLst       []int
 }
 
-// refer to 3GPP 38.213 vf30
+// refer to 3GPP 38.213 vf30/vh40
 //  Table 13-1: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
 //  Table 13-2: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
-//  Table 13-3: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
-//  Table 13-4: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
+//  vf30: Table 13-3: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
+//  vf30: Table 13-4: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
+//  vh40: Table 13-3: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz except for the frequency bands given in [8-1, TS 38.101-1]
+//  vh40: Table 13-4: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz except for the frequency bands given in [8-1, TS 38.101-1]
+//  Note: "...except for the frequency bands given in 38.101-1" are n79/n104.
 // Table for FR1 with minimum channel bandwidth of 5MHz/10MHz
 var Coreset0Fr1MinChBw5m10m = map[string]*Coreset0Info{
 	"15_15_0":  {1, 24, 2, []int{0}},
@@ -482,9 +485,12 @@ var Coreset0Fr1MinChBw5m10m = map[string]*Coreset0Info{
 	"30_30_15": {1, 48, 2, []int{16}},
 }
 
-// refer to 3GPP 38.213 vf30
-//  Table 13-5: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz
-//  Table 13-6: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz
+// refer to 3GPP 38.213 vf30/vh40
+//  vf30: Table 13-5: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz
+//  vf30: Table 13-6: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz
+//  vh40: Table 13-5: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz or for the frequency bands given in [8-1, TS 38.101-1]
+//  vh40: Table 13-6: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz or for the frequency bands given in [8-1, TS 38.101-1]
+//  Note: "...or for the frequency bands given in 38.101-1" are n79/n104.
 // Table for FR1 with minimum channel bandwidth of 40MHz
 var Coreset0Fr1MinChBw40m = map[string]*Coreset0Info{
 	"30_15_0":  {1, 48, 1, []int{4}},
@@ -521,13 +527,13 @@ var Coreset0Fr1MinChBw40m = map[string]*Coreset0Info{
 	"30_30_15": nil,
 }
 
-// refer to 3GPP 38.213 vf30
+// refer to 3GPP 38.213 vh40
 //  Table 13-7: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {120, 60} kHz
-//  Table 13-8: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {120, 120} kHz
+//  Table 13-8: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {120, 120} kHz for FR2-1
 //  Table 13-9: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {240, 60} kHz
 //  Table 13-10: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {240, 120} kHz
-// Table for FR2
-var Coreset0Fr2 = map[string]*Coreset0Info{
+// Table for FR2-1
+var Coreset0Fr21 = map[string]*Coreset0Info{
 	"120_60_0":   {1, 48, 1, []int{0}},
 	"120_60_1":   {1, 48, 1, []int{8}},
 	"120_60_2":   {1, 48, 2, []int{0}},
