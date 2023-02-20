@@ -740,8 +740,7 @@ var confGridSettingCmd = &cobra.Command{
 			flags.dci11._muPdsch = u
 			flags.msg3._muPusch = u
 			flags.msg3._tdDelta = nrgrid.PuschTimeAllocMsg3K2Delta[flags.gridsetting._carrierScs]
-			// update scs of initial UL/DL BWP and dedicated UL/DL BWP
-			flags.bwp._bwpScs[INI_DL_BWP] = flags.gridsetting._carrierScs
+			// update SCS of initial UL BWP and dedicated UL/DL BWP
 			flags.bwp._bwpScs[DED_DL_BWP] = flags.gridsetting._carrierScs
 			flags.bwp._bwpScs[INI_UL_BWP] = flags.gridsetting._carrierScs
 			flags.bwp._bwpScs[DED_UL_BWP] = flags.gridsetting._carrierScs
@@ -751,7 +750,29 @@ var confGridSettingCmd = &cobra.Command{
 			// update TRS periodicity (2023/2/20: For simplicity, TRS is not supported!)
 			fmt.Printf("Available TRS periodicity: %v\n", []string{"slots10", "slots20", "slots40", "slots80", "slots160", "slots320", "slots640"}[u:u+4])
 
-			// TODO: mib.commonScs.changed
+			// update u_PDCCH/u_PDSCH for SIB1/Msg2/Msg4
+			u = nrgrid.Scs2Mu[flags.gridsetting._mibCommonScs]
+			flags.dci10._muPdcch = []int{u, u, u}
+			flags.dci10._muPdsch = []int{u, u, u}
+			// update SCS for initial DL BWP
+			// refer to 3GPP TS 38.331 vh30: subcarrierSpacing of BWP
+			// For the initial DL BWP and operation in licensed spectrum this field has the same value as the field subCarrierSpacingCommon in MIB of the same serving cell.
+			flags.bwp._bwpScs[INI_DL_BWP] = flags.gridsetting._mibCommonScs
+			// update ra-ResponseWindow
+			// refer to 3GPP TS 38.331 vh30: ra-ResponseWindow of RACH-ConfigGeneric
+			// The network configures a value lower than or equal to 10 ms when Msg2 is transmitted in licensed spectrum and a value lower than or equal to 40 ms when Msg2 is transmitted with shared spectrum channel access (see TS 38.321 [3], clause 5.1.4).
+			var rarWinSet []string
+			switch flags.gridsetting._mibCommonScs {
+			case "15KHz":
+				rarWinSet = append(rarWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10"}...)
+			case "30KHz":
+				rarWinSet = append(rarWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20"}...)
+			case "60KHz":
+				rarWinSet = append(rarWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40"}...)
+			case "120KHz":
+				rarWinSet = append(rarWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40", "sl80"}...)
+			}
+			fmt.Printf("Available ra-ResponseWindow: %v\n", rarWinSet)
 		}
 
 		// process gridsetting.bw
@@ -782,9 +803,18 @@ var confGridSettingCmd = &cobra.Command{
 
 		}
 
-		// update n_CRB_SSB/k_SSB and validate CORESET0
+		// update n_CRB_SSB/k_SSB
 		updateKSsbAndNCrbSsb()
+
+		// validate CORESET0
 		err := validateCoreset0()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		// validate CSS0
+		err = validateCss0()
 		if err != nil {
 			regRed.Printf("[ERR]: %s\n", err.Error())
 			return
@@ -838,218 +868,6 @@ func updateRach() error {
 		}
 	}
 	fmt.Printf("Available short PRACH SCS(msg1-SubcarrierSpacing of RACH-ConfigCommon): %v\n", raScsSet)
-
-	return nil
-}
-
-func validateCoreset0() error {
-	regYellow.Printf("calling validateCoreset0\n")
-
-	band := flags.gridsetting.band
-	fr := flags.gridsetting._freqRange
-	ssbScs := flags.gridsetting._ssbScs
-	rmsiScs := flags.gridsetting._mibCommonScs
-
-	var ssbScsSet []string
-	var rmsiScsSet []string
-	for _, v := range nrgrid.SsbRasters[band] {
-		ssbScsSet = append(ssbScsSet, v[0])
-	}
-	if fr == "FR1" {
-		rmsiScsSet = append(rmsiScsSet, []string{"15KHz", "30KHz"}...)
-	} else if fr == "FR2-1" {
-		rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
-	} else {
-		rmsiScsSet = ssbScsSet
-	}
-
-	if !(utils.ContainsStr(ssbScsSet, ssbScs) && utils.ContainsStr(rmsiScsSet, rmsiScs)) {
-		return errors.New(fmt.Sprintf("Invalid SSB SCS and/or RMSI SCS settings!\nSSB SCS range: %v and ssbScs=%v\nRMSI SCS range: %v and rmsiScs=%v\n", ssbScsSet, ssbScs, rmsiScsSet, rmsiScs))
-	}
-
-	// calculate minChBw
-	key := fmt.Sprintf("%v_%v", band, rmsiScs[:len(rmsiScs)-3])
-	var bwSubset []string
-	if fr == "FR1" {
-		for i, v := range nrgrid.BandScs2BwFr1[key] {
-			if v == 1 {
-				bwSubset = append(bwSubset, nrgrid.BwSetFr1[i])
-			}
-		}
-	} else if fr == "FR2-1" {
-		for i, v := range nrgrid.BandScs2BwFr21[key] {
-			if v == 1 {
-				bwSubset = append(bwSubset, nrgrid.BwSetFr21[i])
-			}
-		}
-	} else {
-		for i, v := range nrgrid.BandScs2BwFr22[key] {
-			if v == 1 {
-				bwSubset = append(bwSubset, nrgrid.BwSetFr22[i])
-			}
-		}
-	}
-
-	if len(bwSubset) > 0 {
-		minChBw, _ = strconv.Atoi(bwSubset[0][:len(bwSubset[0])-3])
-		fmt.Printf("Available transmission bandwidth: %v\n", bwSubset)
-		fmt.Printf("Minimum transmission bandwidth is %v\n", bwSubset[0])
-	} else {
-	    minChBw = -1
-	    return errors.New(fmt.Sprintf("Invalid configurations for minChBw calculation: band=%v, freqRange=%v, rmsiScs=%v\n", band, fr, rmsiScs))
-	}
-
-	// validate coresetZero
-	key = fmt.Sprintf("%v_%v_%v", ssbScs[:len(ssbScs)-3], rmsiScs[:len(rmsiScs)-3], flags.gridsetting.rmsiCoreset0)
-	var p *nrgrid.Coreset0Info
-	var exist bool
-	if (band == "n79" || band == "n104") && ssbScs[:len(ssbScs)-3] == "30" && (rmsiScs[:len(rmsiScs)-3] == "15" || rmsiScs[:len(rmsiScs)-3] == "30") {
-		// 38.101-1 vh80 Table 5.2-1: NR operating bands in FR1
-		// NOTE 17: For this band, CORESET#0 values from Table 13-5 or Table 13-6 in [8, TS 38.213] are applied regardless of the minimum channel bandwidth.
-		p, exist = nrgrid.Coreset0Fr1MinChBw40m[key]
-	} else if fr == "FR1" && utils.ContainsInt([]int{5, 10}, minChBw) {
-		p, exist = nrgrid.Coreset0Fr1MinChBw5m10m[key]
-	} else if fr == "FR1" && minChBw == 40 {
-		p, exist = nrgrid.Coreset0Fr1MinChBw40m[key]
-	} else {
-	    // FR2-1
-		p, exist = nrgrid.Coreset0Fr21[key]
-	}
-	if !exist || p == nil {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.gridsetting.rmsiCoreset0))
-	}
-	fmt.Printf("CORESET0 Info: %v\n", *p)
-	flags.gridsetting._coreset0MultiplexingPat = p.MultiplexingPat
-	flags.gridsetting._coreset0NumRbs = p.NumRbs
-	flags.gridsetting._coreset0NumSymbs = p.NumSymbs
-	flags.gridsetting._coreset0OffsetList = p.OffsetLst
-
-	// validate CORESET0 bw against carrier bw
-	carrierBw := flags.gridsetting.bw
-	rmsiScsVal, _ := strconv.Atoi(rmsiScs[:len(rmsiScs)-3])
-	var numRbsRmsiScs int
-	var idx int
-	if fr == "FR1" {
-	    idx = utils.IndexStr(nrgrid.BwSetFr1, carrierBw)
-	} else if fr == "FR2-1" {
-		idx = utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
-	} else {
-		idx = utils.IndexStr(nrgrid.BwSetFr22, carrierBw)
-	}
-	if idx < 0 {
-		return errors.New(fmt.Sprintf("Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, carrierBw))
-	}
-	numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsVal][idx]
-
-	if numRbsRmsiScs < flags.gridsetting._coreset0NumRbs {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.gridsetting._coreset0NumRbs))
-	}
-
-	// update coreset0Offset w.r.t k_SSB
-	kssb := flags.gridsetting._kSsb
-	if len(flags.gridsetting._coreset0OffsetList) == 2 {
-		if kssb == 0 {
-			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
-		} else {
-			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[1]
-		}
-	} else {
-		flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
-	}
-
-	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
-
-	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
-	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
-	// if offset < 0, min bw = coreset0NumRbs - offset, and don't have to update n_CRB_SSB
-	ssbScsVal, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
-	var minBw int
-	if flags.gridsetting._coreset0Offset >= 0 {
-	    minBw = utils.MaxInt([]int{flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
-	} else {
-		minBw = flags.gridsetting._coreset0NumRbs - flags.gridsetting._coreset0Offset
-	}
-	if numRbsRmsiScs < minBw {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, minBw=%v(coreset0NumRbs=%v,offset=%v)\n", numRbsRmsiScs, minBw, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset))
-	}
-
-	// validate coreste0NumSymbs against dmrs-pointA-Position
-	// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
-	// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
-	if flags.gridsetting._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
-		return errors.New(fmt.Sprintf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
-	}
-
-	// update info of initial dl bwp
-	if flags.gridsetting._coreset0Offset >= 0 {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
-		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", 0, upper)
-	} else {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
-		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", -flags.gridsetting._coreset0Offset, upper)
-	}
-	fmt.Printf("Available L_RBs for Initial DL BWP: [%v]\n", flags.gridsetting._coreset0NumRbs)
-
-	// update info of 'frquency domain assignment' bitwidth of SIB1/Msg2/Msg4
-	nrb := float64(flags.gridsetting._coreset0NumRbs)
-	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
-	flags.dci10._fdBitwidthRaType1 = []int{bitwidth, bitwidth, bitwidth}
-	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
-
-	return nil
-}
-
-func updateKSsbAndNCrbSsb_removed() error {
-	regYellow.Printf("calling updateKSsbAndNCrbSsb_removed\n")
-
-    var offset int
-    if flags.gridsetting._coreset0Offset < 0 {
-    	offset = 0
-	} else {
-		offset = flags.gridsetting._coreset0Offset
-	}
-
-	/*
-	refer to 3GPP 38.211 vfa0: 7.4.3.1	Time-frequency structure of an SS/PBCH block
-	For FR1, k_ssb and n_crb_ssb based on 15k
-	For FR2, k_ssb based on common scs, n_crb_ssb based on 60k
-
-	FR1/FR2   common_scs   ssb_scs     k_ssb	n_crb_ssb
-	-----------------------------------------------------------
-	FR1	        15k         15k         0~11	offsetToCarrier*scsCarrier/15+offset
-				15k         30k         0~11	offsetToCarrier*scsCarrier/15+offset
-				30k         15k         0~23	offsetToCarrier*scsCarrier/15+2*offset
-				30k         30k         0~23	offsetToCarrier*scsCarrier/15+2*offset
-	FR2         60k         120k        0~11	offsetToCarrier*scsCarrier/60+offset
-				60k         240k        0~11	offsetToCarrier*scsCarrier/60+offset
-				120k        120k        0~11	offsetToCarrier*scsCarrier/60+2*offset
-				120k        240k        0~11	offsetToCarrier*scsCarrier/60+2*offset
-	-----------------------------------------------------------
-
-	Note: N_CRB_SSB is calculated assuming that CORESET0 starts from first usable PRB of carrier.
-	*/
-
-	ssbScs := flags.gridsetting._ssbScs
-	rmsiScs := flags.gridsetting._mibCommonScs
-	carrierScs := flags.gridsetting._carrierScs
-	otc := flags.gridsetting._offsetToCarrier
-	carrierScsInt, _ := strconv.Atoi(carrierScs[:len(carrierScs)-3])
-
-	key := fmt.Sprintf("%v_%v", ssbScs[:len(ssbScs)-3], rmsiScs[:len(rmsiScs)-3])
-	switch key {
-	case "15_15", "15_30":
-		fmt.Printf("k_SSB range: [%v..%v]\n", 0, 11)
-		flags.gridsetting._nCrbSsb = otc * carrierScsInt / 15 + offset
-	case "30_15", "30_30":
-		fmt.Printf("k_SSB range: [%v..%v]\n", 0, 23)
-		flags.gridsetting._nCrbSsb = otc * carrierScsInt / 15 + 2 * offset
-	case "60_120", "60_240":
-		fmt.Printf("k_SSB range: [%v..%v]\n", 0, 11)
-		flags.gridsetting._nCrbSsb = otc * carrierScsInt / 60 + offset
-	case "120_120", "120_240":
-		fmt.Printf("k_SSB range: [%v..%v]\n", 0, 11)
-		flags.gridsetting._nCrbSsb = otc * carrierScsInt / 60 + 2 * offset
-	}
 
 	return nil
 }
@@ -1129,8 +947,165 @@ func updateKSsbAndNCrbSsb() error {
 	return nil
 }
 
-func validateCss0_removed() error {
-	regYellow.Printf("calling validateCss0_removed\n")
+func validateCoreset0() error {
+	regYellow.Printf("calling validateCoreset0\n")
+
+	band := flags.gridsetting.band
+	fr := flags.gridsetting._freqRange
+	ssbScs := flags.gridsetting._ssbScs
+	rmsiScs := flags.gridsetting._mibCommonScs
+
+	var ssbScsSet []string
+	var rmsiScsSet []string
+	for _, v := range nrgrid.SsbRasters[band] {
+		ssbScsSet = append(ssbScsSet, v[0])
+	}
+	if fr == "FR1" {
+		rmsiScsSet = append(rmsiScsSet, []string{"15KHz", "30KHz"}...)
+	} else if fr == "FR2-1" {
+		rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
+	} else {
+		rmsiScsSet = ssbScsSet
+	}
+
+	if !(utils.ContainsStr(ssbScsSet, ssbScs) && utils.ContainsStr(rmsiScsSet, rmsiScs)) {
+		return errors.New(fmt.Sprintf("Invalid SSB SCS and/or RMSI SCS settings!\nSSB SCS range: %v and ssbScs=%v\nRMSI SCS range: %v and rmsiScs=%v\n", ssbScsSet, ssbScs, rmsiScsSet, rmsiScs))
+	}
+
+	// calculate minChBw
+	key := fmt.Sprintf("%v_%v", band, rmsiScs[:len(rmsiScs)-3])
+	var bwSubset []string
+	if fr == "FR1" {
+		for i, v := range nrgrid.BandScs2BwFr1[key] {
+			if v == 1 {
+				bwSubset = append(bwSubset, nrgrid.BwSetFr1[i])
+			}
+		}
+	} else if fr == "FR2-1" {
+		for i, v := range nrgrid.BandScs2BwFr21[key] {
+			if v == 1 {
+				bwSubset = append(bwSubset, nrgrid.BwSetFr21[i])
+			}
+		}
+	} else {
+		for i, v := range nrgrid.BandScs2BwFr22[key] {
+			if v == 1 {
+				bwSubset = append(bwSubset, nrgrid.BwSetFr22[i])
+			}
+		}
+	}
+
+	if len(bwSubset) > 0 {
+		minChBw, _ = strconv.Atoi(bwSubset[0][:len(bwSubset[0])-3])
+		fmt.Printf("Available transmission bandwidth: %v\n", bwSubset)
+		fmt.Printf("Minimum transmission bandwidth is %v\n", bwSubset[0])
+	} else {
+		minChBw = -1
+		return errors.New(fmt.Sprintf("Invalid configurations for minChBw calculation: band=%v, freqRange=%v, rmsiScs=%v\n", band, fr, rmsiScs))
+	}
+
+	// validate coresetZero
+	key = fmt.Sprintf("%v_%v_%v", ssbScs[:len(ssbScs)-3], rmsiScs[:len(rmsiScs)-3], flags.gridsetting.rmsiCoreset0)
+	var p *nrgrid.Coreset0Info
+	var exist bool
+	if (band == "n79" || band == "n104") && ssbScs[:len(ssbScs)-3] == "30" && (rmsiScs[:len(rmsiScs)-3] == "15" || rmsiScs[:len(rmsiScs)-3] == "30") {
+		// 38.101-1 vh80 Table 5.2-1: NR operating bands in FR1
+		// NOTE 17: For this band, CORESET#0 values from Table 13-5 or Table 13-6 in [8, TS 38.213] are applied regardless of the minimum channel bandwidth.
+		p, exist = nrgrid.Coreset0Fr1MinChBw40m[key]
+	} else if fr == "FR1" && utils.ContainsInt([]int{5, 10}, minChBw) {
+		p, exist = nrgrid.Coreset0Fr1MinChBw5m10m[key]
+	} else if fr == "FR1" && minChBw == 40 {
+		p, exist = nrgrid.Coreset0Fr1MinChBw40m[key]
+	} else {
+		// FR2-1
+		p, exist = nrgrid.Coreset0Fr21[key]
+	}
+	if !exist || p == nil {
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.gridsetting.rmsiCoreset0))
+	}
+	fmt.Printf("CORESET0 Info: %v\n", *p)
+	flags.gridsetting._coreset0MultiplexingPat = p.MultiplexingPat
+	flags.gridsetting._coreset0NumRbs = p.NumRbs
+	flags.gridsetting._coreset0NumSymbs = p.NumSymbs
+	flags.gridsetting._coreset0OffsetList = p.OffsetLst
+
+	// validate CORESET0 bw against carrier bw
+	carrierBw := flags.gridsetting.bw
+	rmsiScsVal, _ := strconv.Atoi(rmsiScs[:len(rmsiScs)-3])
+	var numRbsRmsiScs int
+	var idx int
+	if fr == "FR1" {
+		idx = utils.IndexStr(nrgrid.BwSetFr1, carrierBw)
+	} else if fr == "FR2-1" {
+		idx = utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
+	} else {
+		idx = utils.IndexStr(nrgrid.BwSetFr22, carrierBw)
+	}
+	if idx < 0 {
+		return errors.New(fmt.Sprintf("Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, carrierBw))
+	}
+	numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsVal][idx]
+
+	if numRbsRmsiScs < flags.gridsetting._coreset0NumRbs {
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.gridsetting._coreset0NumRbs))
+	}
+
+	// update coreset0Offset w.r.t k_SSB
+	kssb := flags.gridsetting._kSsb
+	if len(flags.gridsetting._coreset0OffsetList) == 2 {
+		if kssb == 0 {
+			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
+		} else {
+			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[1]
+		}
+	} else {
+		flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
+	}
+
+	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
+
+	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
+	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
+	// if offset < 0, min bw = coreset0NumRbs - offset, and don't have to update n_CRB_SSB
+	ssbScsVal, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
+	var minBw int
+	if flags.gridsetting._coreset0Offset >= 0 {
+		minBw = utils.MaxInt([]int{flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
+	} else {
+		minBw = flags.gridsetting._coreset0NumRbs - flags.gridsetting._coreset0Offset
+	}
+	if numRbsRmsiScs < minBw {
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, minBw=%v(coreset0NumRbs=%v,offset=%v)\n", numRbsRmsiScs, minBw, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset))
+	}
+
+	// validate coreste0NumSymbs against dmrs-pointA-Position
+	// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
+	// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
+	if flags.gridsetting._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
+		return errors.New(fmt.Sprintf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
+	}
+
+	// update info of initial dl bwp
+	if flags.gridsetting._coreset0Offset >= 0 {
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", 0, upper)
+	} else {
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", -flags.gridsetting._coreset0Offset, upper)
+	}
+	fmt.Printf("Available L_RBs for Initial DL BWP: [%v]\n", flags.gridsetting._coreset0NumRbs)
+
+	// update info of 'frquency domain assignment' bitwidth of SIB1/Msg2/Msg4
+	nrb := float64(flags.gridsetting._coreset0NumRbs)
+	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
+	flags.dci10._fdBitwidthRaType1 = []int{bitwidth, bitwidth, bitwidth}
+	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
+
+	return nil
+}
+
+func validateCss0() error {
+	regYellow.Printf("calling validateCss0\n")
 
     fr := flags.gridsetting._freqRange
     pat := flags.gridsetting._coreset0MultiplexingPat
@@ -1138,14 +1113,14 @@ func validateCss0_removed() error {
 
     switch pat {
 	case 1:
-		if fr == "FR1" || (fr == "FR2" && css0 >= 0 && css0 <= 13) {
+		if fr == "FR1" || ((fr == "FR2-1" || fr == "FR2-2") && css0 >= 0 && css0 <= 13) {
 			return nil
 		} else {
-			return errors.New(fmt.Sprintf("Invalid CSS0 setting!\nsearchSpaceZero range is [0, 13] for CORESET0 multiplexing pattern 1 and FR2\n"))
+			return errors.New(fmt.Sprintf("Invalid CSS0 setting!\nsearchSpaceZero range is [0, 13] for SSB/CORESET0 multiplexing pattern 1 and FR2\n"))
 		}
 	case 2, 3:
 		if css0 != 0 {
-			return errors.New(fmt.Sprintf("Invalid CSS0 setting!\nsearchSpaceZero range is [0] for CORESET0 multiplexing pattern %v\n", css0))
+			return errors.New(fmt.Sprintf("Invalid CSS0 setting!\nsearchSpaceZero range is [0] for SSB/CORESET0 multiplexing pattern %v\n", css0))
 		}
 	}
 
