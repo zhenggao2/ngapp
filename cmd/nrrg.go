@@ -566,7 +566,7 @@ var confGridSettingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
 
-		// process opBand
+		// process gridsetting.opBand
 		if cmd.Flags().Lookup("opBand").Changed {
 			regGreen.Printf("[INFO]: Processing gridSetting.opBand...\n")
 			band := flags.gridsetting.opBand
@@ -609,19 +609,19 @@ var confGridSettingCmd = &cobra.Command{
 			// FR2-1 and FR2-2 are not supported!
 			if v > 256 {
 				regRed.Printf("[ERR]: FR2-1 and FR2-2 are not supported!\n")
-				//TODO return
+				return
 			}
 
 			// SDL and SUL are not supported!
 			if p.DuplexMode == "SDL" || p.DuplexMode == "SUL" {
 				regRed.Printf("[ERR]: %v is not supported!\n", p.DuplexMode)
-				//TODO return
+				return
 			}
 
 			// NR-U is not supported!
 			if band == "n46" || band == "n96" || band == "n102" {
 				regRed.Printf("[ERR]: NR-U [Band n46/n96/n102] is not supported!\n")
-				//TODO return
+				return
 			}
 
 			// get available SSB scs
@@ -669,7 +669,7 @@ var confGridSettingCmd = &cobra.Command{
 			}
 		}
 
-		// process scs
+		// process gridsetting.scs
 		if cmd.Flags().Lookup("scs").Changed {
 			regGreen.Printf("[INFO]: Processing gridSetting.scs...\n")
 
@@ -688,8 +688,7 @@ var confGridSettingCmd = &cobra.Command{
 				}
 			}
 
-			// update SSB burst
-			// refer to 3GPP TS 38.213 vh80: 4.1	Cell search
+			// update SSB burst (refer to 3GPP TS 38.213 vh40: 4.1	Cell search)
 			pat := flags.gridsetting._ssbPattern
 			dm := flags.gridsetting._duplexMode
 			freq := flags.gridsetting._maxDlFreq
@@ -727,9 +726,57 @@ var confGridSettingCmd = &cobra.Command{
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
-			} else {
-				updateKSsbAndNCrbSsb2()
 			}
+			updateKSsbAndNCrbSsb()
+
+			// update refScs of TDD-UL-DL-Config
+			flags.commonSetting._refScs = scs
+			// update u_PDCCH/u_PDSCH/u_PUSCH in DCI 0_1/1_1 and Msg3 PUSCH
+			u := nrgrid.Scs2Mu[flags.gridsetting._carrierScs]
+			flags.dci01._muPdcch = u
+			flags.dci01._muPusch = u
+			flags.dci11._muPdcch = u
+			flags.dci11._muPdsch = u
+			flags.msg3._muPusch = u
+			flags.msg3._tdDelta = nrgrid.PuschTimeAllocMsg3K2Delta[flags.gridsetting._carrierScs]
+			// update scs of initial UL/DL BWP and dedicated UL/DL BWP
+			flags.bwp._bwpScs[INI_DL_BWP] = flags.gridsetting._carrierScs
+			flags.bwp._bwpScs[DED_DL_BWP] = flags.gridsetting._carrierScs
+			flags.bwp._bwpScs[INI_UL_BWP] = flags.gridsetting._carrierScs
+			flags.bwp._bwpScs[DED_UL_BWP] = flags.gridsetting._carrierScs
+			// get SR periodicity and offset(38.331 vh30 periodicityAndOffset and periodicityAndOffset-r17 of SchedulingRequestResourceConfig)
+			fmt.Printf("Available SR periodicity: %v\n", nrgrid.SrPeriodSet[flags.gridsetting._carrierScs])
+			// TODO: validate USS first symbols
+			// update TRS periodicity (2023/2/20: For simplicity, TRS is not supported!)
+			fmt.Printf("Available TRS periodicity: %v\n", []string{"slots10", "slots20", "slots40", "slots80", "slots160", "slots320", "slots640"}[u:u+4])
+		}
+
+		// process gridsetting.bw
+		if cmd.Flags().Lookup("bw").Changed {
+			regGreen.Printf("[INFO]: Processing gridSetting.bw...\n")
+
+			// update N_RB of carrier and initial DL BWP
+			fr := flags.gridsetting._freqRange
+			bw := flags.gridsetting.bw
+			carrierScsVal, _ := strconv.Atoi(flags.gridsetting._carrierScs[:len(flags.gridsetting._carrierScs)-3])
+			var idx int
+			if fr == "FR1" {
+				idx = utils.IndexStr(nrgrid.BwSetFr1, bw)
+			} else if fr == "FR2-1" {
+				idx = utils.IndexStr(nrgrid.BwSetFr21, bw)
+			} else {
+				idx = utils.IndexStr(nrgrid.BwSetFr22, bw)
+			}
+			if idx < 0 {
+				regRed.Printf("Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, bw)
+				return
+			}
+			flags.gridsetting._carrierNumRbs = nrgrid.NrbFr1[carrierScsVal][idx]
+
+			// TODO: determine location of CORESET0 based on coreset0Offset
+
+			// update RB_Start and L_RB for initial UL BWP and dedicated UL/DL BWP
+
 		}
 
 	    laPrint(cmd, args)
@@ -834,6 +881,8 @@ func validateCoreset0() error {
 
 	if len(bwSubset) > 0 {
 		minChBw, _ = strconv.Atoi(bwSubset[0][:len(bwSubset[0])-3])
+		fmt.Printf("Available transmission bandwidth: %v\n", bwSubset)
+		fmt.Printf("Minimum transmission bandwidth is %v\n", bwSubset[0])
 	} else {
 	    minChBw = -1
 	    return errors.New(fmt.Sprintf("Invalid configurations for minChBw calculation: band=%v, freqRange=%v, rmsiScs=%v\n", band, fr, rmsiScs))
@@ -866,27 +915,20 @@ func validateCoreset0() error {
 
 	// validate CORESET0 bw against carrier bw
 	carrierBw := flags.gridsetting.bw
-	rmsiScsInt, _ := strconv.Atoi(rmsiScs[:len(rmsiScs)-3])
+	rmsiScsVal, _ := strconv.Atoi(rmsiScs[:len(rmsiScs)-3])
 	var numRbsRmsiScs int
+	var idx int
 	if fr == "FR1" {
-	    idx := utils.IndexStr(nrgrid.BwSetFr1, carrierBw)
-	    if idx < 0 {
-	    	return errors.New(fmt.Sprintf("Invalid carrier bandwidth for FR1: carrierBw=%v\n", carrierBw))
-		}
-		numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsInt][idx]
+	    idx = utils.IndexStr(nrgrid.BwSetFr1, carrierBw)
 	} else if fr == "FR2-1" {
-		idx := utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
-		if idx < 0 {
-			return errors.New(fmt.Sprintf("Invalid carrier bandwidth for FR2-1: carrierBw=%v\n", carrierBw))
-		}
-		numRbsRmsiScs = nrgrid.NrbFr21[rmsiScsInt][idx]
+		idx = utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
 	} else {
-		idx := utils.IndexStr(nrgrid.BwSetFr22, carrierBw)
-		if idx < 0 {
-			return errors.New(fmt.Sprintf("Invalid carrier bandwidth for FR2-2: carrierBw=%v\n", carrierBw))
-		}
-		numRbsRmsiScs = nrgrid.NrbFr22[rmsiScsInt][idx]
+		idx = utils.IndexStr(nrgrid.BwSetFr22, carrierBw)
 	}
+	if idx < 0 {
+		return errors.New(fmt.Sprintf("Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, carrierBw))
+	}
+	numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsVal][idx]
 
 	if numRbsRmsiScs < flags.mib._coreset0NumRbs {
 		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.mib._coreset0NumRbs))
@@ -907,10 +949,10 @@ func validateCoreset0() error {
 	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
 	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
 	// if offset < 0, min bw = coreset0NumRbs - offset, and don't have to update n_CRB_SSB
-	ssbScsInt, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
+	ssbScsVal, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
 	var minBw int
 	if flags.mib._coreset0Offset >= 0 {
-	    minBw = utils.MaxInt([]int{flags.mib._coreset0NumRbs, flags.mib._coreset0Offset + 20 * ssbScsInt / rmsiScsInt})
+	    minBw = utils.MaxInt([]int{flags.mib._coreset0NumRbs, flags.mib._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
 	} else {
 		minBw = flags.mib._coreset0NumRbs - flags.mib._coreset0Offset
 	}
@@ -927,10 +969,10 @@ func validateCoreset0() error {
 
 	// update info of initial dl bwp
 	if flags.mib._coreset0Offset >= 0 {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
 		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", 0, upper)
 	} else {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsInt / rmsiScsInt)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
 		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", -flags.mib._coreset0Offset, upper)
 	}
 	fmt.Printf("iniDlBwp.L_RBs range: [%v]\n", flags.mib._coreset0NumRbs)
@@ -1031,8 +1073,9 @@ func gscn2Ssref(gscn int, maxFreq int) float64 {
 	}
 }
 
-func updateKSsbAndNCrbSsb2() error {
-	regYellow.Printf("calling updateKSsbAndNCrbSsb2\n")
+// calculate N_CRB_SSB and k_SSB given GSCN and DL ARFCN
+func updateKSsbAndNCrbSsb() error {
+	regYellow.Printf("calling updateKSsbAndNCrbSsb\n")
 
 	ssbScs, _ := strconv.ParseFloat(flags.gridsetting._ssbScs[:len(flags.gridsetting._ssbScs)-3], 64)
 	carrierScs, _ := strconv.ParseFloat(flags.gridsetting._carrierScs[:len(flags.gridsetting._carrierScs)-3], 64)
@@ -1879,20 +1922,6 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	}
 
 	return tbs, nil
-}
-
-// confCarrierGridCmd represents the nrrg conf carriergrid command
-var confCarrierGridCmd = &cobra.Command{
-	Use:   "carriergrid",
-	Short: "",
-	Long: `nrrg conf carriergrid can be used to get/set carrier-grid related network configurations.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		loadNrrgFlags()
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
-		viper.WriteConfig()
-	},
 }
 
 // confCommonSettingCmd represents the nrrg conf commonsetting command
