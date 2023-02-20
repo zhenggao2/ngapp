@@ -79,7 +79,7 @@ type GridSettingFlags struct {
 	scs string
 
 	// freqBand settings
-	opBand string
+	band string
 	_duplexMode    string
 	_maxDlFreq    int
 	_freqRange    string
@@ -96,13 +96,22 @@ type GridSettingFlags struct {
 	_maxL	int
 	candSsbIndex []int
 
-	// carrierGrid settings and MIB-subCarrierSpacingCommon
+	// carrierGrid settings
 	_carrierScs       string
 	bw               string
 	dlArfcn int
 	_carrierNumRbs   int
 	_offsetToCarrier int
+
+	// MIB settings
 	_mibCommonScs                string
+	rmsiCoreset0             int
+	rmsiCss0                 int
+	_coreset0MultiplexingPat int
+	_coreset0NumRbs          int
+	_coreset0NumSymbs        int
+	_coreset0OffsetList      []int
+	_coreset0Offset          int
 }
 
 // mib
@@ -111,13 +120,13 @@ type MibFlags struct {
 	hrf                      int
 	dmrsTypeAPos             string
 	//_mibCommonScs                string
-	rmsiCoreset0             int
-	rmsiCss0                 int
-	_coreset0MultiplexingPat int
-	_coreset0NumRbs          int
-	_coreset0NumSymbs        int
-	_coreset0OffsetList      []int
-	_coreset0Offset          int
+	//rmsiCoreset0             int
+	//rmsiCss0                 int
+	//_coreset0MultiplexingPat int
+	//_coreset0NumRbs          int
+	//_coreset0NumSymbs        int
+	//_coreset0OffsetList      []int
+	//_coreset0Offset          int
 }
 
 // common setting
@@ -566,10 +575,10 @@ var confGridSettingCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
 
-		// process gridsetting.opBand
-		if cmd.Flags().Lookup("opBand").Changed {
-			regGreen.Printf("[INFO]: Processing gridSetting.opBand...\n")
-			band := flags.gridsetting.opBand
+		// process gridsetting.band
+		if cmd.Flags().Lookup("band").Changed {
+			regGreen.Printf("[INFO]: Processing gridSetting.band...\n")
+			band := flags.gridsetting.band
 			p, exist := nrgrid.OpBands[band]
 			if !exist {
 				regRed.Printf("[ERR]: Invalid frequency band(FreqBandIndicatorNR): %v\n", band)
@@ -679,7 +688,7 @@ var confGridSettingCmd = &cobra.Command{
 			flags.gridsetting._mibCommonScs = flags.gridsetting.scs
 
 			// update SSB pattern
-			band := flags.gridsetting.opBand
+			band := flags.gridsetting.band
 			scs := flags.gridsetting._ssbScs
 			for _, v := range nrgrid.SsbRasters[band] {
 				if v[0] == scs {
@@ -721,14 +730,6 @@ var confGridSettingCmd = &cobra.Command{
 				flags.gridsetting._maxL = 64
 			}
 
-			// validate Coreset0 and update n_CRB_SSB/k_SSB
-			err := validateCoreset0()
-			if err != nil {
-				regRed.Printf("[ERR]: %s\n", err.Error())
-				return
-			}
-			updateKSsbAndNCrbSsb()
-
 			// update refScs of TDD-UL-DL-Config
 			flags.commonSetting._refScs = scs
 			// update u_PDCCH/u_PDSCH/u_PUSCH in DCI 0_1/1_1 and Msg3 PUSCH
@@ -749,6 +750,8 @@ var confGridSettingCmd = &cobra.Command{
 			// TODO: validate USS first symbols
 			// update TRS periodicity (2023/2/20: For simplicity, TRS is not supported!)
 			fmt.Printf("Available TRS periodicity: %v\n", []string{"slots10", "slots20", "slots40", "slots80", "slots160", "slots320", "slots640"}[u:u+4])
+
+			// TODO: mib.commonScs.changed
 		}
 
 		// process gridsetting.bw
@@ -777,6 +780,14 @@ var confGridSettingCmd = &cobra.Command{
 
 			// update RB_Start and L_RB for initial UL BWP and dedicated UL/DL BWP
 
+		}
+
+		// update n_CRB_SSB/k_SSB and validate CORESET0
+		updateKSsbAndNCrbSsb()
+		err := validateCoreset0()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
 		}
 
 	    laPrint(cmd, args)
@@ -834,7 +845,7 @@ func updateRach() error {
 func validateCoreset0() error {
 	regYellow.Printf("calling validateCoreset0\n")
 
-	band := flags.gridsetting.opBand
+	band := flags.gridsetting.band
 	fr := flags.gridsetting._freqRange
 	ssbScs := flags.gridsetting._ssbScs
 	rmsiScs := flags.gridsetting._mibCommonScs
@@ -853,7 +864,7 @@ func validateCoreset0() error {
 	}
 
 	if !(utils.ContainsStr(ssbScsSet, ssbScs) && utils.ContainsStr(rmsiScsSet, rmsiScs)) {
-		return errors.New(fmt.Sprintf("Invalid SSB scs and/or RMSI scs settings!\nSSB Scs range: %v and ssbScs=%v\nRMSI scs range: %v and rmsiScs=%v\n", ssbScsSet, ssbScs, rmsiScsSet, rmsiScs))
+		return errors.New(fmt.Sprintf("Invalid SSB SCS and/or RMSI SCS settings!\nSSB SCS range: %v and ssbScs=%v\nRMSI SCS range: %v and rmsiScs=%v\n", ssbScsSet, ssbScs, rmsiScsSet, rmsiScs))
 	}
 
 	// calculate minChBw
@@ -889,7 +900,7 @@ func validateCoreset0() error {
 	}
 
 	// validate coresetZero
-	key = fmt.Sprintf("%v_%v_%v", ssbScs[:len(ssbScs)-3], rmsiScs[:len(rmsiScs)-3], flags.mib.rmsiCoreset0)
+	key = fmt.Sprintf("%v_%v_%v", ssbScs[:len(ssbScs)-3], rmsiScs[:len(rmsiScs)-3], flags.gridsetting.rmsiCoreset0)
 	var p *nrgrid.Coreset0Info
 	var exist bool
 	if (band == "n79" || band == "n104") && ssbScs[:len(ssbScs)-3] == "30" && (rmsiScs[:len(rmsiScs)-3] == "15" || rmsiScs[:len(rmsiScs)-3] == "30") {
@@ -905,13 +916,13 @@ func validateCoreset0() error {
 		p, exist = nrgrid.Coreset0Fr21[key]
 	}
 	if !exist || p == nil {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.mib.rmsiCoreset0))
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.gridsetting.rmsiCoreset0))
 	}
 	fmt.Printf("CORESET0 Info: %v\n", *p)
-	flags.mib._coreset0MultiplexingPat = p.MultiplexingPat
-	flags.mib._coreset0NumRbs = p.NumRbs
-	flags.mib._coreset0NumSymbs = p.NumSymbs
-	flags.mib._coreset0OffsetList = p.OffsetLst
+	flags.gridsetting._coreset0MultiplexingPat = p.MultiplexingPat
+	flags.gridsetting._coreset0NumRbs = p.NumRbs
+	flags.gridsetting._coreset0NumSymbs = p.NumSymbs
+	flags.gridsetting._coreset0OffsetList = p.OffsetLst
 
 	// validate CORESET0 bw against carrier bw
 	carrierBw := flags.gridsetting.bw
@@ -930,59 +941,60 @@ func validateCoreset0() error {
 	}
 	numRbsRmsiScs = nrgrid.NrbFr1[rmsiScsVal][idx]
 
-	if numRbsRmsiScs < flags.mib._coreset0NumRbs {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.mib._coreset0NumRbs))
+	if numRbsRmsiScs < flags.gridsetting._coreset0NumRbs {
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, coreset0NumRbs=%v\n", numRbsRmsiScs, flags.gridsetting._coreset0NumRbs))
 	}
 
 	// update coreset0Offset w.r.t k_SSB
 	kssb := flags.gridsetting._kSsb
-	if len(flags.mib._coreset0OffsetList) == 2 {
+	if len(flags.gridsetting._coreset0OffsetList) == 2 {
 		if kssb == 0 {
-			flags.mib._coreset0Offset = flags.mib._coreset0OffsetList[0]
+			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
 		} else {
-			flags.mib._coreset0Offset = flags.mib._coreset0OffsetList[1]
+			flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[1]
 		}
 	} else {
-		flags.mib._coreset0Offset = flags.mib._coreset0OffsetList[0]
+		flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
 	}
+
+	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
 
 	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
 	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
 	// if offset < 0, min bw = coreset0NumRbs - offset, and don't have to update n_CRB_SSB
 	ssbScsVal, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
 	var minBw int
-	if flags.mib._coreset0Offset >= 0 {
-	    minBw = utils.MaxInt([]int{flags.mib._coreset0NumRbs, flags.mib._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
+	if flags.gridsetting._coreset0Offset >= 0 {
+	    minBw = utils.MaxInt([]int{flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
 	} else {
-		minBw = flags.mib._coreset0NumRbs - flags.mib._coreset0Offset
+		minBw = flags.gridsetting._coreset0NumRbs - flags.gridsetting._coreset0Offset
 	}
 	if numRbsRmsiScs < minBw {
-		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, minBw=%v(coreset0NumRbs=%v,offset=%v)\n", numRbsRmsiScs, minBw, flags.mib._coreset0NumRbs, flags.mib._coreset0Offset))
+		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: numRbsRmsiScs=%v, minBw=%v(coreset0NumRbs=%v,offset=%v)\n", numRbsRmsiScs, minBw, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset))
 	}
 
 	// validate coreste0NumSymbs against dmrs-pointA-Position
 	// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
 	// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
-	if flags.mib._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
-		return errors.New(fmt.Sprintf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.mib._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
+	if flags.gridsetting._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
+		return errors.New(fmt.Sprintf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
 	}
 
 	// update info of initial dl bwp
-	if flags.mib._coreset0Offset >= 0 {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
-		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", 0, upper)
+	if flags.gridsetting._coreset0Offset >= 0 {
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", 0, upper)
 	} else {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.mib._coreset0NumRbs, numRbsRmsiScs - (flags.mib._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
-		fmt.Printf("iniDlBwp.RB_Start range: [%v..%v]\n", -flags.mib._coreset0Offset, upper)
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", -flags.gridsetting._coreset0Offset, upper)
 	}
-	fmt.Printf("iniDlBwp.L_RBs range: [%v]\n", flags.mib._coreset0NumRbs)
+	fmt.Printf("Available L_RBs for Initial DL BWP: [%v]\n", flags.gridsetting._coreset0NumRbs)
 
 	// update info of 'frquency domain assignment' bitwidth of SIB1/Msg2/Msg4
-	nrb := float64(flags.mib._coreset0NumRbs)
+	nrb := float64(flags.gridsetting._coreset0NumRbs)
 	bitwidth := utils.CeilInt(math.Log2(nrb * (nrb + 1) / 2))
 	flags.dci10._fdBitwidthRaType1 = []int{bitwidth, bitwidth, bitwidth}
 	fmt.Printf("Bitwidth of the 'frequency domain assignment' field of DCI 1_0 scheduling SIB1/Msg2/Msg4: %v bits\n", bitwidth)
-	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.mib._coreset0MultiplexingPat, flags.mib._coreset0NumRbs, flags.mib._coreset0NumSymbs, flags.mib._coreset0Offset)
 
 	return nil
 }
@@ -991,10 +1003,10 @@ func updateKSsbAndNCrbSsb_removed() error {
 	regYellow.Printf("calling updateKSsbAndNCrbSsb_removed\n")
 
     var offset int
-    if flags.mib._coreset0Offset < 0 {
+    if flags.gridsetting._coreset0Offset < 0 {
     	offset = 0
 	} else {
-		offset = flags.mib._coreset0Offset
+		offset = flags.gridsetting._coreset0Offset
 	}
 
 	/*
@@ -1121,8 +1133,8 @@ func validateCss0_removed() error {
 	regYellow.Printf("calling validateCss0_removed\n")
 
     fr := flags.gridsetting._freqRange
-    pat := flags.mib._coreset0MultiplexingPat
-    css0 := flags.mib.rmsiCss0
+    pat := flags.gridsetting._coreset0MultiplexingPat
+    css0 := flags.gridsetting.rmsiCss0
 
     switch pat {
 	case 1:
@@ -1202,8 +1214,8 @@ var confMibCmd = &cobra.Command{
 			// validate CORESET duration
 			// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
 			// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
-			if flags.mib._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
-				fmt.Printf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.mib._coreset0NumSymbs, flags.mib.dmrsTypeAPos)
+			if flags.gridsetting._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset0NumSymb can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos)
 				return
 			}
 			if flags.coreset1.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
@@ -1267,7 +1279,7 @@ func validateDci10TdRa() error {
 
 		switch rnti {
 		case "SI-RNTI":
-			switch flags.mib._coreset0MultiplexingPat {
+			switch flags.gridsetting._coreset0MultiplexingPat {
 			case 1:
 				p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
 			case 2:
@@ -1298,7 +1310,7 @@ func validateDci10TdRa() error {
 			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos))
 		} else {
 			// update dci10 info
-			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.mib._coreset0MultiplexingPat, *p)
+			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.gridsetting._coreset0MultiplexingPat, *p)
 			flags.dci10._tdMappingType[i] = p.MappingType
 			flags.dci10._tdK0[i] = p.K0
 			flags.dci10._tdStartSymb[i] = p.S
@@ -2379,12 +2391,12 @@ func init() {
 
 func initConfGridSettingCmd() {
 	// freqBand part
-	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.opBand, "opBand", "n28", "Operating band")
+	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.band, "band", "n28", "Operating band")
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._duplexMode, "_duplexMode", "FDD", "Duplex mode")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._maxDlFreq, "_maxDlFreq", 803, "Maximum DL frequency(MHz)")
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._freqRange, "_freqRange", "FR1", "Frequency range(FR1/FR2)")
 	confGridSettingCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.gridsetting.opBand", confGridSettingCmd.Flags().Lookup("opBand"))
+	viper.BindPFlag("nrrg.gridsetting.band", confGridSettingCmd.Flags().Lookup("band"))
 	viper.BindPFlag("nrrg.gridsetting._duplexMode", confGridSettingCmd.Flags().Lookup("_duplexMode"))
 	viper.BindPFlag("nrrg.gridsetting._maxDlFreq", confGridSettingCmd.Flags().Lookup("_maxDlFreq"))
 	viper.BindPFlag("nrrg.gridsetting._freqRange", confGridSettingCmd.Flags().Lookup("_freqRange"))
@@ -2430,47 +2442,52 @@ func initConfGridSettingCmd() {
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.bw, "bw", "30MHz", "Transmission bandwidth(MHz)")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._carrierNumRbs, "_carrierNumRbs", 160, "carrierBandwidth(N_RB) of SCS-SpecificCarrier")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._offsetToCarrier, "_offsetToCarrier", 0, "_offsetToCarrier of SCS-SpecificCarrier")
-	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._mibCommonScs, "_mibCommonScs", "15KHz", "subCarrierSpacingCommon of MIB")
 	confGridSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.gridsetting._carrierScs", confGridSettingCmd.Flags().Lookup("_carrierScs"))
 	viper.BindPFlag("nrrg.gridsetting.dlArfcn", confGridSettingCmd.Flags().Lookup("dlArfcn"))
 	viper.BindPFlag("nrrg.gridsetting.bw", confGridSettingCmd.Flags().Lookup("bw"))
 	viper.BindPFlag("nrrg.gridsetting._carrierNumRbs", confGridSettingCmd.Flags().Lookup("_carrierNumRbs"))
 	viper.BindPFlag("nrrg.gridsetting._offsetToCarrier", confGridSettingCmd.Flags().Lookup("_offsetToCarrier"))
-	viper.BindPFlag("nrrg.gridsetting._mibCommonScs", confGridSettingCmd.Flags().Lookup("_mibCommonScs"))
 	confGridSettingCmd.Flags().MarkHidden("_carrierScs")
 	confGridSettingCmd.Flags().MarkHidden("_carrierNumRbs")
 	confGridSettingCmd.Flags().MarkHidden("_offsetToCarrier")
+
+	// MIB part
+	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._mibCommonScs, "_mibCommonScs", "15KHz", "subCarrierSpacingCommon of MIB")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCoreset0, "rmsiCoreset0", 7, "coresetZero of PDCCH-ConfigSIB1[0..15]")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCss0, "rmsiCss0", 4, "searchSpaceZero of PDCCH-ConfigSIB1[0..15]")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0MultiplexingPat, "_coreset0MultiplexingPat", 1, "Multiplexing pattern of CORESET0")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0NumRbs, "_coreset0NumRbs", 48, "Number of PRBs of CORESET0")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0NumSymbs, "_coreset0NumSymbs", 1, "Number of OFDM symbols of CORESET0")
+	confGridSettingCmd.Flags().IntSliceVar(&flags.gridsetting._coreset0OffsetList, "_coreset0OffsetList", []int{16}, "List of offset of CORESET0")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0Offset, "_coreset0Offset", 16, "Offset of CORESET0")
+	confGridSettingCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.gridsetting._mibCommonScs", confGridSettingCmd.Flags().Lookup("_mibCommonScs"))
+	viper.BindPFlag("nrrg.gridsetting.rmsiCoreset0", confGridSettingCmd.Flags().Lookup("rmsiCoreset0"))
+	viper.BindPFlag("nrrg.gridsetting.rmsiCss0", confGridSettingCmd.Flags().Lookup("rmsiCss0"))
+	viper.BindPFlag("nrrg.gridsetting._coreset0MultiplexingPat", confGridSettingCmd.Flags().Lookup("_coreset0MultiplexingPat"))
+	viper.BindPFlag("nrrg.gridsetting._coreset0NumRbs", confGridSettingCmd.Flags().Lookup("_coreset0NumRbs"))
+	viper.BindPFlag("nrrg.gridsetting._coreset0NumSymbs", confGridSettingCmd.Flags().Lookup("_coreset0NumSymbs"))
+	viper.BindPFlag("nrrg.gridsetting._coreset0OffsetList", confGridSettingCmd.Flags().Lookup("_coreset0OffsetList"))
+	viper.BindPFlag("nrrg.gridsetting._coreset0Offset", confGridSettingCmd.Flags().Lookup("_coreset0Offset"))
 	confGridSettingCmd.Flags().MarkHidden("_mibCommonScs")
+	confGridSettingCmd.Flags().MarkHidden("_coreset0MultiplexingPat")
+	confGridSettingCmd.Flags().MarkHidden("_coreset0NumRbs")
+	confGridSettingCmd.Flags().MarkHidden("_coreset0NumSymbs")
+	confGridSettingCmd.Flags().MarkHidden("_coreset0OffsetList")
+	confGridSettingCmd.Flags().MarkHidden("_coreset0Offset")
 }
 
 func initConfMibCmd() {
 	confMibCmd.Flags().IntVar(&flags.mib.sfn, "sfn", 0, "System frame number(SFN)[0..1023]")
 	confMibCmd.Flags().IntVar(&flags.mib.hrf, "hrf", 0, "Half frame bit[0,1]")
 	confMibCmd.Flags().StringVar(&flags.mib.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
-	confMibCmd.Flags().IntVar(&flags.mib.rmsiCoreset0, "rmsiCoreset0", 7, "coresetZero of PDCCH-ConfigSIB1[0..15]")
-	confMibCmd.Flags().IntVar(&flags.mib.rmsiCss0, "rmsiCss0", 4, "searchSpaceZero of PDCCH-ConfigSIB1[0..15]")
-	confMibCmd.Flags().IntVar(&flags.mib._coreset0MultiplexingPat, "_coreset0MultiplexingPat", 1, "Multiplexing pattern of CORESET0")
-	confMibCmd.Flags().IntVar(&flags.mib._coreset0NumRbs, "_coreset0NumRbs", 48, "Number of PRBs of CORESET0")
-	confMibCmd.Flags().IntVar(&flags.mib._coreset0NumSymbs, "_coreset0NumSymbs", 1, "Number of OFDM symbols of CORESET0")
-	confMibCmd.Flags().IntSliceVar(&flags.mib._coreset0OffsetList, "_coreset0OffsetList", []int{16}, "List of offset of CORESET0")
-	confMibCmd.Flags().IntVar(&flags.mib._coreset0Offset, "_coreset0Offset", 16, "Offset of CORESET0")
+
 	confMibCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.mib.sfn", confMibCmd.Flags().Lookup("sfn"))
 	viper.BindPFlag("nrrg.mib.hrf", confMibCmd.Flags().Lookup("hrf"))
 	viper.BindPFlag("nrrg.mib.dmrsTypeAPos", confMibCmd.Flags().Lookup("dmrsTypeAPos"))
-	viper.BindPFlag("nrrg.mib.rmsiCoreset0", confMibCmd.Flags().Lookup("rmsiCoreset0"))
-	viper.BindPFlag("nrrg.mib.rmsiCss0", confMibCmd.Flags().Lookup("rmsiCss0"))
-	viper.BindPFlag("nrrg.mib._coreset0MultiplexingPat", confMibCmd.Flags().Lookup("_coreset0MultiplexingPat"))
-	viper.BindPFlag("nrrg.mib._coreset0NumRbs", confMibCmd.Flags().Lookup("_coreset0NumRbs"))
-	viper.BindPFlag("nrrg.mib._coreset0NumSymbs", confMibCmd.Flags().Lookup("_coreset0NumSymbs"))
-	viper.BindPFlag("nrrg.mib._coreset0OffsetList", confMibCmd.Flags().Lookup("_coreset0OffsetList"))
-	viper.BindPFlag("nrrg.mib._coreset0Offset", confMibCmd.Flags().Lookup("_coreset0Offset"))
-	confMibCmd.Flags().MarkHidden("_coreset0MultiplexingPat")
-	confMibCmd.Flags().MarkHidden("_coreset0NumRbs")
-	confMibCmd.Flags().MarkHidden("_coreset0NumSymbs")
-	confMibCmd.Flags().MarkHidden("_coreset0OffsetList")
-	confMibCmd.Flags().MarkHidden("_coreset0Offset")
+
 }
 
 func initConfCommonSettingCmd() {
@@ -3310,12 +3327,11 @@ func initConfAdvancedCmd() {
 
 func loadNrrgFlags() {
 	// grid settings
-	flags.gridsetting.opBand = viper.GetString("nrrg.gridsetting.opBand")
+	flags.gridsetting.band = viper.GetString("nrrg.gridsetting.band")
 	flags.gridsetting._duplexMode = viper.GetString("nrrg.gridsetting._duplexMode")
 	flags.gridsetting._maxDlFreq = viper.GetInt("nrrg.gridsetting._maxDlFreq")
 	flags.gridsetting._freqRange = viper.GetString("nrrg.gridsetting._freqRange")
 
-	// SCS
 	flags.gridsetting.scs = viper.GetString("nrrg.gridsetting.scs")
 
 	flags.gridsetting._ssbScs = viper.GetString("nrrg.gridsetting._ssbScs")
@@ -3333,19 +3349,20 @@ func loadNrrgFlags() {
 	flags.gridsetting.bw = viper.GetString("nrrg.gridsetting.bw")
 	flags.gridsetting._carrierNumRbs = viper.GetInt("nrrg.gridsetting._carrierNumRbs")
 	flags.gridsetting._offsetToCarrier = viper.GetInt("nrrg.gridsetting._offsetToCarrier")
+
 	flags.gridsetting._mibCommonScs = viper.GetString("nrrg.gridsetting._mibCommonScs")
+	flags.gridsetting.rmsiCoreset0 = viper.GetInt("nrrg.gridsetting.rmsiCoreset0")
+	flags.gridsetting.rmsiCss0 = viper.GetInt("nrrg.gridsetting.rmsiCss0")
+	flags.gridsetting._coreset0MultiplexingPat = viper.GetInt("nrrg.gridsetting._coreset0MultiplexingPat")
+	flags.gridsetting._coreset0NumRbs = viper.GetInt("nrrg.gridsetting._coreset0NumRbs")
+	flags.gridsetting._coreset0NumSymbs = viper.GetInt("nrrg.gridsetting._coreset0NumSymbs")
+	flags.gridsetting._coreset0OffsetList = viper.GetIntSlice("nrrg.gridsetting._coreset0OffsetList")
+	flags.gridsetting._coreset0Offset = viper.GetInt("nrrg.gridsetting._coreset0Offset")
 
 	// common settings
 	flags.mib.sfn = viper.GetInt("nrrg.mib.sfn")
 	flags.mib.hrf = viper.GetInt("nrrg.mib.hrf")
 	flags.mib.dmrsTypeAPos = viper.GetString("nrrg.mib.dmrsTypeAPos")
-	flags.mib.rmsiCoreset0 = viper.GetInt("nrrg.mib.rmsiCoreset0")
-	flags.mib.rmsiCss0 = viper.GetInt("nrrg.mib.rmsiCss0")
-	flags.mib._coreset0MultiplexingPat = viper.GetInt("nrrg.mib._coreset0MultiplexingPat")
-	flags.mib._coreset0NumRbs = viper.GetInt("nrrg.mib._coreset0NumRbs")
-	flags.mib._coreset0NumSymbs = viper.GetInt("nrrg.mib._coreset0NumSymbs")
-	flags.mib._coreset0OffsetList = viper.GetIntSlice("nrrg.mib._coreset0OffsetList")
-	flags.mib._coreset0Offset = viper.GetInt("nrrg.mib._coreset0Offset")
 
 	flags.commonSetting.pci = viper.GetInt("nrrg.commonsetting.pci")
 	flags.commonSetting.numUeAp = viper.GetString("nrrg.commonsetting.numUeAp")
