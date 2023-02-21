@@ -89,7 +89,9 @@ type GridSettingFlags struct {
 	_ssbScs      string
 	gscn int
 	_ssbPattern string
+	_kSsbScs float64
 	_kSsb        int
+	_nCrbSsbScs float64
 	_nCrbSsb    int
 	ssbPeriod   string
 	_maxLBar       int
@@ -278,9 +280,9 @@ type BwpFlags struct {
 	_bwpId      []int
 	_bwpScs     []string
 	_bwpCp      []string
-	bwpLocAndBw []int
-	bwpStartRb  []int
-	bwpNumRbs   []int
+	_bwpLocAndBw []int
+	_bwpStartRb  []int
+	_bwpNumRbs   []int
 }
 
 const (
@@ -797,12 +799,19 @@ var confGridSettingCmd = &cobra.Command{
 			}
 			flags.gridsetting._carrierNumRbs = nrgrid.NrbFr1[carrierScsVal][idx]
 
-			// TODO: determine location of CORESET0 based on coreset0Offset
-
 			// update RB_Start and L_RB for initial UL BWP and dedicated UL/DL BWP
-
+			flags.bwp._bwpStartRb[DED_DL_BWP] = 0
+			flags.bwp._bwpNumRbs[DED_DL_BWP] = flags.gridsetting._carrierNumRbs
+			flags.bwp._bwpLocAndBw[DED_DL_BWP] = makeRiv(flags.gridsetting._carrierNumRbs, 0, 275)
+			flags.bwp._bwpStartRb[INI_UL_BWP] = 0
+			flags.bwp._bwpNumRbs[INI_UL_BWP] = flags.gridsetting._carrierNumRbs
+			flags.bwp._bwpLocAndBw[INI_UL_BWP] = makeRiv(flags.gridsetting._carrierNumRbs, 0, 275)
+			flags.bwp._bwpStartRb[DED_UL_BWP] = 0
+			flags.bwp._bwpNumRbs[DED_UL_BWP] = flags.gridsetting._carrierNumRbs
+			flags.bwp._bwpLocAndBw[DED_UL_BWP] = makeRiv(flags.gridsetting._carrierNumRbs, 0, 275)
 		}
 
+		regGreen.Printf("[INFO]: Post-processing...\n")
 		// update n_CRB_SSB/k_SSB
 		updateKSsbAndNCrbSsb()
 
@@ -819,6 +828,15 @@ var confGridSettingCmd = &cobra.Command{
 			regRed.Printf("[ERR]: %s\n", err.Error())
 			return
 		}
+
+		// determine SC#0RB#0 of CORESET0 based on coreset0Offset
+		rmsiScsVal, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
+		iscSsbSc0Rb0 := flags.gridsetting._offsetToCarrier * 12 + (flags.gridsetting._nCrbSsb * 12 * int(flags.gridsetting._nCrbSsbScs) + flags.gridsetting._kSsb * int(flags.gridsetting._kSsbScs)) / rmsiScsVal
+		nscCoreset0Offset := flags.gridsetting._coreset0Offset * 12
+		iscCoreset0Sc0Rb0 := iscSsbSc0Rb0 - nscCoreset0Offset
+		fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> iscSsbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, iscSsbSc0Rb0)
+		fmt.Printf("coreset0Offset=%v -> nscCoreset0Offset=%v\n", flags.gridsetting._coreset0Offset, nscCoreset0Offset)
+		fmt.Printf("iscCoreset0Sc0Rb0=%v\n", iscCoreset0Sc0Rb0)
 
 	    laPrint(cmd, args)
 		viper.WriteConfig()
@@ -911,16 +929,15 @@ func updateKSsbAndNCrbSsb() error {
 	carrierScs, _ := strconv.ParseFloat(flags.gridsetting._carrierScs[:len(flags.gridsetting._carrierScs)-3], 64)
 	rmsiScs, _ := strconv.ParseFloat(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3], 64)
 
-	var kSsbScs, nCrbSsbScs float64
 	if flags.gridsetting._freqRange == "FR1" {
-		kSsbScs = 15
-		nCrbSsbScs = 15
+		flags.gridsetting._kSsbScs = 15
+		flags.gridsetting._nCrbSsbScs = 15
 	} else if flags.gridsetting._freqRange == "FR2-1" {
-		kSsbScs = rmsiScs
-		nCrbSsbScs = 60
+		flags.gridsetting._kSsbScs = rmsiScs
+		flags.gridsetting._nCrbSsbScs = 60
 	} else {
-		kSsbScs = ssbScs
-		nCrbSsbScs = 60
+		flags.gridsetting._kSsbScs = ssbScs
+		flags.gridsetting._nCrbSsbScs = 60
 	}
 
 	ssFreq := gscn2Ssref(flags.gridsetting.gscn, flags.gridsetting._maxDlFreq)
@@ -934,10 +951,10 @@ func updateKSsbAndNCrbSsb() error {
 		dlFreqPointA = dlFreq - 12 * (math.Floor(float64(flags.gridsetting._carrierNumRbs) / 2) + 6) * carrierScs / 1000
 	}
 
-	nCrbSsb := math.Floor((ssFreqSc0Rb0 - dlFreqPointA) / (12 * nCrbSsbScs / 1000))
-	kSsb := (ssFreqSc0Rb0 - dlFreqPointA - 12 * nCrbSsbScs / 1000 * nCrbSsb) / (kSsbScs / 1000)
+	nCrbSsb := math.Floor((ssFreqSc0Rb0 - dlFreqPointA) / (12 * flags.gridsetting._nCrbSsbScs / 1000))
+	kSsb := (ssFreqSc0Rb0 - dlFreqPointA - 12 * flags.gridsetting._nCrbSsbScs / 1000 * nCrbSsb) / (flags.gridsetting._kSsbScs / 1000)
 
-	fmt.Printf("%v: nCrbSsb SCS=%.0fKHz, kSsb SCS=%.0fKHz\n", flags.gridsetting._freqRange, nCrbSsbScs, kSsbScs)
+	fmt.Printf("%v: nCrbSsb SCS=%.0fKHz, kSsb SCS=%.0fKHz\n", flags.gridsetting._freqRange, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsbScs)
 	fmt.Printf("ssFreq=%vMHz, ssFreqSc0Rb0=%vMHz, dlFreq=%vMHz, dlFreqPointA=%vMHz, nCrbSsb=%v, kSsb=%v\n",
 		ssFreq, ssFreqSc0Rb0, dlFreq, dlFreqPointA, nCrbSsb, kSsb)
 
@@ -1127,61 +1144,34 @@ func validateCss0() error {
 	return nil
 }
 
-// confMibCmd represents the nrrg conf mib command
+// calculate RIV (refer to 38.214 vh40)
+//  5.1.2.2.2	Downlink resource allocation type 1
+func makeRiv(L_RBs, RB_start, N_BWP_size int) int {
+	if L_RBs < 1 || L_RBs > (N_BWP_size - RB_start) {
+		regRed.Printf("[ERR]: Invalid combination of L_RBs=%d, RB_start=%d, N_BWP_size=%d", L_RBs, RB_start, N_BWP_size)
+		return -1
+	}
+
+	var riv int
+	if (L_RBs - 1) <= int(math.Floor(float64(N_BWP_size) / 2)) {
+		riv = N_BWP_size * (L_RBs - 1) + RB_start
+	} else {
+		riv = N_BWP_size * (N_BWP_size - L_RBs + 1) + (N_BWP_size - 1 - RB_start)
+	}
+
+	return riv
+}
+
+// confMibCmd represents the nrrg mib command
 var confMibCmd = &cobra.Command{
 	Use:   "mib",
 	Short: "",
-	Long: `nrrg conf mib can be used to get/set MIB related network configurations.`,
+	Long: `CMD "nrrg mib" can be used to get/set MIB related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
-
-		/*
-		if cmd.Flags().Lookup("_mibCommonScs").Changed {
-		    rmsiScs := flags.gridsetting._mibCommonScs
-		    rmsiMu := nrgrid.Scs2Mu[rmsiScs]
-
-			// update scs for initial dl bwp; update u_pdcch/u_pdsch for sib1/msg2/msg4
-			// refer to 3GPP TS 38.331 vfa0: subcarrierSpacing of BWP
-			// For the initial DL BWP this field has the same value as the field subCarrierSpacingCommon in MIB of the same serving cell.
-			flags.bwp._bwpScs[INI_DL_BWP] = rmsiScs
-			flags.dci10._muPdcch = []int{rmsiMu, rmsiMu, rmsiMu}
-			flags.dci10._muPdsch = []int{rmsiMu, rmsiMu, rmsiMu}
-
-			// validate CORESET0 and update n_CRB_SSB
-			err := validateCoreset0()
-			if err != nil {
-				fmt.Print(err.Error())
-				return
-			} else {
-				updateKSsbAndNCrbSsb_removed()
-				err2 := validateCss0_removed()
-				if err2 != nil {
-					fmt.Print(err2.Error())
-					return
-				}
-			}
-
-			// update ra-ResponseWindow info
-			// refer to 3GPP TS 38.331 vfa0: ra-ResponseWindow of RACH-ConfigGeneric
-			// The network configures a value lower than or equal to 10 ms (see TS 38.321 [3], clause 5.1.4).
-			// FIXME: better validate above restraint when rach.raRespWin changed.
-			var raRespWinSet []string
-			switch rmsiScs {
-			case "15KHz":
-			    raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10"}...)
-			case "30KHz":
-				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20"}...)
-			case "60KHz":
-				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40"}...)
-			case "120KHz":
-				raRespWinSet = append(raRespWinSet, []string{"sl1", "sl2", "sl4", "sl8", "sl10", "sl20", "sl40", "sl80"}...)
-			}
-			fmt.Printf("ra-ResponseWindow range: %v\n", raRespWinSet)
-		}
-		 */
 
 		if cmd.Flags().Lookup("dmrsTypeAPos").Changed {
 		    dmrsTypeAPos := flags.mib.dmrsTypeAPos
@@ -1543,7 +1533,7 @@ func validatePdschAntPorts() error {
 
 	fd := 0
 	if fdRaType == "raType0" {
-		rbgs := getRaType0Rbgs(flags.bwp.bwpStartRb[DED_DL_BWP], flags.bwp.bwpNumRbs[DED_DL_BWP], flags.pdsch._rbgSize)
+		rbgs := getRaType0Rbgs(flags.bwp._bwpStartRb[DED_DL_BWP], flags.bwp._bwpNumRbs[DED_DL_BWP], flags.pdsch._rbgSize)
 		for i, c := range fdRa {
 			if c == '1' {
 				fd += rbgs[i]
@@ -2753,21 +2743,24 @@ func initConfBwpCmd() {
 	confBwpCmd.Flags().IntSliceVar(&flags.bwp._bwpId, "_bwpId", []int{0, 1, 0, 1}, "bwp-Id of BWP-Uplink or BWP-Downlink")
 	confBwpCmd.Flags().StringSliceVar(&flags.bwp._bwpScs, "_bwpScs", []string{"30KHz", "30KHz", "30KHz", "30KHz"}, "subcarrierSpacing of BWP")
 	confBwpCmd.Flags().StringSliceVar(&flags.bwp._bwpCp, "_bwpCp", []string{"normal", "normal", "normal", "normal"}, "cyclicPrefix of BWP")
-	confBwpCmd.Flags().IntSliceVar(&flags.bwp.bwpLocAndBw, "bwpLocAndBw", []int{12925, 1099, 1099, 1099}, "locationAndBandwidth of BWP")
-	confBwpCmd.Flags().IntSliceVar(&flags.bwp.bwpStartRb, "bwpStartRb", []int{0, 0, 0, 0}, "RB_start of BWP")
-	confBwpCmd.Flags().IntSliceVar(&flags.bwp.bwpNumRbs, "bwpNumRbs", []int{48, 273, 273, 273}, "L_RBs of BWP")
+	confBwpCmd.Flags().IntSliceVar(&flags.bwp._bwpLocAndBw, "_bwpLocAndBw", []int{12925, 1099, 1099, 1099}, "locationAndBandwidth of BWP")
+	confBwpCmd.Flags().IntSliceVar(&flags.bwp._bwpStartRb, "_bwpStartRb", []int{0, 0, 0, 0}, "RB_start of BWP")
+	confBwpCmd.Flags().IntSliceVar(&flags.bwp._bwpNumRbs, "_bwpNumRbs", []int{48, 273, 273, 273}, "L_RBs of BWP")
 	confBwpCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.bwp._bwpType", confBwpCmd.Flags().Lookup("_bwpType"))
 	viper.BindPFlag("nrrg.bwp._bwpId", confBwpCmd.Flags().Lookup("_bwpId"))
 	viper.BindPFlag("nrrg.bwp._bwpScs", confBwpCmd.Flags().Lookup("_bwpScs"))
 	viper.BindPFlag("nrrg.bwp._bwpCp", confBwpCmd.Flags().Lookup("_bwpCp"))
-	viper.BindPFlag("nrrg.bwp.bwpLocAndBw", confBwpCmd.Flags().Lookup("bwpLocAndBw"))
-	viper.BindPFlag("nrrg.bwp.bwpStartRb", confBwpCmd.Flags().Lookup("bwpStartRb"))
-	viper.BindPFlag("nrrg.bwp.bwpNumRbs", confBwpCmd.Flags().Lookup("bwpNumRbs"))
+	viper.BindPFlag("nrrg.bwp._bwpLocAndBw", confBwpCmd.Flags().Lookup("_bwpLocAndBw"))
+	viper.BindPFlag("nrrg.bwp._bwpStartRb", confBwpCmd.Flags().Lookup("_bwpStartRb"))
+	viper.BindPFlag("nrrg.bwp._bwpNumRbs", confBwpCmd.Flags().Lookup("_bwpNumRbs"))
 	confBwpCmd.Flags().MarkHidden("_bwpType")
 	confBwpCmd.Flags().MarkHidden("_bwpId")
 	confBwpCmd.Flags().MarkHidden("_bwpScs")
 	confBwpCmd.Flags().MarkHidden("_bwpCp")
+	confBwpCmd.Flags().MarkHidden("_bwpLocAndBw")
+	confBwpCmd.Flags().MarkHidden("_bwpStartRb")
+	confBwpCmd.Flags().MarkHidden("_bwpNumRbs")
 }
 
 func initConfRachCmd() {
@@ -3457,9 +3450,9 @@ func loadNrrgFlags() {
 	flags.bwp._bwpId = viper.GetIntSlice("nrrg.bwp._bwpId")
 	flags.bwp._bwpScs = viper.GetStringSlice("nrrg.bwp._bwpScs")
 	flags.bwp._bwpCp = viper.GetStringSlice("nrrg.bwp._bwpCp")
-	flags.bwp.bwpLocAndBw = viper.GetIntSlice("nrrg.bwp.bwpLocAndBw")
-	flags.bwp.bwpStartRb = viper.GetIntSlice("nrrg.bwp.bwpStartRb")
-	flags.bwp.bwpNumRbs = viper.GetIntSlice("nrrg.bwp.bwpNumRbs")
+	flags.bwp._bwpLocAndBw = viper.GetIntSlice("nrrg.bwp._bwpLocAndBw")
+	flags.bwp._bwpStartRb = viper.GetIntSlice("nrrg.bwp._bwpStartRb")
+	flags.bwp._bwpNumRbs = viper.GetIntSlice("nrrg.bwp._bwpNumRbs")
 
 	flags.rach.prachConfId = viper.GetInt("nrrg.rach.prachConfId")
 	flags.rach._raFormat = viper.GetString("nrrg.rach._raFormat")
