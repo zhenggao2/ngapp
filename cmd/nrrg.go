@@ -831,7 +831,7 @@ var confGridSettingCmd = &cobra.Command{
 
 		// determine SC#0RB#0 of CORESET0 based on coreset0Offset
 		rmsiScsVal, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
-		iscSsbSc0Rb0 := flags.gridsetting._offsetToCarrier * 12 + (flags.gridsetting._nCrbSsb * 12 * int(flags.gridsetting._nCrbSsbScs) + flags.gridsetting._kSsb * int(flags.gridsetting._kSsbScs)) / rmsiScsVal
+		iscSsbSc0Rb0 := (flags.gridsetting._nCrbSsb * 12 * int(flags.gridsetting._nCrbSsbScs) + flags.gridsetting._kSsb * int(flags.gridsetting._kSsbScs)) / rmsiScsVal - flags.gridsetting._offsetToCarrier * 12
 		nscCoreset0Offset := flags.gridsetting._coreset0Offset * 12
 		iscCoreset0Sc0Rb0 := iscSsbSc0Rb0 - nscCoreset0Offset
 		fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> iscSsbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, iscSsbSc0Rb0)
