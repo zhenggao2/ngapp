@@ -114,13 +114,13 @@ type GridSettingFlags struct {
 	_coreset0NumSymbs        int
 	_coreset0OffsetList      []int
 	_coreset0Offset          int
+	_sfn                      int
+	_hrf                      int
+	dmrsTypeAPos             string
 }
 
 // mib
 type MibFlags struct {
-	sfn                      int
-	hrf                      int
-	dmrsTypeAPos             string
 	//_mibCommonScs                string
 	//rmsiCoreset0             int
 	//rmsiCss0                 int
@@ -794,7 +794,7 @@ var confGridSettingCmd = &cobra.Command{
 				idx = utils.IndexStr(nrgrid.BwSetFr22, bw)
 			}
 			if idx < 0 {
-				regRed.Printf("Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, bw)
+				regRed.Printf("[ERR]: Invalid carrier bandwidth for %v: carrierBw=%v\n", fr, bw)
 				return
 			}
 			flags.gridsetting._carrierNumRbs = nrgrid.NrbFr1[carrierScsVal][idx]
@@ -809,6 +809,52 @@ var confGridSettingCmd = &cobra.Command{
 			flags.bwp._bwpStartRb[DED_UL_BWP] = 0
 			flags.bwp._bwpNumRbs[DED_UL_BWP] = flags.gridsetting._carrierNumRbs
 			flags.bwp._bwpLocAndBw[DED_UL_BWP] = makeRiv(flags.gridsetting._carrierNumRbs, 0, 275)
+		}
+
+		if cmd.Flags().Lookup("dmrsTypeAPos").Changed {
+			regGreen.Printf("[INFO]: Processing gridSetting.dmrsTypeAPos...\n")
+
+			dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
+
+			// validate CORESET duration
+			// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
+			// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
+			if flags.gridsetting._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset0NumSymbs can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.gridsetting.dmrsTypeAPos)
+				return
+			}
+			if flags.coreset1.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset1Duration can be 3 only if dmrs-TypeA-Position is pos3! (coreset1Duration=%v,dmrsTypeAPos=%v)\n", flags.coreset1.coreset1Duration, flags.gridsetting.dmrsTypeAPos)
+				return
+			}
+
+			// validate 'Time domain resource assignment" field of DCI 1_0
+			err := validateDci10TdRa()
+			if err != nil {
+				regRed.Printf("[ERR]: " + err.Error())
+				return
+			}
+
+			// validate 'Time domain resource assignment" field of DCI 1_1
+			err = validateDci11TdRa()
+			if err != nil {
+				regRed.Printf("[ERR]: " + err.Error())
+				return
+			}
+
+			// validate DCI 0_1 scheduled PUSCH
+			err = validatePuschAntPorts()
+			if err != nil {
+				regRed.Printf("[ERR]: " + err.Error())
+				return
+			}
+
+			// update TBS of Msg3 PUSCH scheduled by RAR Msg2
+			err = updateMsg3PuschTbs()
+			if err != nil {
+				regRed.Printf("[ERR]: " + err.Error())
+				return
+			}
 		}
 
 		regGreen.Printf("[INFO]: Post-processing...\n")
@@ -1098,8 +1144,8 @@ func validateCoreset0() error {
 	// validate coreste0NumSymbs against dmrs-pointA-Position
 	// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
 	// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
-	if flags.gridsetting._coreset0NumSymbs == 3 && flags.mib.dmrsTypeAPos != "pos3" {
-		return errors.New(fmt.Sprintf("coreset0NumSymbs can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos))
+	if flags.gridsetting._coreset0NumSymbs == 3 && flags.gridsetting.dmrsTypeAPos != "pos3" {
+		return errors.New(fmt.Sprintf("coreset0NumSymbs can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.gridsetting.dmrsTypeAPos))
 	}
 
 	// update info of initial dl bwp
@@ -1162,66 +1208,6 @@ func makeRiv(L_RBs, RB_start, N_BWP_size int) int {
 	return riv
 }
 
-// confMibCmd represents the nrrg mib command
-var confMibCmd = &cobra.Command{
-	Use:   "mib",
-	Short: "",
-	Long: `CMD "nrrg mib" can be used to get/set MIB related network configurations.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		loadNrrgFlags()
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		viper.WatchConfig()
-
-		if cmd.Flags().Lookup("dmrsTypeAPos").Changed {
-		    dmrsTypeAPos := flags.mib.dmrsTypeAPos
-
-			// validate CORESET duration
-			// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
-			// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
-			if flags.gridsetting._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
-				fmt.Printf("coreset0NumSymbs can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.mib.dmrsTypeAPos)
-				return
-			}
-			if flags.coreset1.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
-				fmt.Printf("coreset1Duration can be 3 only if dmrs-TypeA-Position is pos3! (coreset1Duration=%v,dmrsTypeAPos=%v)\n", flags.coreset1.coreset1Duration, flags.mib.dmrsTypeAPos)
-				return
-			}
-
-			// validate 'Time domain resource assignment" field of DCI 1_0
-			err := validateDci10TdRa()
-			if err != nil {
-				regRed.Printf(err.Error())
-				return
-			}
-
-			// validate 'Time domain resource assignment" field of DCI 1_1
-			err = validateDci11TdRa()
-			if err != nil {
-				regRed.Printf(err.Error())
-				return
-			}
-
-			// validate DCI 0_1 scheduled PUSCH
-			err = validatePuschAntPorts()
-			if err != nil {
-				regRed.Printf(err.Error())
-				return
-			}
-
-			// update TBS of Msg3 PUSCH scheduled by RAR Msg2
-			err = updateMsg3PuschTbs()
-			if err != nil {
-				regRed.Printf(err.Error())
-				return
-			}
-		}
-
-	    laPrint(cmd, args)
-		viper.WriteConfig()
-	},
-}
-
 // validateDci10TdRa validates the "Time domain resource assignment" field of DCI 1_0 scheduling SIB1/Msg2/Msg4, updates associated DMRS, and calculate TBS.
 func validateDci10TdRa() error {
 	regYellow.Printf("-->calling validateDci10TdRa\n")
@@ -1234,7 +1220,7 @@ func validateDci10TdRa() error {
 	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
 	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
 	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
-	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	for i, rnti := range flags.dci10._rnti {
 		row := flags.dci10.dci10TdRa[i] + 1
 		key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
@@ -1272,9 +1258,9 @@ func validateDci10TdRa() error {
 		}
 
 		if !exist || p == nil {
-			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.mib.dmrsTypeAPos))
+			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.gridsetting.dmrsTypeAPos))
 		} else {
-			// update dci10 info
+			// update DCI 1_0 info
 			fmt.Printf("TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.gridsetting._coreset0MultiplexingPat, *p)
 			flags.dci10._tdMappingType[i] = p.MappingType
 			flags.dci10._tdK0[i] = p.K0
@@ -1283,7 +1269,7 @@ func validateDci10TdRa() error {
 			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
 			flags.dci10._tdSliv[i] = sliv
 
-			// update dmrs info
+			// update DMRS info
 			// refer to 3GPP TS 38.214 vh40: 5.1.6.2	DM-RS reception procedure
 			// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
 			// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume that ... and in addition:
@@ -1308,7 +1294,7 @@ func validateDci10TdRa() error {
 }
 
 // updateDci10Tbs updates the TBS field of DCI 1_0 scheduling Sib1/Msg2/Msg4.
-//  i: index of the flags.dci10 slices
+//  i: index of the flags.dci10 slices[0-SIB1, 1-Msg2, 2-Msg4]
 func updateDci10Tbs(i int) error {
 	regYellow.Printf("-->calling updateDci10Tbs\n")
 
@@ -1317,7 +1303,7 @@ func updateDci10Tbs(i int) error {
 	fd := flags.dci10.dci10FdNumRbs[i]
 	mcs := flags.dci10.dci10McsCw0[i]
 
-	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
 	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
 	if flags.dci10._tdMappingType[i] == "typeA" {
@@ -1327,21 +1313,23 @@ func updateDci10Tbs(i int) error {
 	}
 
 	key2 := fmt.Sprintf("%v_%v_%v", ld, flags.dci10._tdMappingType[i], flags.dmrsCommon._dmrsAddPos[i])
-	// refer to 3GPP TS 38.214 vfa0:
-	// When receiving PDSCH scheduled by DCI format 1_0 or ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
-	dmrs, exist2 := nrgrid.DmrsPdschPosOneSymb[key2]
-	if !exist2 || dmrs == nil {
+	// refer to 3GPP TS 38.214 vh40:
+	// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume that ..., and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and ...
+	dmrs, exist := nrgrid.DmrsPdschPosOneSymb[key2]
+	if !exist || dmrs == nil {
 		return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci10._rnti[i], 1, key2))
 	}
 
-	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-	// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-	// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-	// TODO: For PDSCH mapping type A single-symbol DMRS, l1 = 11 except if ...
-	// For PDSCH mapping type B
-	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
-	// TODO: For PDSCH mapping type B, when PDSCH allocation collides with CORESET ...
-	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// For PDSCH mapping type A,
+	// 	- the case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	//	- l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	//	- single-symbol DM-RS, l1=11 except if all of the following conditions are fulfilled in which case l1=12: (2023/2/22: DSS is not supported!)
+	// For PDSCH mapping type B,
+	// 	- if ... and the front-loaded DM-RS of the PDSCH allocation collides with resources reserved for a search space set associated with a CORESET...(2023/2/23: Assume no collision between PDSCH DMRS and CORESET!)
+	//  - if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
+	//	- if the higher-layer parameter lte-CRS-ToMatchAround, lte-CRS-PatternList1, or lte-CRS-PatternList2 is configured,...(2023/2/23: DSS is not supported!)
+	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	if flags.dci10._tdMappingType[i] == "typeA" {
 		if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
 			return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
@@ -1362,13 +1350,11 @@ func updateDci10Tbs(i int) error {
 	return nil
 }
 
-/*
-validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
- */
+// validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
 func validateDci11TdRa() error {
 	fmt.Printf("\n-->%s\n", "calling validateDci11TdRa")
 
-	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
 	if flags.dci11.dci11TdRa >= 0 && flags.dci11.dci11TdRa <= 15 {
 		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
@@ -1386,7 +1372,7 @@ func validateDci11TdRa() error {
 		}
 
 		if !exist {
-			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.mib.dmrsTypeAPos))
+			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.gridsetting.dmrsTypeAPos))
 		} else {
 			// update dci11 info
 			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_1, rnti=C-RNTI): %v\n", *p)
@@ -1565,7 +1551,7 @@ func validatePdschAntPorts() error {
 	// For PDSCH mapping type B
 	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
 	// TODO: For PDSCH mapping type B, when PDSCH allocation collides with CORESET ...
-	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	if dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
 		return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
 	}
@@ -1646,7 +1632,7 @@ func updateMsg3PuschTbs() error {
 		var strDmrsTypeAPos string
 		var strDmrsMsg3AddPos string
 		if mappingType == "typeA" {
-			strDmrsTypeAPos = flags.mib.dmrsTypeAPos[3:]
+			strDmrsTypeAPos = flags.gridsetting.dmrsTypeAPos[3:]
 		} else {
 			strDmrsTypeAPos = "0"
 		}
@@ -1754,7 +1740,7 @@ func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
 func validateDci01TdRa() error {
 	fmt.Printf("\n-->%s\n", "calling validateDci01TdRa")
 
-	dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
 	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
 	// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
@@ -1776,7 +1762,7 @@ func validateDci01TdRa() error {
 func validateMsg3TdRa() error {
 	fmt.Printf("\n-->%s\n", "calling validateMsg3TdRa")
 
-	// dmrsTypeAPos := flags.mib.dmrsTypeAPos
+	// dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
 
 	// update Msg3 TBS
@@ -1785,22 +1771,20 @@ func validateMsg3TdRa() error {
 	return nil
 }
 
-/*
-getTbs calculates TBS for PUSCH/PDSCH.
-	sch: PUSCH or PDSCH
-	tp: PUSCH transform percoding flag
-	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
-	mcsTab: qam64, qam64LowSE or qam256
-	td: number of symbols
-	fd: number of PRBs
-	mcs: MCS
-	layer: number of spatial multiplexing layers
-	dmrs: overhead of DMRS
-	xoh: the xOverhead
-	scale: TB scaling for Msg2
- */
+//getTbs calculates TBS for PUSCH/PDSCH.
+//	sch: PUSCH or PDSCH
+//	tp: PUSCH transform percoding flag
+//	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
+//	mcsTab: qam64, qam64LowSE or qam256
+//	td: number of symbols
+//	fd: number of PRBs
+//	mcs: MCS
+//	layer: number of spatial multiplexing layers
+//	dmrs: overhead of DMRS
+//	xoh: the xOverhead
+//	scale: TB scaling for Msg2
 func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs int, layer int, dmrs int, xoh int, scale float64) (int, error) {
-	fmt.Printf("\n-->%s\n", "calling getTbs")
+	regYellow.Printf("-->calling getTbs\n")
 
 	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
 	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
@@ -2273,7 +2257,6 @@ var nrrgSimCmd = &cobra.Command{
 
 func init() {
 	nrrgCmd.AddCommand(confGridSettingCmd)
-	nrrgCmd.AddCommand(confMibCmd)
 	nrrgCmd.AddCommand(confCommonSettingCmd)
 	nrrgCmd.AddCommand(confCss0Cmd)
 	nrrgCmd.AddCommand(confCoreset1Cmd)
@@ -2313,7 +2296,7 @@ func init() {
 	initConfGridSettingCmd()
 	//initConfSsbGridCmd()
 	//initConfSsbBurstCmd()
-	initConfMibCmd()
+	//initConfMibCmd()
 	//initConfCarrierGridCmd()
 	initConfCommonSettingCmd()
 	initConfCss0Cmd()
@@ -2413,6 +2396,9 @@ func initConfGridSettingCmd() {
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0NumSymbs, "_coreset0NumSymbs", 1, "Number of OFDM symbols of CORESET0")
 	confGridSettingCmd.Flags().IntSliceVar(&flags.gridsetting._coreset0OffsetList, "_coreset0OffsetList", []int{16}, "List of offset of CORESET0")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0Offset, "_coreset0Offset", 16, "Offset of CORESET0")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._sfn, "_sfn", 0, "System frame number(SFN)[0..1023]")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._hrf, "_hrf", 0, "Half frame bit[0,1]")
+	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
 	confGridSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.gridsetting._mibCommonScs", confGridSettingCmd.Flags().Lookup("_mibCommonScs"))
 	viper.BindPFlag("nrrg.gridsetting.rmsiCoreset0", confGridSettingCmd.Flags().Lookup("rmsiCoreset0"))
@@ -2422,24 +2408,17 @@ func initConfGridSettingCmd() {
 	viper.BindPFlag("nrrg.gridsetting._coreset0NumSymbs", confGridSettingCmd.Flags().Lookup("_coreset0NumSymbs"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0OffsetList", confGridSettingCmd.Flags().Lookup("_coreset0OffsetList"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0Offset", confGridSettingCmd.Flags().Lookup("_coreset0Offset"))
+	viper.BindPFlag("nrrg.gridsetting._sfn", confGridSettingCmd.Flags().Lookup("_sfn"))
+	viper.BindPFlag("nrrg.gridsetting._hrf", confGridSettingCmd.Flags().Lookup("_hrf"))
+	viper.BindPFlag("nrrg.gridsetting.dmrsTypeAPos", confGridSettingCmd.Flags().Lookup("dmrsTypeAPos"))
 	confGridSettingCmd.Flags().MarkHidden("_mibCommonScs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0MultiplexingPat")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0NumRbs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0NumSymbs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0OffsetList")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0Offset")
-}
-
-func initConfMibCmd() {
-	confMibCmd.Flags().IntVar(&flags.mib.sfn, "sfn", 0, "System frame number(SFN)[0..1023]")
-	confMibCmd.Flags().IntVar(&flags.mib.hrf, "hrf", 0, "Half frame bit[0,1]")
-	confMibCmd.Flags().StringVar(&flags.mib.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
-
-	confMibCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.mib.sfn", confMibCmd.Flags().Lookup("sfn"))
-	viper.BindPFlag("nrrg.mib.hrf", confMibCmd.Flags().Lookup("hrf"))
-	viper.BindPFlag("nrrg.mib.dmrsTypeAPos", confMibCmd.Flags().Lookup("dmrsTypeAPos"))
-
+	confGridSettingCmd.Flags().MarkHidden("_sfn")
+	confGridSettingCmd.Flags().MarkHidden("_hrf")
 }
 
 func initConfCommonSettingCmd() {
@@ -3313,12 +3292,11 @@ func loadNrrgFlags() {
 	flags.gridsetting._coreset0NumSymbs = viper.GetInt("nrrg.gridsetting._coreset0NumSymbs")
 	flags.gridsetting._coreset0OffsetList = viper.GetIntSlice("nrrg.gridsetting._coreset0OffsetList")
 	flags.gridsetting._coreset0Offset = viper.GetInt("nrrg.gridsetting._coreset0Offset")
+	flags.gridsetting._sfn = viper.GetInt("nrrg.gridsetting._sfn")
+	flags.gridsetting._hrf = viper.GetInt("nrrg.gridsetting._hrf")
+	flags.gridsetting.dmrsTypeAPos = viper.GetString("nrrg.gridsetting.dmrsTypeAPos")
 
 	// common settings
-	flags.mib.sfn = viper.GetInt("nrrg.mib.sfn")
-	flags.mib.hrf = viper.GetInt("nrrg.mib.hrf")
-	flags.mib.dmrsTypeAPos = viper.GetString("nrrg.mib.dmrsTypeAPos")
-
 	flags.commonSetting.pci = viper.GetInt("nrrg.commonsetting.pci")
 	flags.commonSetting.numUeAp = viper.GetString("nrrg.commonsetting.numUeAp")
 	flags.commonSetting._refScs = viper.GetString("nrrg.commonsetting._refScs")

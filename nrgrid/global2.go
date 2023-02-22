@@ -44,10 +44,10 @@ var DmrsSchCfgType2 = map[int]*DmrsSchInfo{
 	11: {2, 4},
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh40
 //  Table 7.4.1.1.2-3: PDSCH DM-RS positions l- for single-symbol DM-RS.
 // key="td_mapping type_additional position"
-//  key = '%s_%s_%s' % (td, self.nrDci11PdschTimeAllocMappingTypeComb.currentText(), self.nrDmrsDedPdschAddPosComb.currentText())
+//  key = '%s_%s_%s' % (td, tdraPdschMappingType, dmrsPdschAddPos)
 var DmrsPdschPosOneSymb = map[string][]int{
 	"2_typeA_pos0": nil, "2_typeA_pos1": nil, "2_typeA_pos2": nil, "2_typeA_pos3": nil,
 	"3_typeA_pos0": {0}, "3_typeA_pos1": {0}, "3_typeA_pos2": {0}, "3_typeA_pos3": {0},
@@ -62,19 +62,20 @@ var DmrsPdschPosOneSymb = map[string][]int{
 	"12_typeA_pos0": {0}, "12_typeA_pos1": {0, 9}, "12_typeA_pos2": {0, 6, 9}, "12_typeA_pos3": {0, 5, 8, 11},
 	"13_typeA_pos0": {0}, "13_typeA_pos1": {0, 11}, "13_typeA_pos2": {0, 7, 11}, "13_typeA_pos3": {0, 5, 8, 11},
 	"14_typeA_pos0": {0}, "14_typeA_pos1": {0, 11}, "14_typeA_pos2": {0, 7, 11}, "14_typeA_pos3": {0, 5, 8, 11},
-	"2_typeB_pos0": {0}, "2_typeB_pos1": {0}, "2_typeB_pos2": nil, "2_typeB_pos3": nil,
-	"3_typeB_pos0": nil, "3_typeB_pos1": nil, "3_typeB_pos2": nil, "3_typeB_pos3": nil,
-	"4_typeB_pos0": {0}, "4_typeB_pos1": {0}, "4_typeB_pos2": nil, "4_typeB_pos3": nil,
-	"5_typeB_pos0": nil, "5_typeB_pos1": nil, "5_typeB_pos2": nil, "5_typeB_pos3": nil,
-	"6_typeB_pos0": {0}, "6_typeB_pos1": {0, 4}, "6_typeB_pos2": nil, "6_typeB_pos3": nil,
-	"7_typeB_pos0": {0}, "7_typeB_pos1": {0, 4}, "7_typeB_pos2": nil, "7_typeB_pos3": nil,
-	"8_typeB_pos0": nil, "8_typeB_pos1": nil, "8_typeB_pos2": nil, "8_typeB_pos3": nil,
-	"9_typeB_pos0": nil, "9_typeB_pos1": nil, "9_typeB_pos2": nil, "9_typeB_pos3": nil,
-	"10_typeB_pos0": nil, "10_typeB_pos1": nil, "10_typeB_pos2": nil, "10_typeB_pos3": nil,
-	"11_typeB_pos0": nil, "11_typeB_pos1": nil, "11_typeB_pos2": nil, "11_typeB_pos3": nil,
-	"12_typeB_pos0": nil, "12_typeB_pos1": nil, "12_typeB_pos2": nil, "12_typeB_pos3": nil,
-	"13_typeB_pos0": nil, "13_typeB_pos1": nil, "13_typeB_pos2": nil, "13_typeB_pos3": nil,
-	"14_typeB_pos0": nil, "14_typeB_pos1": nil, "14_typeB_pos2": nil, "14_typeB_pos3": nil,
+	// 38.211 vh40
+	"2_typeB_pos0" : {0}, "2_typeB_pos1" : {0}, "2_typeB_pos2" : {0}, "2_typeB_pos3" : {0},
+	"3_typeB_pos0" : {0}, "3_typeB_pos1" : {0}, "3_typeB_pos2" : {0}, "3_typeB_pos3" : {0},
+	"4_typeB_pos0" : {0}, "4_typeB_pos1" : {0}, "4_typeB_pos2" : {0}, "4_typeB_pos3" : {0},
+	"5_typeB_pos0" : {0}, "5_typeB_pos1" : {0, 4}, "5_typeB_pos2" : {0, 4}, "5_typeB_pos3" : {0, 4},
+	"6_typeB_pos0" : {0}, "6_typeB_pos1" : {0, 4}, "6_typeB_pos2" : {0, 4}, "6_typeB_pos3" : {0, 4},
+	"7_typeB_pos0" : {0}, "7_typeB_pos1" : {0, 4}, "7_typeB_pos2" : {0, 4}, "7_typeB_pos3" : {0, 4},
+	"8_typeB_pos0" : {0}, "8_typeB_pos1" : {0, 6}, "8_typeB_pos2" : {0, 3, 6}, "8_typeB_pos3" : {0, 3, 6},
+	"9_typeB_pos0" : {0}, "9_typeB_pos1" : {0, 7}, "9_typeB_pos2" : {0, 4, 7}, "9_typeB_pos3" : {0, 4, 7},
+	"10_typeB_pos0" : {0}, "10_typeB_pos1" : {0, 7}, "10_typeB_pos2" : {0, 4, 7}, "10_typeB_pos3" : {0, 4, 7},
+	"11_typeB_pos0" : {0}, "11_typeB_pos1" : {0, 8}, "11_typeB_pos2" : {0, 4, 8}, "11_typeB_pos3" : {0, 3, 6, 9},
+	"12_typeB_pos0" : {0}, "12_typeB_pos1" : {0, 9}, "12_typeB_pos2" : {0, 5, 9}, "12_typeB_pos3" : {0, 3, 6, 9},
+	"13_typeB_pos0" : {0}, "13_typeB_pos1" : {0, 9}, "13_typeB_pos2" : {0, 5, 9}, "13_typeB_pos3" : {0, 3, 6, 9},
+	"14_typeB_pos0" : nil, "14_typeB_pos1" : nil, "14_typeB_pos2" : nil, "14_typeB_pos3" : nil,
 }
 
 // refer to 3GPP 38.211 vf30
