@@ -178,7 +178,7 @@ type Dci10Flags struct {
 	_rnti                    []string
 	_muPdcch                 []int
 	_muPdsch                 []int
-	dci10TdRa                []int
+	_dci10TdRa                []int
 	_tdMappingType           []string
 	_tdK0                    []int
 	_tdSliv                  []int
@@ -187,15 +187,15 @@ type Dci10Flags struct {
 	_fdRaType                []string
 	_fdBitwidthRaType1 []int
 	_fdRa                    []string
-	dci10FdStartRb           []int
-	dci10FdNumRbs            []int
-	dci10FdVrbPrbMappingType []string
+	_dci10FdStartRb           []int
+	_dci10FdNumRbs            []int
+	_dci10FdVrbPrbMappingType []string
 	_fdBundleSize            []string
-	dci10McsCw0              []int
+	_dci10McsCw0              []int
 	_tbs                     []int
-	dci10Msg2TbScaling       int
-	dci10Msg4DeltaPri        int
-	dci10Msg4TdK1            int
+	_dci10Msg2TbScaling       int
+	_dci10Msg4DeltaPri        int
+	_dci10Msg4TdK1            int
 }
 
 // DCI 1_1 scheduling PDSCH with C-RNTI
@@ -206,11 +206,11 @@ type Dci11Flags struct {
 	_actBwp                  int
 	_indicatedBwp            int
 	dci11TdRa                int
-	dci11TdMappingType       string
-	dci11TdK0                int
-	dci11TdSliv              int
-	dci11TdStartSymb         int
-	dci11TdNumSymbs          int
+	_dci11TdMappingType       string
+	_dci11TdK0                int
+	_dci11TdSliv              int
+	_dci11TdStartSymb         int
+	_dci11TdNumSymbs          int
 	dci11FdRaType            string
 	_dci11FdBitwidthRaType0 int
 	_dci11FdBitwidthRaType1 int
@@ -1222,7 +1222,7 @@ func validateDci10TdRa() error {
 	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	for i, rnti := range flags.dci10._rnti {
-		row := flags.dci10.dci10TdRa[i] + 1
+		row := flags.dci10._dci10TdRa[i] + 1
 		key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
 		var p *nrgrid.TimeAllocInfo
 		var exist bool
@@ -1235,16 +1235,16 @@ func validateDci10TdRa() error {
 			case 2:
 				// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
 				// Note 1: If the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space, the UE may assume that this PDSCH resource allocation is not applied.
-				if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10.dci10TdRa[i] + 1) {
-					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1))
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10._dci10TdRa[i] + 1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10._dci10TdRa[i] + 1))
 				}
 				p, exist = nrgrid.PdschTimeAllocDefB[key]
 			case 3:
 				// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
 				// Note 1: The UE may assume that this PDSCH resource allocation is not used, if the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space.
 				// Note 2:	This applies for Case F and Case G candidate SS/PBCH block pattern described in clause 4 of [6, TS 38.213]
-				if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10.dci10TdRa[i] + 1) {
-					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10.dci10TdRa[i] + 1))
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10._dci10TdRa[i] + 1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10._dci10TdRa[i] + 1))
 				}
 				p, exist = nrgrid.PdschTimeAllocDefC[key]
 			}
@@ -1258,7 +1258,7 @@ func validateDci10TdRa() error {
 		}
 
 		if !exist || p == nil {
-			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10.dci10TdRa[i], flags.gridsetting.dmrsTypeAPos))
+			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: _dci10TdRa=%v, dmrsTypeAPos=%v\n", flags.dci10._dci10TdRa[i], flags.gridsetting.dmrsTypeAPos))
 		} else {
 			// update DCI 1_0 info
 			fmt.Printf("TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.gridsetting._coreset0MultiplexingPat, *p)
@@ -1300,8 +1300,8 @@ func updateDci10Tbs(i int) error {
 
 	td := flags.dci10._tdNumSymbs[i]
 	ld := 0
-	fd := flags.dci10.dci10FdNumRbs[i]
-	mcs := flags.dci10.dci10McsCw0[i]
+	fd := flags.dci10._dci10FdNumRbs[i]
+	mcs := flags.dci10._dci10McsCw0[i]
 
 	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
@@ -1352,43 +1352,36 @@ func updateDci10Tbs(i int) error {
 
 // validateDci11TdRa validates the "Time domain resource assignment" field of DCI 1_1 scheduling PDSCH.
 func validateDci11TdRa() error {
-	fmt.Printf("\n-->%s\n", "calling validateDci11TdRa")
+	regYellow.Printf("-->calling validateDci11TdRa\n")
 
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
-	if flags.dci11.dci11TdRa >= 0 && flags.dci11.dci11TdRa <= 15 {
-		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation
-		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
-		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
-		row := flags.dci11.dci11TdRa + 1
-		key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
-		var p *nrgrid.TimeAllocInfo
-		var exist bool
+	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-1: Applicable PDSCH time domain resource allocation for DCI formats 1_0, 1_1, 4_0, 4_1 and 4_2
+	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-2: Default PDSCH time domain resource allocation A for normal CP
+	// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-3: Default PDSCH time domain resource allocation A for extended CP
+	// 2023/2/23: For simplicity, pdsch-AllocationList configured PDSCH TDRA is not supported!
+	row := flags.dci11.dci11TdRa + 1
+	key := fmt.Sprintf("%v_%v", row, dmrsTypeAPos[3:])
+	var p *nrgrid.TimeAllocInfo
+	var exist bool
 
-		if flags.bwp._bwpCp[DED_DL_BWP] == "normal" {
-			p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
-		} else {
-			p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
-		}
-
-		if !exist {
-			return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.gridsetting.dmrsTypeAPos))
-		} else {
-			// update dci11 info
-			fmt.Printf("nrgrid.TimeAllocInfo(DCI 1_1, rnti=C-RNTI): %v\n", *p)
-			flags.dci11.dci11TdMappingType = p.MappingType
-			flags.dci11.dci11TdK0 = p.K0
-			flags.dci11.dci11TdStartSymb = p.S
-			flags.dci11.dci11TdNumSymbs = p.L
-			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
-			flags.dci11.dci11TdSliv = sliv
-		}
+	if flags.bwp._bwpCp[DED_DL_BWP] == "normal" {
+		p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
 	} else {
-		// refer to 3GPP TS 38.214 vfa0: Table 5.1.2.1-1: Valid S and L combinations
-		// Note 1:	S = 3 is applicable only if dmrs-TypeA-Position = 3
-		if flags.dci11.dci11TdMappingType == "typeA" && flags.dci11.dci11TdStartSymb == 3 && dmrsTypeAPos != "pos3" {
-			return errors.New(fmt.Sprintf("S = 3 is applicable only if dmrs-TypeA-Position = 3 when PDSCH mapping type is typeA.\ndci11TdStartSymb=%v,dmrsTypeAPos=%v\n", flags.dci11.dci11TdStartSymb, dmrsTypeAPos))
-		}
+		p, exist = nrgrid.PdschTimeAllocDefAExtCp[key]
+	}
+
+	if !exist {
+		return errors.New(fmt.Sprintf("Invalid PDSCH time domain allocation: dci11TdRa=%v, dmrsTypeAPos=%v\n", flags.dci11.dci11TdRa, flags.gridsetting.dmrsTypeAPos))
+	} else {
+		// update dci11 info
+		fmt.Printf("TimeAllocInfo(DCI 1_1, rnti=C-RNTI): %v\n", *p)
+		flags.dci11._dci11TdMappingType = p.MappingType
+		flags.dci11._dci11TdK0 = p.K0
+		flags.dci11._dci11TdStartSymb = p.S
+		flags.dci11._dci11TdNumSymbs = p.L
+		sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
+		flags.dci11._dci11TdSliv = sliv
 	}
 
 	// validate 'Antenna port(s)' field of DCI 1_1 scheduling PDSCH
@@ -1517,16 +1510,16 @@ func validatePdschAntPorts() error {
 	}
 
 	// calculate DMRS overhead
-	td := flags.dci11.dci11TdNumSymbs
+	td := flags.dci11._dci11TdNumSymbs
 	ld := 0
-	tdMappingType := flags.dci11.dci11TdMappingType
+	tdMappingType := flags.dci11._dci11TdMappingType
 	dmrsAddPos := flags.dmrsPdsch.pdschDmrsAddPos
 
 	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
 	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
 	if tdMappingType == "typeA" {
-		ld = flags.dci11.dci11TdStartSymb + flags.dci11.dci11TdNumSymbs
+		ld = flags.dci11._dci11TdStartSymb + flags.dci11._dci11TdNumSymbs
 	} else {
 		ld = td
 	}
@@ -2487,7 +2480,7 @@ func initConfDci10Cmd() {
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._rnti, "_rnti", []string{"SI-RNTI", "RA-RNTI", "TC-RNTI"}, "RNTI for DCI 1_0")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._muPdcch, "_muPdcch", []int{1, 1, 1}, "Subcarrier spacing of PDCCH[0..3]")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._muPdsch, "_muPdsch", []int{1, 1, 1}, "Subcarrier spacing of PDSCH[0..3]")
-	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10TdRa, "dci10TdRa", []int{10, 10, 10}, "Time-domain-resource-assignment field of DCI 1_0[0..15]")
+	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._dci10TdRa, "_dci10TdRa", []int{10, 10, 10}, "Time-domain-resource-assignment field of DCI 1_0[0..15]")
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._tdMappingType, "_tdMappingType", []string{"typeB", "typeB", "typeB"}, "Mapping type for PDSCH time-domain allocation")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._tdK0, "_tdK0", []int{0, 0, 0}, "Slot offset K0 for PDSCH time-domain allocation")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._tdSliv, "_tdSliv", []int{26, 26, 26}, "SLIV for PDSCH time-domain allocation")
@@ -2496,20 +2489,20 @@ func initConfDci10Cmd() {
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._fdRaType, "_fdRaType", []string{"raType1", "raType1", "raType1"}, "resourceAllocation for PDSCH frequency-domain allocation")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._fdBitwidthRaType1, "_fdBitwidthRaType1", []int{11, 11, 11}, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._fdRa, "_fdRa", []string{"00001011111", "00001011111", "00001011111"}, "Frequency-domain-resource-assignment field of DCI 1_0")
-	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10FdStartRb, "dci10FdStartRb", []int{0, 0, 0}, "RB_start of RIV for PDSCH frequency-domain allocation")
-	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10FdNumRbs, "dci10FdNumRbs", []int{48, 48, 48}, "L_RBs of RIV for PDSCH frequency-domain allocation")
-	confDci10Cmd.Flags().StringSliceVar(&flags.dci10.dci10FdVrbPrbMappingType, "dci10FdVrbPrbMappingType", []string{"interleaved", "interleaved", "interleaved"}, "VRB-to-PRB-mapping field of DCI 1_0")
+	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._dci10FdStartRb, "_dci10FdStartRb", []int{0, 0, 0}, "RB_start of RIV for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._dci10FdNumRbs, "_dci10FdNumRbs", []int{48, 48, 48}, "L_RBs of RIV for PDSCH frequency-domain allocation")
+	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._dci10FdVrbPrbMappingType, "_dci10FdVrbPrbMappingType", []string{"interleaved", "interleaved", "interleaved"}, "VRB-to-PRB-mapping field of DCI 1_0")
 	confDci10Cmd.Flags().StringSliceVar(&flags.dci10._fdBundleSize, "_fdBundleSize", []string{"n2", "n2", "n2"}, "L(vrb-ToPRB-Interleaver) for PDSCH frequency-domain allocation")
-	confDci10Cmd.Flags().IntSliceVar(&flags.dci10.dci10McsCw0, "dci10McsCw0", []int{2, 2, 2}, "Modulation-and-coding-scheme field of DCI 1_0[0..9]")
+	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._dci10McsCw0, "_dci10McsCw0", []int{2, 2, 2}, "Modulation-and-coding-scheme field of DCI 1_0[0..9]")
 	confDci10Cmd.Flags().IntSliceVar(&flags.dci10._tbs, "_tbs", []int{408, 408, 408}, "Transport block size(bits) for PDSCH")
-	confDci10Cmd.Flags().IntVar(&flags.dci10.dci10Msg2TbScaling, "dci10Msg2TbScaling", 0, "TB-scaling field of DCI 1_0 scheduling Msg2[0..2]")
-	confDci10Cmd.Flags().IntVar(&flags.dci10.dci10Msg4DeltaPri, "dci10Msg4DeltaPri", 1, "PUCCH-resource-indicator field of DCI 1_0 scheduling Msg4[0..7]")
-	confDci10Cmd.Flags().IntVar(&flags.dci10.dci10Msg4TdK1, "dci10Msg4TdK1", 6, "PDSCH-to-HARQ_feedback-timing-indicator(K1) field of DCI 1_0 scheduling Msg4[0..7]")
+	confDci10Cmd.Flags().IntVar(&flags.dci10._dci10Msg2TbScaling, "_dci10Msg2TbScaling", 0, "TB-scaling field of DCI 1_0 scheduling Msg2[0..2]")
+	confDci10Cmd.Flags().IntVar(&flags.dci10._dci10Msg4DeltaPri, "_dci10Msg4DeltaPri", 1, "PUCCH-resource-indicator field of DCI 1_0 scheduling Msg4[0..7]")
+	confDci10Cmd.Flags().IntVar(&flags.dci10._dci10Msg4TdK1, "_dci10Msg4TdK1", 6, "PDSCH-to-HARQ_feedback-timing-indicator(K1) field of DCI 1_0 scheduling Msg4[0..7]")
 	confDci10Cmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.dci10._rnti", confDci10Cmd.Flags().Lookup("_rnti"))
 	viper.BindPFlag("nrrg.dci10._muPdcch", confDci10Cmd.Flags().Lookup("_muPdcch"))
 	viper.BindPFlag("nrrg.dci10._muPdsch", confDci10Cmd.Flags().Lookup("_muPdsch"))
-	viper.BindPFlag("nrrg.dci10.dci10TdRa", confDci10Cmd.Flags().Lookup("dci10TdRa"))
+	viper.BindPFlag("nrrg.dci10._dci10TdRa", confDci10Cmd.Flags().Lookup("_dci10TdRa"))
 	viper.BindPFlag("nrrg.dci10._tdMappingType", confDci10Cmd.Flags().Lookup("_tdMappingType"))
 	viper.BindPFlag("nrrg.dci10._tdK0", confDci10Cmd.Flags().Lookup("_tdK0"))
 	viper.BindPFlag("nrrg.dci10._tdSliv", confDci10Cmd.Flags().Lookup("_tdSliv"))
@@ -2518,18 +2511,19 @@ func initConfDci10Cmd() {
 	viper.BindPFlag("nrrg.dci10._fdRaType", confDci10Cmd.Flags().Lookup("_fdRaType"))
 	viper.BindPFlag("nrrg.dci10._fdBitwidthRaType1", confDci10Cmd.Flags().Lookup("_fdBitwidthRaType1"))
 	viper.BindPFlag("nrrg.dci10._fdRa", confDci10Cmd.Flags().Lookup("_fdRa"))
-	viper.BindPFlag("nrrg.dci10.dci10FdStartRb", confDci10Cmd.Flags().Lookup("dci10FdStartRb"))
-	viper.BindPFlag("nrrg.dci10.dci10FdNumRbs", confDci10Cmd.Flags().Lookup("dci10FdNumRbs"))
-	viper.BindPFlag("nrrg.dci10.dci10FdVrbPrbMappingType", confDci10Cmd.Flags().Lookup("dci10FdVrbPrbMappingType"))
+	viper.BindPFlag("nrrg.dci10._dci10FdStartRb", confDci10Cmd.Flags().Lookup("_dci10FdStartRb"))
+	viper.BindPFlag("nrrg.dci10._dci10FdNumRbs", confDci10Cmd.Flags().Lookup("_dci10FdNumRbs"))
+	viper.BindPFlag("nrrg.dci10._dci10FdVrbPrbMappingType", confDci10Cmd.Flags().Lookup("_dci10FdVrbPrbMappingType"))
 	viper.BindPFlag("nrrg.dci10._fdBundleSize", confDci10Cmd.Flags().Lookup("_fdBundleSize"))
-	viper.BindPFlag("nrrg.dci10.dci10McsCw0", confDci10Cmd.Flags().Lookup("dci10McsCw0"))
+	viper.BindPFlag("nrrg.dci10._dci10McsCw0", confDci10Cmd.Flags().Lookup("_dci10McsCw0"))
 	viper.BindPFlag("nrrg.dci10._tbs", confDci10Cmd.Flags().Lookup("_tbs"))
-	viper.BindPFlag("nrrg.dci10.dci10Msg2TbScaling", confDci10Cmd.Flags().Lookup("dci10Msg2TbScaling"))
-	viper.BindPFlag("nrrg.dci10.dci10Msg4DeltaPri", confDci10Cmd.Flags().Lookup("dci10Msg4DeltaPri"))
-	viper.BindPFlag("nrrg.dci10.dci10Msg4TdK1", confDci10Cmd.Flags().Lookup("dci10Msg4TdK1"))
+	viper.BindPFlag("nrrg.dci10._dci10Msg2TbScaling", confDci10Cmd.Flags().Lookup("_dci10Msg2TbScaling"))
+	viper.BindPFlag("nrrg.dci10._dci10Msg4DeltaPri", confDci10Cmd.Flags().Lookup("_dci10Msg4DeltaPri"))
+	viper.BindPFlag("nrrg.dci10._dci10Msg4TdK1", confDci10Cmd.Flags().Lookup("_dci10Msg4TdK1"))
 	confDci10Cmd.Flags().MarkHidden("_rnti")
 	confDci10Cmd.Flags().MarkHidden("_muPdcch")
 	confDci10Cmd.Flags().MarkHidden("_muPdsch")
+	confDci10Cmd.Flags().MarkHidden("_dci10TdRa")
 	confDci10Cmd.Flags().MarkHidden("_tdMappingType")
 	confDci10Cmd.Flags().MarkHidden("_tdK0")
 	confDci10Cmd.Flags().MarkHidden("_tdSliv")
@@ -2538,8 +2532,15 @@ func initConfDci10Cmd() {
 	confDci10Cmd.Flags().MarkHidden("_fdRaType")
 	confDci10Cmd.Flags().MarkHidden("_fdBitwidthRaType1")
 	confDci10Cmd.Flags().MarkHidden("_fdRa")
+	confDci10Cmd.Flags().MarkHidden("_dci10FdStartRb")
+	confDci10Cmd.Flags().MarkHidden("_dci10FdNumRbs")
+	confDci10Cmd.Flags().MarkHidden("_dci10FdVrbPrbMappingType")
 	confDci10Cmd.Flags().MarkHidden("_fdBundleSize")
+	confDci10Cmd.Flags().MarkHidden("_dci10McsCw0")
 	confDci10Cmd.Flags().MarkHidden("_tbs")
+	confDci10Cmd.Flags().MarkHidden("_dci10Msg2TbScaling")
+	confDci10Cmd.Flags().MarkHidden("_dci10Msg4DeltaPri")
+	confDci10Cmd.Flags().MarkHidden("_dci10Msg4TdK1")
 }
 
 func initConfDci11Cmd() {
@@ -2549,11 +2550,11 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().IntVar(&flags.dci11._actBwp, "_actBwp", 1, "Active DL bandwidth part of PDSCH[0..1]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._indicatedBwp, "_indicatedBwp", 1, "Bandwidth-part-indicator field of DCI 1_1[0..1]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdRa, "dci11TdRa", 16, "Time-domain-resource-assignment field of DCI 1_1[0..15 or 16]")
-	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11TdMappingType, "dci11TdMappingType", "typeA", "Mapping type for PDSCH time-domain allocation[typeA,typeB]")
-	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdK0, "dci11TdK0", 0, "Slot offset K0 for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdSliv, "dci11TdSliv", 27, "SLIV for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdStartSymb, "dci11TdStartSymb", 0, "Starting symbol S for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdNumSymbs, "dci11TdNumSymbs", 14, "Number of OFDM symbols L for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().StringVar(&flags.dci11._dci11TdMappingType, "_dci11TdMappingType", "typeA", "Mapping type for PDSCH time-domain allocation[typeA,typeB]")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdK0, "_dci11TdK0", 0, "Slot offset K0 for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdSliv, "_dci11TdSliv", 27, "SLIV for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdStartSymb, "_dci11TdStartSymb", 0, "Starting symbol S for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdNumSymbs, "_dci11TdNumSymbs", 14, "Number of OFDM symbols L for PDSCH time-domain allocation")
 	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11FdRaType, "dci11FdRaType", "raType1", "resourceAllocation for PDSCH frequency-domain allocation[raType0,raType1]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType0, "_dci11FdBitwidthRaType0", 18, "Bitwidth of PDSCH frequency-domain allocation for RA Type 0")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType1, "_dci11FdBitwidthRaType1", 16, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
@@ -2575,11 +2576,11 @@ func initConfDci11Cmd() {
 	viper.BindPFlag("nrrg.dci11._actBwp", confDci11Cmd.Flags().Lookup("_actBwp"))
 	viper.BindPFlag("nrrg.dci11._indicatedBwp", confDci11Cmd.Flags().Lookup("_indicatedBwp"))
 	viper.BindPFlag("nrrg.dci11.dci11TdRa", confDci11Cmd.Flags().Lookup("dci11TdRa"))
-	viper.BindPFlag("nrrg.dci11.dci11TdMappingType", confDci11Cmd.Flags().Lookup("dci11TdMappingType"))
-	viper.BindPFlag("nrrg.dci11.dci11TdK0", confDci11Cmd.Flags().Lookup("dci11TdK0"))
-	viper.BindPFlag("nrrg.dci11.dci11TdSliv", confDci11Cmd.Flags().Lookup("dci11TdSliv"))
-	viper.BindPFlag("nrrg.dci11.dci11TdStartSymb", confDci11Cmd.Flags().Lookup("dci11TdStartSymb"))
-	viper.BindPFlag("nrrg.dci11.dci11TdNumSymbs", confDci11Cmd.Flags().Lookup("dci11TdNumSymbs"))
+	viper.BindPFlag("nrrg.dci11._dci11TdMappingType", confDci11Cmd.Flags().Lookup("_dci11TdMappingType"))
+	viper.BindPFlag("nrrg.dci11._dci11TdK0", confDci11Cmd.Flags().Lookup("_dci11TdK0"))
+	viper.BindPFlag("nrrg.dci11._dci11TdSliv", confDci11Cmd.Flags().Lookup("_dci11TdSliv"))
+	viper.BindPFlag("nrrg.dci11._dci11TdStartSymb", confDci11Cmd.Flags().Lookup("_dci11TdStartSymb"))
+	viper.BindPFlag("nrrg.dci11._dci11TdNumSymbs", confDci11Cmd.Flags().Lookup("_dci11TdNumSymbs"))
 	viper.BindPFlag("nrrg.dci11.dci11FdRaType", confDci11Cmd.Flags().Lookup("dci11FdRaType"))
 	viper.BindPFlag("nrrg.dci11._dci11FdBitwidthRaType0", confDci11Cmd.Flags().Lookup("_dci11FdBitwidthRaType0"))
 	viper.BindPFlag("nrrg.dci11._dci11FdBitwidthRaType1", confDci11Cmd.Flags().Lookup("_dci11FdBitwidthRaType1"))
@@ -2599,6 +2600,11 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().MarkHidden("_muPdsch")
 	confDci11Cmd.Flags().MarkHidden("_actBwp")
 	confDci11Cmd.Flags().MarkHidden("_indicatedBwp")
+	confDci11Cmd.Flags().MarkHidden("_dci11TdMappingType")
+	confDci11Cmd.Flags().MarkHidden("_dci11TdK0")
+	confDci11Cmd.Flags().MarkHidden("_dci11TdSliv")
+	confDci11Cmd.Flags().MarkHidden("_dci11TdStartSymb")
+	confDci11Cmd.Flags().MarkHidden("_dci11TdNumSymbs")
 	confDci11Cmd.Flags().MarkHidden("_dci11FdBitwidthRaType0")
 	confDci11Cmd.Flags().MarkHidden("_dci11FdBitwidthRaType1")
 	confDci11Cmd.Flags().MarkHidden("_tbs")
@@ -3326,7 +3332,7 @@ func loadNrrgFlags() {
 	flags.dci10._rnti = viper.GetStringSlice("nrrg.dci10._rnti")
 	flags.dci10._muPdcch = viper.GetIntSlice("nrrg.dci10._muPdcch")
 	flags.dci10._muPdsch = viper.GetIntSlice("nrrg.dci10._muPdsch")
-	flags.dci10.dci10TdRa = viper.GetIntSlice("nrrg.dci10.dci10TdRa")
+	flags.dci10._dci10TdRa = viper.GetIntSlice("nrrg.dci10._dci10TdRa")
 	flags.dci10._tdMappingType = viper.GetStringSlice("nrrg.dci10._tdMappingType")
 	flags.dci10._tdK0 = viper.GetIntSlice("nrrg.dci10._tdK0")
 	flags.dci10._tdSliv = viper.GetIntSlice("nrrg.dci10._tdSliv")
@@ -3335,15 +3341,15 @@ func loadNrrgFlags() {
 	flags.dci10._fdRaType = viper.GetStringSlice("nrrg.dci10._fdRaType")
 	flags.dci10._fdBitwidthRaType1 = viper.GetIntSlice("nrrg.dci10._fdBitwidthRaType1")
 	flags.dci10._fdRa = viper.GetStringSlice("nrrg.dci10._fdRa")
-	flags.dci10.dci10FdStartRb = viper.GetIntSlice("nrrg.dci10.dci10FdStartRb")
-	flags.dci10.dci10FdNumRbs = viper.GetIntSlice("nrrg.dci10.dci10FdNumRbs")
-	flags.dci10.dci10FdVrbPrbMappingType = viper.GetStringSlice("nrrg.dci10.dci10FdVrbPrbMappingType")
+	flags.dci10._dci10FdStartRb = viper.GetIntSlice("nrrg.dci10._dci10FdStartRb")
+	flags.dci10._dci10FdNumRbs = viper.GetIntSlice("nrrg.dci10._dci10FdNumRbs")
+	flags.dci10._dci10FdVrbPrbMappingType = viper.GetStringSlice("nrrg.dci10._dci10FdVrbPrbMappingType")
 	flags.dci10._fdBundleSize = viper.GetStringSlice("nrrg.dci10._fdBundleSize")
-	flags.dci10.dci10McsCw0 = viper.GetIntSlice("nrrg.dci10.dci10McsCw0")
+	flags.dci10._dci10McsCw0 = viper.GetIntSlice("nrrg.dci10._dci10McsCw0")
 	flags.dci10._tbs = viper.GetIntSlice("nrrg.dci10._tbs")
-	flags.dci10.dci10Msg2TbScaling = viper.GetInt("nrrg.dci10.dci10Msg2TbScaling")
-	flags.dci10.dci10Msg4DeltaPri = viper.GetInt("nrrg.dci10.dci10Msg4DeltaPri")
-	flags.dci10.dci10Msg4TdK1 = viper.GetInt("nrrg.dci10.dci10Msg4TdK1")
+	flags.dci10._dci10Msg2TbScaling = viper.GetInt("nrrg.dci10._dci10Msg2TbScaling")
+	flags.dci10._dci10Msg4DeltaPri = viper.GetInt("nrrg.dci10._dci10Msg4DeltaPri")
+	flags.dci10._dci10Msg4TdK1 = viper.GetInt("nrrg.dci10._dci10Msg4TdK1")
 
 	flags.dci11._rnti = viper.GetString("nrrg.dci11._rnti")
 	flags.dci11._muPdcch = viper.GetInt("nrrg.dci11._muPdcch")
@@ -3351,11 +3357,11 @@ func loadNrrgFlags() {
 	flags.dci11._actBwp = viper.GetInt("nrrg.dci11._actBwp")
 	flags.dci11._indicatedBwp = viper.GetInt("nrrg.dci11._indicatedBwp")
 	flags.dci11.dci11TdRa = viper.GetInt("nrrg.dci11.dci11TdRa")
-	flags.dci11.dci11TdMappingType = viper.GetString("nrrg.dci11.dci11TdMappingType")
-	flags.dci11.dci11TdK0 = viper.GetInt("nrrg.dci11.dci11TdK0")
-	flags.dci11.dci11TdSliv = viper.GetInt("nrrg.dci11.dci11TdSliv")
-	flags.dci11.dci11TdStartSymb = viper.GetInt("nrrg.dci11.dci11TdStartSymb")
-	flags.dci11.dci11TdNumSymbs = viper.GetInt("nrrg.dci11.dci11TdNumSymbs")
+	flags.dci11._dci11TdMappingType = viper.GetString("nrrg.dci11._dci11TdMappingType")
+	flags.dci11._dci11TdK0 = viper.GetInt("nrrg.dci11._dci11TdK0")
+	flags.dci11._dci11TdSliv = viper.GetInt("nrrg.dci11._dci11TdSliv")
+	flags.dci11._dci11TdStartSymb = viper.GetInt("nrrg.dci11._dci11TdStartSymb")
+	flags.dci11._dci11TdNumSymbs = viper.GetInt("nrrg.dci11._dci11TdNumSymbs")
 	flags.dci11.dci11FdRaType = viper.GetString("nrrg.dci11.dci11FdRaType")
 	flags.dci11._dci11FdBitwidthRaType0 = viper.GetInt("nrrg.dci11._dci11FdBitwidthRaType0")
 	flags.dci11._dci11FdBitwidthRaType1 = viper.GetInt("nrrg.dci11._dci11FdBitwidthRaType1")
