@@ -1902,7 +1902,7 @@ type AntPortsInfo struct {
 	NumDmrsSymbs int
 }
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-1: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=1
 var Dci11AntPortsDmrsType1MaxLen1OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
@@ -1926,7 +1926,7 @@ var Dci11AntPortsDmrsType1MaxLen1OneCw = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType1MaxLen1OneCw.
 var Dci11AntPortsDmrsType1MaxLen1OneCwValid = "0-11"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-2: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=2
 var Dci11AntPortsDmrsType1MaxLen2OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
@@ -1966,7 +1966,7 @@ var Dci11AntPortsDmrsType1MaxLen2OneCw = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType1MaxLen2OneCw.
 var Dci11AntPortsDmrsType1MaxLen2OneCwValid = "0-30"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-2: Antenna port(s) (1000 + DMRS port), dmrs-Type=1, maxLength=2
 var Dci11AntPortsDmrsType1MaxLen2TwoCws = map[int]*AntPortsInfo{
 	0:  {2, []int{0, 1, 2, 3, 4}, 2},
@@ -2006,7 +2006,7 @@ var Dci11AntPortsDmrsType1MaxLen2TwoCws = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType1MaxLen2TwoCws.
 var Dci11AntPortsDmrsType1MaxLen2TwoCwsValid = "0-3"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-3: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=1
 var Dci11AntPortsDmrsType2MaxLen1OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
@@ -2046,7 +2046,7 @@ var Dci11AntPortsDmrsType2MaxLen1OneCw = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType2MaxLen1OneCw.
 var Dci11AntPortsDmrsType2MaxLen1OneCwValid = "0-23"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-3: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=1
 var Dci11AntPortsDmrsType2MaxLen1TwoCws = map[int]*AntPortsInfo{
 	0:  {3, []int{0, 1, 2, 3, 4}, 1},
@@ -2086,7 +2086,7 @@ var Dci11AntPortsDmrsType2MaxLen1TwoCws = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType2MaxLen1TwoCws.
 var Dci11AntPortsDmrsType2MaxLen1TwoCwsValid = "0-1"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-4: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=2
 var Dci11AntPortsDmrsType2MaxLen2OneCw = map[int]*AntPortsInfo{
 	0:  {1, []int{0}, 1},
@@ -2158,7 +2158,7 @@ var Dci11AntPortsDmrsType2MaxLen2OneCw = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType2MaxLen2OneCw.
 var Dci11AntPortsDmrsType2MaxLen2OneCwValid = "0-57"
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 //  Table 7.3.1.2.2-4: Antenna port(s) (1000 + DMRS port), dmrs-Type=2, maxLength=2
 var Dci11AntPortsDmrsType2MaxLen2TwoCws = map[int]*AntPortsInfo{
 	0:  {3, []int{0, 1, 2, 3, 4}, 1},

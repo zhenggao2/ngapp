@@ -78,10 +78,10 @@ var DmrsPdschPosOneSymb = map[string][]int{
 	"14_typeB_pos0" : nil, "14_typeB_pos1" : nil, "14_typeB_pos2" : nil, "14_typeB_pos3" : nil,
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh40
 //  Table 7.4.1.1.2-4: PDSCH DM-RS positions l- for double-symbol DM-RS.
 // key="td_mapping type_additional position"
-//  key = '%s_%s_%s' % (td, self.nrDci11PdschTimeAllocMappingTypeComb.currentText(), self.nrDmrsDedPdschAddPosComb.currentText())
+//  key = '%s_%s_%s' % (td, tdraPdschMappingType, dmrsPdschAddPos)
 var DmrsPdschPosTwoSymbs = map[string][]int{
 	"2_typeA_pos0": nil, "2_typeA_pos1": nil,
 	"3_typeA_pos0": nil, "3_typeA_pos1": nil,
@@ -96,25 +96,27 @@ var DmrsPdschPosTwoSymbs = map[string][]int{
 	"12_typeA_pos0": {0}, "12_typeA_pos1": {0, 8},
 	"13_typeA_pos0": {0}, "13_typeA_pos1": {0, 10},
 	"14_typeA_pos0": {0}, "14_typeA_pos1": {0, 10},
+
+	// new in vh40
 	"2_typeB_pos0": nil, "2_typeB_pos1": nil,
 	"3_typeB_pos0": nil, "3_typeB_pos1": nil,
 	"4_typeB_pos0": nil, "4_typeB_pos1": nil,
-	"5_typeB_pos0": nil, "5_typeB_pos1": nil,
+	"5_typeB_pos0": {0}, "5_typeB_pos1": {0},
 	"6_typeB_pos0": {0}, "6_typeB_pos1": {0},
 	"7_typeB_pos0": {0}, "7_typeB_pos1": {0},
-	"8_typeB_pos0": nil, "8_typeB_pos1": nil,
-	"9_typeB_pos0": nil, "9_typeB_pos1": nil,
-	"10_typeB_pos0": nil, "10_typeB_pos1": nil,
-	"11_typeB_pos0": nil, "11_typeB_pos1": nil,
-	"12_typeB_pos0": nil, "12_typeB_pos1": nil,
-	"13_typeB_pos0": nil, "13_typeB_pos1": nil,
+	"8_typeB_pos0": {0}, "8_typeB_pos1": {0, 5},
+	"9_typeB_pos0": {0}, "9_typeB_pos1": {0, 5},
+	"10_typeB_pos0": {0}, "10_typeB_pos1": {0, 7},
+	"11_typeB_pos0": {0}, "11_typeB_pos1": {0, 7},
+	"12_typeB_pos0": {0}, "12_typeB_pos1": {0, 8},
+	"13_typeB_pos0": {0}, "13_typeB_pos1": {0, 8},
 	"14_typeB_pos0": nil, "14_typeB_pos1": nil,
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh40
 //  Table 6.4.1.1.3-3: PUSCH DM-RS positions l- within a slot for single-symbol DM-RS and intra-slot frequency hopping disabled.
 // key="ld_mapping type_additional position"
-//  key = '%s_%s_%s' % (ld, self.nrDci01PuschTimeAllocMappingTypeComb.currentText(), self.nrDmrsDedPuschAddPosComb.currentText())
+//  key = '%s_%s_%s' % (ld, tdraPuschMappingType, dmrsPuschAddPos)
 var DmrsPuschPosOneSymbWoIntraSlotFh = map[string][]int{
 	"1_typeA_pos0": nil, "1_typeA_pos1": nil, "1_typeA_pos2": nil, "1_typeA_pos3": nil,
 	"2_typeA_pos0": nil, "2_typeA_pos1": nil, "2_typeA_pos2": nil, "2_typeA_pos3": nil,
@@ -146,10 +148,10 @@ var DmrsPuschPosOneSymbWoIntraSlotFh = map[string][]int{
 	"14_typeB_pos0": {0}, "14_typeB_pos1": {0, 10}, "14_typeB_pos2": {0, 5, 10}, "14_typeB_pos3": {0, 3, 6, 9},
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh40
 //  Table 6.4.1.1.3-4: PUSCH DM-RS positions l- within a slot for double-symbol DM-RS and intra-slot frequency hopping disabled.
 // key="ld_mapping type_additional position"
-//  key = '%s_%s_%s' % (ld, self.nrDci01PuschTimeAllocMappingTypeComb.currentText(), self.nrDmrsDedPuschAddPosComb.currentText())
+//  key = '%s_%s_%s' % (ld, tdraPuschMappingType, dmrsPuschAddPos)
 var DmrsPuschPosTwoSymbsWoIntraSlotFh = map[string][]int{
 	"1_typeA_pos0": nil, "1_typeA_pos1": nil,
 	"2_typeA_pos0": nil, "2_typeA_pos1": nil,
@@ -181,13 +183,13 @@ var DmrsPuschPosTwoSymbsWoIntraSlotFh = map[string][]int{
 	"14_typeB_pos0": {0}, "14_typeB_pos1": {0, 9},
 }
 
-// refer to 3GPP 38.211 vf30
+// refer to 3GPP 38.211 vh40
 //  Table 6.4.1.1.3-6: PUSCH DM-RS positions l- within a slot for single-symbol DM-RS and intra-slot frequency hopping enabled.
 // key="ld per hop_mapping type_type a position_additional position_hop"
 //  ld1 = math.floor(td / 2)
-//  key1 = '%s_%s_%s_%s_1st' % (ld1, mappingType, self.nrMibDmRsTypeAPosComb.currentText()[3:] if mappingType == 'typeA' else '0', 'pos1' if self.nrDmrsDedPuschAddPosComb.currentText() != 'pos0' else 'pos0')
+//  key1 = '%s_%s_%s_%s_1st' % (ld1, tdraPuschMappingType, dmrsTypeAPos if mappingType == 'typeA' else '0', 'pos1' if dmrsPuschAddPos != 'pos0' else 'pos0')
 //  ld2 = td - math.floor(td / 2)
-//  key2 = '%s_%s_%s_%s_2nd' % (ld2, mappingType, self.nrMibDmRsTypeAPosComb.currentText()[3:] if mappingType == 'typeA' else '0', 'pos1' if self.nrDmrsDedPuschAddPosComb.currentText() != 'pos0' else 'pos0')
+//  key2 = '%s_%s_%s_%s_2nd' % (ld2, tdraPuschMappingType, dmrsTypeAPos if mappingType == 'typeA' else '0', 'pos1' if dmrsPuschAddPos != 'pos0' else 'pos0')
 var DmrsPuschPosOneSymbWithIntraSlotFh = map[string][]int{
 	"1_typeA_2_pos0_1st": nil,
 	"2_typeA_2_pos0_1st": nil,

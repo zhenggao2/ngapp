@@ -1393,11 +1393,9 @@ func validateDci11TdRa() error {
 	return nil
 }
 
-/*
-validatePdschAntPorts validates PDSCH configurations, updates DMRS/PTRS for PDSCH and updates PDSCH TBS.
- */
+// validatePdschAntPorts validates PDSCH configurations, updates DMRS/PTRS for PDSCH and updates PDSCH TBS.
 func validatePdschAntPorts() error {
-	fmt.Printf("\n-->%s\n", "calling validatePdschAntPorts")
+	regYellow.Printf("-->calling validatePdschAntPorts\n")
 
 	dmrsType := flags.dmrsPdsch.pdschDmrsType
 	maxLength := flags.dmrsPdsch.pdschMaxLength
@@ -1410,6 +1408,7 @@ func validatePdschAntPorts() error {
 	}
 
 	ap := flags.dci11.dci11AntPorts
+
 	// update DMRS for PDSCH
 	var tokens []string
 	var p *nrgrid.AntPortsInfo
@@ -1436,19 +1435,15 @@ func validatePdschAntPorts() error {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCwsValid, "-")
 		p, exist = nrgrid.Dci11AntPortsDmrsType2MaxLen2TwoCws[ap]
 	} else {
-		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v\n", dmrsType, maxLength, len(mcsSet)))
+		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, mcsSet=%v\n", dmrsType, maxLength, mcsSet))
 	}
-
-	minVal, _ := strconv.Atoi(tokens[0])
-	maxVal, _ := strconv.Atoi(tokens[1])
-	fmt.Printf("'Antenna port(s)' field of DCI 1_1 range: [%v, %v]\n", minVal, maxVal)
+	fmt.Printf("Available 'Antenna port(s)' field of DCI 1_1(dmrsType=%v,maxLen=%v,mcsSet=%v,ap=%v): %v\n", dmrsType, maxLength, mcsSet, ap, tokens)
 
 	if !exist || p == nil {
-		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, len(mcsSet)=%v, dci11AntPorts=%v\n", dmrsType, maxLength, len(mcsSet), ap))
+		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, mcsSet=%v, dci11AntPorts=%v\n", dmrsType, maxLength, mcsSet, ap))
 	}
 
-
-	fmt.Printf("nrgrid.AntPortsInfo(PDSCH): %v\n", *p)
+	fmt.Printf("AntPortsInfo(PDSCH): %v\n", *p)
 	for i := range p.DmrsPorts {
 		p.DmrsPorts[i] += 1000
 	}
@@ -1460,27 +1455,28 @@ func validatePdschAntPorts() error {
 	// update PTRS for PDSCH
 	maxDmrsPorts := utils.MaxInt(flags.dmrsPdsch._dmrsPorts)
 	noPtrs := false
-	// refer to 3GPP TS 38.214 vfa0: 5.1.6.2	DM-RS reception procedure
-	// If a UE receiving PDSCH is configured with the higher layer parameter phaseTrackingRS in DMRS-DownlinkConfig, the UE may assume that the following configurations are not occurring simultaneously for the received PDSCH:
-	//-	any DM-RS ports among 1004-1007 or 1006-1011 for DM-RS configurations type 1 and type 2, respectively are scheduled for the UE and the other UE(s) sharing the DM-RS REs on the same CDM group(s), and
-	//-	PT-RS is transmitted to the UE.
+	// refer to 3GPP TS 38.214 vh40: 5.1.6.2	DM-RS reception procedure
+	// If a UE receiving PDSCH scheduled by DCI format 1_2 is configured with the higher layer parameter phaseTrackingRS in dmrs-DownlinkForPDSCH-MappingTypeA-DCI-1-2  or dmrs-DownlinkForPDSCH-MappingTypeB-DCI-1-2
+	// or a UE receiving PDSCH scheduled by DCI format 1_0 or DCI format 1_1 is configured with the higher layer parameter phaseTrackingRS in dmrs-DownlinkForPDSCH-MappingTypeA or dmrs-DownlinkForPDSCH-MappingTypeB,
+	// the UE may assume that the following configurations are not occurring simultaneously for the received PDSCH:
+	// - any DM-RS ports among 1004-1007 or 1006-1011 for DM-RS configurations type 1 and type 2, respectively are scheduled for the UE and the other UE(s) sharing the DM-RS REs on the same CDM group(s), and
+	// - PT-RS is transmitted to the UE.
 	if (dmrsType == "type1" && maxDmrsPorts >= 1004) || (dmrsType == "type2" && maxDmrsPorts >= 1006) {
 		noPtrs = true
 	}
-
 	fmt.Printf("PDSCH noPtrs=%v\n", noPtrs)
 
 	if noPtrs {
 		flags.ptrsPdsch.pdschPtrsEnabled = false
 	} else {
-	    // refer to 3GPP TS 38.214 vfa0: 5.1.6.3	PT-RS reception procedure
+	    // refer to 3GPP TS 38.214 vh40: 5.1.6.3	PT-RS reception procedure
 		// If a UE is scheduled with one codeword, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the PDSCH.
 		// If a UE is scheduled with two codewords, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the codeword with the higher MCS. If the MCS indices of the two codewords are the same, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port assigned for codeword 0.
 	    if len(mcsSet) == 1 {
 	    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
 		} else {
-		    // refer to 3GPP TS 38.211 vf80: Table 7.3.1.3-1: Codeword-to-layer mapping for spatial multiplexing.
-			// refer to 3GPP TS 38.211 vf80: 7.3.1.4	Antenna port mapping
+		    // refer to 3GPP TS 38.211 vh40: Table 7.3.1.3-1: Codeword-to-layer mapping for spatial multiplexing.
+			// refer to 3GPP TS 38.211 vh40: 7.3.1.4	Antenna port mapping
 		    numLayersCw0 := utils.FloorInt(float64(len(flags.dmrsPdsch._dmrsPorts)) / 2)
 		    if mcsSet[0] >= mcsSet[1] {
 		    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
