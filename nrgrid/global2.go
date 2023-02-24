@@ -277,9 +277,9 @@ var DmrsPuschPosOneSymbWithIntraSlotFh = map[string][]int{
 	"7_typeB_0_pos1_2nd": {0, 4},
 }
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 // note: 1st part of key: 0=fullyAndPartialAndNonCoherent, 1=partialAndNonCoherent, 2=nonCoherent
-//  Table 7.3.1.1.2-2: Precoding information and number of layers, for 4 antenna ports, if transform precoder is disabled and maxRank = 2 or 3 or 4
+//  Table 7.3.1.1.2-2: Precoding information and number of layers, for 4 antenna ports, if transform precoder is disabled, maxRank = 2 or 3 or 4, and ul-FullPowerTransmission is not configured or configured to fullpowerMode2 or configured to fullpower
 var Dci01TpmiAp4Tp0MaxRank234 = map[string][]int{
 	"0_0":  {1, 0},
 	"0_1":  {1, 1},
@@ -394,9 +394,9 @@ var Dci01TpmiAp4Tp0MaxRank234 = map[string][]int{
 	"2_14": nil,
 }
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 // note: 1st part of key: 0=fullyAndPartialAndNonCoherent, 1=partialAndNonCoherent, 2=nonCoherent
-//  Table 7.3.1.1.2-3: Precoding information and number of layers for 4 antenna ports, if transform precoder is enabled, or if transform precoder is disabled and maxRank = 1
+//  Table 7.3.1.1.2-3: Precoding information and number of layers or Second Precoding information, for 4 antenna ports, if transform precoder is enabled and ul-FullPowerTransmission is either not configured or configured to fullpowerMode2 or configured to fullpower, or if transform precoder is disabled, maxRank = 1, and ul-FullPowerTransmission is not configured or configured to fullpowerMode2 or configured to fullpower
 var Dci01TpmiAp4Tp1OrTp0MaxRank1 = map[string][]int{
 	"0_0":  {1, 0},
 	"0_1":  {1, 1},
@@ -452,9 +452,9 @@ var Dci01TpmiAp4Tp1OrTp0MaxRank1 = map[string][]int{
 	"2_3":  {1, 3},
 }
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 // note: 1st part of key: 0=fullyAndPartialAndNonCoherent, 1=partialAndNonCoherent, 2=nonCoherent
-//  Table 7.3.1.1.2-4: Precoding information and number of layers, for 2 antenna ports, if transform precoder is disabled and maxRank = 2
+//  Table 7.3.1.1.2-4: Precoding information and number of layers, for 2 antenna ports, if transform precoder is disabled, maxRank = 2, and ul-FullPowerTransmission is not configured or configured to fullpowerMode2 or configured to fullpower
 var Dci01TpmiAp2Tp0MaxRank2 = map[string][]int{
 	"0_0":  {1, 0},
 	"0_1":  {1, 1},
@@ -478,9 +478,9 @@ var Dci01TpmiAp2Tp0MaxRank2 = map[string][]int{
 	"2_3":  nil,
 }
 
-// refer to 3GPP 38.212 vf30
+// refer to 3GPP 38.212 vh40
 // note: 1st part of key: 0=fullyAndPartialAndNonCoherent, 1=partialAndNonCoherent, 2=nonCoherent
-//  Table 7.3.1.1.2-5: Precoding information and number of layers, for 2 antenna ports, if transform precoder is enabled, or if transform precoder is disabled and maxRank = 1
+//  Table 7.3.1.1.2-5: Precoding information and number of layers or Second Precoding information, for 2 antenna ports, if transform precoder is enabled and ul-FullPowerTransmission is not configured or configured to fullpowerMode2 or configured to fullpower, or if transform precoder is disabled, maxRank = 1, and and ul-FullPowerTransmission is not configured or configured to fullpowerMode2 or configured to fullpower
 var Dci01TpmiAp2Tp1OrTp0MaxRank1 = map[string][]int{
 	"0_0": {1, 0},
 	"0_1": {1, 1},

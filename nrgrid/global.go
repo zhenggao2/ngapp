@@ -1702,7 +1702,7 @@ type McsInfo struct {
 	CodeRate float64
 }
 
-// refer to 3GPP 38.214 vf30
+// refer to 3GPP 38.214 vh40
 //  Table 5.1.3.1-1: MCS index table 1 for PDSCH
 var PdschMcsTabQam64 = map[int]*McsInfo{
 	0:  {2, 120},
@@ -1739,7 +1739,7 @@ var PdschMcsTabQam64 = map[int]*McsInfo{
 	31: nil,
 }
 
-// refer to 3GPP 38.214 vf30
+// refer to 3GPP 38.214 vh40
 //  Table 5.1.3.1-2: MCS index table 2 for PDSCH
 var PdschMcsTabQam256 = map[int]*McsInfo{
 	0:  {2, 120},
@@ -1776,7 +1776,7 @@ var PdschMcsTabQam256 = map[int]*McsInfo{
 	31: nil,
 }
 
-// refer to 3GPP 38.214 vf30
+// refer to 3GPP 38.214 vh40
 //  Table 5.1.3.1-3: MCS index table 3 for PDSCH
 var PdschMcsTabQam64LowSE = map[int]*McsInfo{
 	0:  {2, 30},
@@ -1813,6 +1813,43 @@ var PdschMcsTabQam64LowSE = map[int]*McsInfo{
 	31: nil,
 }
 
+// refer to 3GPP 38.214 vh40
+//  Table 5.1.3.1-4: MCS index table 4 for PDSCH
+var PdschMcsTabQam1024 = map[int]*McsInfo{
+	0 : {2,120},
+	1 : {2,193},
+	2 : {2,449},
+	3 : {4,378},
+	4 : {4,490},
+	5 : {4,616},
+	6 : {6,466},
+	7 : {6,517},
+	8 : {6,567},
+	9 : {6,616},
+	10 : {6,666},
+	11 : {6,719},
+	12 : {6,772},
+	13 : {6,822},
+	14 : {6,873},
+	15 : {8,682.5},
+	16 : {8,711},
+	17 : {8,754},
+	18 : {8,797},
+	19 : {8,841},
+	20 : {8,885},
+	21 : {8,916.5},
+	22 : {8,948},
+	23 : {10,805.5},
+	24 : {10,853},
+	25 : {10,900.5},
+	26 : {10,948},
+	27 : nil,
+	28 : nil,
+	29 : nil,
+	30 : nil,
+	31 : nil,
+}
+
 // refer to 3GPP 38.214 vf30
 //  Table 5.1.3.2-1: TBS for N_info <= 3824
 var TbsTabLessThan3824 = []int{24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168,
@@ -1821,7 +1858,7 @@ var TbsTabLessThan3824 = []int{24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112,
 	1416, 1480, 1544, 1608, 1672, 1736, 1800, 1864, 1928, 2024, 2088, 2152, 2216, 2280, 2408, 2472, 2536, 2600, 2664,
 	2728, 2792, 2856, 2976, 3104, 3240, 3368, 3496, 3624, 3752, 3824}
 
-// refer to 3GPP 38.214 vf30
+// refer to 3GPP 38.214 vh40
 //  Table 6.1.4.1-1: MCS index table for PUSCH with transform precoding and 64QAM
 var PuschTpMcsTabQam64 = map[int]*McsInfo{
 	0:  {2, 120},
@@ -1858,7 +1895,7 @@ var PuschTpMcsTabQam64 = map[int]*McsInfo{
 	31: nil,
 }
 
-// refer to 3GPP 38.214 vf30
+// refer to 3GPP 38.214 vh40
 // Table 6.1.4.1-2: MCS index table 2 for PUSCH with transform precoding and 64QAM
 var PuschTpMcsTabQam64LowSE = map[int]*McsInfo{
 	0:  {2, 120},

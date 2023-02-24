@@ -1248,7 +1248,6 @@ func validateDci10TdRa() error {
 				}
 				p, exist = nrgrid.PdschTimeAllocDefC[key]
 			}
-
 		case "RA-RNTI", "TC-RNTI":
 			if flags.bwp._bwpCp[INI_DL_BWP] == "normal" {
 				p, exist = nrgrid.PdschTimeAllocDefANormCp[key]
@@ -1511,7 +1510,7 @@ func validatePdschAntPorts() error {
 	tdMappingType := flags.dci11._dci11TdMappingType
 	dmrsAddPos := flags.dmrsPdsch.pdschDmrsAddPos
 
-	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
 	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
 	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
 	if tdMappingType == "typeA" {
@@ -1522,7 +1521,6 @@ func validatePdschAntPorts() error {
 
 	key := fmt.Sprintf("%v_%v_%v", ld, tdMappingType, dmrsAddPos)
 	var dmrs []int
-	// var exist bool
 	if flags.dmrsPdsch._numFrontLoadSymbs == 1 {
 		dmrs, exist = nrgrid.DmrsPdschPosOneSymb[key]
 	} else {
@@ -1533,13 +1531,15 @@ func validatePdschAntPorts() error {
 	    return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci11._rnti, flags.dmrsPdsch._numFrontLoadSymbs, key))
 	}
 
-	// refer to 3GPP TS 38.211 vf80: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-	// The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-	// For PDSCH mapping type A, l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-	// TODO: For PDSCH mapping type A single-symbol DMRS, l1 = 11 except if ...
-	// For PDSCH mapping type B
-	//  -if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.
-	// TODO: For PDSCH mapping type B, when PDSCH allocation collides with CORESET ...
+	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
+	// For PDSCH mapping type A,
+	// 	- the case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
+	//	- l_d = 3 and l_d = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	//	- single-symbol DM-RS, l1=11 except if all of the following conditions are fulfilled in which case l1=12: (2023/2/22: DSS is not supported!)
+	// For PDSCH mapping type B,
+	// 	- if ... and the front-loaded DM-RS of the PDSCH allocation collides with resources reserved for a search space set associated with a CORESET...(2023/2/23: Assume no collision between PDSCH DMRS and CORESET!)
+	//  - if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
+	//	- if the higher-layer parameter lte-CRS-ToMatchAround, lte-CRS-PatternList1, or lte-CRS-PatternList2 is configured,...(2023/2/23: DSS is not supported!)
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	if dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
 		return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
@@ -1549,10 +1549,9 @@ func validatePdschAntPorts() error {
 			return errors.New(fmt.Sprintf("For PDSCH mapping type A, ld = 3 and ld = 4 symbols in Tables 7.4.1.1.2-3 and 7.4.1.1.2-4 respectively is only applicable when dmrs-TypeA-Position is equal to 'pos2'.\nld=%v, dmrsTypeAPos=%v\n", ld, dmrsTypeAPos))
 		}
 	}
-	if tdMappingType == "typeB" && (ld == 2 || ld == 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
-	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is 2 or 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
+	if tdMappingType == "typeB" && (ld <= 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
+	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
 	}
-
 
 	dmrsOh := (2 * flags.dmrsPdsch._cdmGroupsWoData) * len(dmrs)
 	fmt.Printf("PDSCH(C-RNTI) DMRS overhead: cdmGroupsWoData=%v, key=%v, dmrs=%v\n", flags.dmrsPdsch._cdmGroupsWoData, key, dmrs)
@@ -1690,22 +1689,87 @@ func updateMsg3PuschTbs() error {
 	return nil
 }
 
-/*
-validatePuschAntPorts validates PUSCH configurations, updates DMRS/PTRS for PUSCH and updates PUSCH TBS.
- */
+// validatePuschAntPorts validates PUSCH configurations, updates DMRS/PTRS for PUSCH and updates PUSCH TBS.
 func validatePuschAntPorts() error {
-	fmt.Printf("\n-->%s\n", "calling validatePuschAntPorts")
-	//TODO
+	regYellow.Printf("-->calling validatePuschAntPorts\n")
+
+	// determine rank
+	if flags.pusch.puschTxCfg == "codebook" {
+		numUeAp := flags.commonSetting.numUeAp
+		tp := flags.pusch.puschTp
+		maxRank := flags.pusch.puschCbMaxRankNonCbMaxLayers
+		cbSubset := flags.pusch.puschCbSubset
+		precoding := flags.dci01.dci01CbTpmiNumLayers
+
+		key := fmt.Sprintf("%v_%v", map[string]int{"fullyAndPartialAndNonCoherent":0, "partialAndNonCoherent":1, "nonCoherent":2}[cbSubset], precoding)
+		var rank, tpmi int
+		if numUeAp == "4T" && tp == "disabled" && utils.ContainsInt([]int{2, 3, 4}, maxRank) {
+			p, exist := nrgrid.Dci01TpmiAp4Tp0MaxRank234[key]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp0MaxRank234!", key))
+			}
+			rank, tpmi = p[0], p[1]
+		} else if numUeAp == "4T" && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
+			p, exist := nrgrid.Dci01TpmiAp4Tp1OrTp0MaxRank1[key]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp1OrTp0MaxRank1!", key))
+			}
+			rank, tpmi = p[0], p[1]
+		} else if numUeAp == "2T" && tp == "disabled" && maxRank == 2 {
+			p, exist := nrgrid.Dci01TpmiAp2Tp0MaxRank2[key]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp0MaxRank2!", key))
+			}
+			rank, tpmi = p[0], p[1]
+		} else if numUeAp == "2T" && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
+			p, exist := nrgrid.Dci01TpmiAp2Tp1OrTp0MaxRank1[key]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp1OrTp0MaxRank1!", key))
+			}
+			rank, tpmi = p[0], p[1]
+		} else {
+			return errors.New(fmt.Sprintf("Invalid PUSCH configurations(numUeAp=%v, tp=%v, maxRank=%v)!", numUeAp, tp, maxRank))
+		}
+
+		/*
+		numUeAp = int(self.nrUeAntPortsComb.currentText()[:-2])
+		tp = self.nrDedPuschCfgTpComb.currentText()
+		maxRank = int(self.nrDedPuschCfgCbMaxRankEdit.text())
+		cbSubset = self.nrDedPuschCfgCbSubsetComb.currentText()
+		precoding = int(self.nrDci01PuschPrecodingLayersFieldEdit.text())
+		key = '%s_%s' % ({'fullyAndPartialAndNonCoherent':0, 'partialAndNonCoherent':1, 'nonCoherent':2}[cbSubset], precoding)
+
+		# refer to 3GPP 38.214 vf30 6.1.1.1
+		# The transmission precoder is selected from the uplink codebook that has a number of antenna ports equal to higher layer parameter nrofSRS-Ports in SRS-Config, as defined in Subclause 6.3.1.5 of [4, TS 38.211].
+		firstResSrsSet0 = int(self.nrSrsResSet0ResourceIdListEdit.text().split(',')[0])
+		if firstResSrsSet0 == 0:
+		numSrsPorts = int(self.nrSrsRes0NumAntPortsComb.currentText()[-1])
+		elif firstResSrsSet0 == 1:
+		numSrsPorts = int(self.nrSrsRes1NumAntPortsComb.currentText()[-1])
+		elif firstResSrsSet0 == 2:
+		numSrsPorts = int(self.nrSrsRes2NumAntPortsComb.currentText()[-1])
+		elif firstResSrsSet0 == 3:
+		numSrsPorts = int(self.nrSrsRes3NumAntPortsComb.currentText()[-1])
+		else:
+		pass
+		if rank > numSrsPorts:
+		self.ngwin.logEdit.append('<font color=red><b>[%s]Error</font>:TRI = %s while nrofSRS-Ports of the configured SRS resource(s) is "%s" for CB based PUSCH.' % (time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), rank, '%s%d' % ('ports' if numSrsPorts > 1 else 'port', numSrsPorts)))
+		return
+		 */
+
+		// pusch transmission rank == ap of the SRS resource specified by SRI == number of dmrs ap
+
+	} else {
+
+	}
 
 	return nil
 }
 
 
-/*
-getRaType0Rbgs return RBGs for PDSCH/PUSCH resource allocation Type 0.
- */
+// getRaType0Rbgs return RBGs for PDSCH/PUSCH resource allocation Type 0.
 func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
-	fmt.Printf("\n-->%s\n", "calling getRaType0Rbgs")
+	regYellow.Printf("-->calling getRaType0Rbgs\n")
 
 	bitwidth := utils.CeilInt((float64(bwpSize) + float64(bwpStart % P)) / float64(P))
 	rbgs := make([]int, bitwidth)
@@ -1763,8 +1827,8 @@ func validateMsg3TdRa() error {
 //getTbs calculates TBS for PUSCH/PDSCH.
 //	sch: PUSCH or PDSCH
 //	tp: PUSCH transform percoding flag
-//	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI
-//	mcsTab: qam64, qam64LowSE or qam256
+//	rnti: C-RNTI, SI-RNTI, RA-RNTI, TC-RNTI or MSG3
+//	mcsTab: qam64, qam64LowSE, qam256 or qam1024
 //	td: number of symbols
 //	fd: number of PRBs
 //	mcs: MCS
@@ -1776,19 +1840,21 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	regYellow.Printf("-->calling getTbs\n")
 
 	rntiSet := []string{"C-RNTI", "SI-RNTI", "RA-RNTI", "TC-RNTI", "MSG3"}
-	mcsTabSet := []string{"qam256", "qam64", "qam64LowSE"}
+	mcsTabSet := []string{"qam1024", "qam256", "qam64", "qam64LowSE"}
 
 	if !utils.ContainsStr(rntiSet, rnti) || !utils.ContainsStr(mcsTabSet, mcsTab) {
 		return 0, errors.New(fmt.Sprintf("Invalid RNTI or MCS table!\n"))
 	}
 
-	// refer to 3GPP TS 38.214 vfa0
+	// refer to 3GPP TS 38.214 vh40
 	// 5.1.3	Modulation order, target code rate, redundancy version and transport block size determination
 	// 6.1.4	Modulation order, redundancy version and transport block size determination
 	// 1st step: get Qm and R(x1024)
 	var p *nrgrid.McsInfo
 	if sch == "PDSCH" || (sch == "PUSCH" && !tp) {
-		if rnti == "C-RNTI" && mcsTab == "qam256" {
+		if sch == "PDSCH" && rnti == "C-RNTI" && mcsTab == "qam1024" {
+			p = nrgrid.PdschMcsTabQam1024[mcs]
+		} else if rnti == "C-RNTI" && mcsTab == "qam256" {
 			p = nrgrid.PdschMcsTabQam256[mcs]
 		} else if rnti == "C-RNTI" &&  mcsTab == "qam64LowSE" {
 			p = nrgrid.PdschMcsTabQam64LowSE[mcs]
@@ -1813,7 +1879,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	// The UE is not expected to decode a PDSCH scheduled with P-RNTI, RA-RNTI, SI-RNTI and Qm > 2.
 	// FIXME: assume PDSCH scheduled with TC-RNTI has the same restraint.
 	if (rnti == "RA-RNTI" || rnti == "SI-RNTI" || rnti == "TC-RNTI") && Qm > 2 {
-		return 0, errors.New(fmt.Sprintf("The UE is not expected to decode a PDSCH scheduled with P-RNTI, RA-RNTI, SI-RNTI and Qm > 2.\nnrgrid.McsInfo=%v\n", *p))
+		return 0, errors.New(fmt.Sprintf("The UE is not expected to decode a PDSCH scheduled with P-RNTI, RA-RNTI, SI-RNTI and Qm > 2.\nMcsInfo=%v\n", *p))
 	}
 
 	// 2nd step: get N_RE
