@@ -269,7 +269,7 @@ type Dci01Flags struct {
 	dci01McsCw0          int
 	_tbs                 int
 	dci01CbTpmiNumLayers int
-	dci01Sri             string
+	dci01Sri             int
 	dci01AntPorts        int
 	dci01PtrsDmrsMap     int
 }
@@ -1442,10 +1442,10 @@ func validatePdschAntPorts() error {
 		return errors.New(fmt.Sprintf("Invalid settings for DCI 1_1 'Antenna port(s)'.\ndmrsType=%v, maxLength=%v, mcsSet=%v, dci11AntPorts=%v\n", dmrsType, maxLength, mcsSet, ap))
 	}
 
-	fmt.Printf("AntPortsInfo(PDSCH): %v\n", *p)
 	for i := range p.DmrsPorts {
 		p.DmrsPorts[i] += 1000
 	}
+	fmt.Printf("AntPortsInfo(PDSCH and its DMRS): %v\n", *p)
 
 	flags.dmrsPdsch._cdmGroupsWoData = p.CdmGroups
 	flags.dmrsPdsch._dmrsPorts = p.DmrsPorts
@@ -1584,7 +1584,7 @@ func validatePdschAntPorts() error {
 updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
  */
 func updateMsg3PuschTbs() error {
-	fmt.Printf("\n-->%s\n", "calling updateMsg3PuschTbs")
+	regYellow.Printf("-->calling updateMsg3PuschTbs\n")
 
 	td := flags.msg3._tdNumSymbs
 	fd := flags.msg3.msg3FdNumRbs
@@ -1694,78 +1694,173 @@ func validatePuschAntPorts() error {
 	regYellow.Printf("-->calling validatePuschAntPorts\n")
 
 	// determine rank
+	var rank, tpmi int
 	if flags.pusch.puschTxCfg == "codebook" {
-		numUeAp := flags.commonSetting.numUeAp
+		// 3GPP 38.212 vh40
+		// Table 7.3.1.1.2-32: SRI indication or Second SRI indication, for codebook based PUSCH transmission, if ul-FullPowerTransmission is not configured, or ul-FullPowerTransmission = fullpowerMode1, or ul-FullPowerTransmission = fullpowerMode2, or ul-FullPowerTransmission = fullpower and
+		// 2023/2/23: For CB PUSCH, if N_SRS=1, SRI=0; if N_SRS=2, SRI=0/1; N_SRS=3/4 is not supported! For simplicity, use SRI as index to the SRS resource.
+		// 3GPP 38.214 vh40: 6.1.1.1	Codebook based UL transmission
+		// The UE shall transmit PUSCH using the same antenna port(s) as the SRS port(s) in the SRS resource indicated by the DCI format 0_1 or 0_2 or by configuredGrantConfig according to clause 6.1.2.3.
+		var apCbPusch []int
+		switch flags.srs.srsNumPorts[flags.dci01.dci01Sri]{
+		case "port1":
+			apCbPusch = []int{1000}
+		case "ports2":
+			apCbPusch = []int{1000, 1001}
+		case "ports4":
+			apCbPusch = []int{1000, 1001, 1002, 1003}
+		}
+		fmt.Printf("CB PUSCH using antenna port(s): %v - %v\n", flags.srs.srsNumPorts[flags.dci01.dci01Sri], apCbPusch)
+
+		numAp := len(apCbPusch)
 		tp := flags.pusch.puschTp
 		maxRank := flags.pusch.puschCbMaxRankNonCbMaxLayers
 		cbSubset := flags.pusch.puschCbSubset
 		precoding := flags.dci01.dci01CbTpmiNumLayers
 
 		key := fmt.Sprintf("%v_%v", map[string]int{"fullyAndPartialAndNonCoherent":0, "partialAndNonCoherent":1, "nonCoherent":2}[cbSubset], precoding)
-		var rank, tpmi int
-		if numUeAp == "4T" && tp == "disabled" && utils.ContainsInt([]int{2, 3, 4}, maxRank) {
+		if numAp == 4 && tp == "disabled" && utils.ContainsInt([]int{2, 3, 4}, maxRank) {
 			p, exist := nrgrid.Dci01TpmiAp4Tp0MaxRank234[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp0MaxRank234!", key))
 			}
 			rank, tpmi = p[0], p[1]
-		} else if numUeAp == "4T" && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
+		} else if numAp == 4 && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
 			p, exist := nrgrid.Dci01TpmiAp4Tp1OrTp0MaxRank1[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp1OrTp0MaxRank1!", key))
 			}
 			rank, tpmi = p[0], p[1]
-		} else if numUeAp == "2T" && tp == "disabled" && maxRank == 2 {
+		} else if numAp == 2 && tp == "disabled" && maxRank == 2 {
 			p, exist := nrgrid.Dci01TpmiAp2Tp0MaxRank2[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp0MaxRank2!", key))
 			}
 			rank, tpmi = p[0], p[1]
-		} else if numUeAp == "2T" && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
+		} else if numAp == 2 && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
 			p, exist := nrgrid.Dci01TpmiAp2Tp1OrTp0MaxRank1[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp1OrTp0MaxRank1!", key))
 			}
 			rank, tpmi = p[0], p[1]
+		} else if numAp == 1 {
+			rank = 1
+			tpmi = -1
 		} else {
-			return errors.New(fmt.Sprintf("Invalid PUSCH configurations(numUeAp=%v, tp=%v, maxRank=%v)!", numUeAp, tp, maxRank))
+			return errors.New(fmt.Sprintf("Invalid PUSCH configurations(numAp=%v, tp=%v, maxRank=%v)!", numAp, tp, maxRank))
 		}
 
-		/*
-		numUeAp = int(self.nrUeAntPortsComb.currentText()[:-2])
-		tp = self.nrDedPuschCfgTpComb.currentText()
-		maxRank = int(self.nrDedPuschCfgCbMaxRankEdit.text())
-		cbSubset = self.nrDedPuschCfgCbSubsetComb.currentText()
-		precoding = int(self.nrDci01PuschPrecodingLayersFieldEdit.text())
-		key = '%s_%s' % ({'fullyAndPartialAndNonCoherent':0, 'partialAndNonCoherent':1, 'nonCoherent':2}[cbSubset], precoding)
-
-		# refer to 3GPP 38.214 vf30 6.1.1.1
-		# The transmission precoder is selected from the uplink codebook that has a number of antenna ports equal to higher layer parameter nrofSRS-Ports in SRS-Config, as defined in Subclause 6.3.1.5 of [4, TS 38.211].
-		firstResSrsSet0 = int(self.nrSrsResSet0ResourceIdListEdit.text().split(',')[0])
-		if firstResSrsSet0 == 0:
-		numSrsPorts = int(self.nrSrsRes0NumAntPortsComb.currentText()[-1])
-		elif firstResSrsSet0 == 1:
-		numSrsPorts = int(self.nrSrsRes1NumAntPortsComb.currentText()[-1])
-		elif firstResSrsSet0 == 2:
-		numSrsPorts = int(self.nrSrsRes2NumAntPortsComb.currentText()[-1])
-		elif firstResSrsSet0 == 3:
-		numSrsPorts = int(self.nrSrsRes3NumAntPortsComb.currentText()[-1])
-		else:
-		pass
-		if rank > numSrsPorts:
-		self.ngwin.logEdit.append('<font color=red><b>[%s]Error</font>:TRI = %s while nrofSRS-Ports of the configured SRS resource(s) is "%s" for CB based PUSCH.' % (time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), rank, '%s%d' % ('ports' if numSrsPorts > 1 else 'port', numSrsPorts)))
-		return
-		 */
-
-		// pusch transmission rank == ap of the SRS resource specified by SRI == number of dmrs ap
-
+		fmt.Printf("CB PUSCH Rank=%v, TPMI=%v\n", rank, tpmi)
 	} else {
+		Lmax := flags.pusch.puschCbMaxRankNonCbMaxLayers
+		tokens := strings.Split(flags.srs.srsSetResIdList[1], ",")
+		Nsrs := len(tokens)
 
+		var apNonCbPusch []int
+		if Nsrs == 1 {
+			rank = 1
+			apNonCbPusch = []int{1000}
+		} else {
+			key := fmt.Sprintf("%v_%v_%v", Lmax, Nsrs, flags.dci01.dci01Sri)
+			p, exist := nrgrid.Dci01NonCbSri[key]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01NonCbSri!", key))
+			}
+			rank = len(p)
+
+			// 3GPP 38.214 vh40
+			// 6.1.1.2	Non-Codebook based UL transmission
+			// The UE shall transmit PUSCH using the same antenna ports as the SRS port(s) in the SRS resource(s) indicated by SRI(s) given by DCI format 0_1 or 0_2 or by configuredGrantConfig according to clause 6.1.2.3, where the SRS port in (i+1)-th SRS resource in the SRS resource set is indexed as pi=1000+i.
+			for _, sri := range p {
+				apNonCbPusch = append(apNonCbPusch, 1000+sri)
+			}
+		}
+
+		fmt.Printf("NonCB PUSCH using antenna port(s): %v\n", apNonCbPusch)
 	}
+
+	// update DMRS for PUSCH
+	tp := flags.pusch.puschTp
+	dmrsType := flags.dmrsPusch.puschDmrsType
+	maxLen := flags.dmrsPusch.puschMaxLength
+	key := fmt.Sprintf("%v_%v_%v_%v_%v", map[string]int{"disabled" : 0, "enabled" : 1}[tp], dmrsType[len(dmrsType)-1:], maxLen[len(maxLen)-1:], rank, flags.dci01.dci01AntPorts)
+	p, exist := nrgrid.Dci01AntPorts[key]
+	if !exist || p == nil {
+		return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01AntPorts!", key))
+	}
+	fmt.Printf("AntPortsInfo(DMRS for PUSCH): %v\n", *p)
+	flags.dmrsPusch._cdmGroupsWoData = p.CdmGroups
+	flags.dmrsPusch._dmrsPorts = p.DmrsPorts
+	flags.dmrsPusch._numFrontLoadSymbs = p.NumDmrsSymbs
+
+	// 3GPP 38.214 vh40
+	// 6.1.1.1	Codebook based UL transmission
+	// 6.1.1.2	Non-Codebook based UL transmission
+	// The DM-RS antenna ports[p~{0}...p~{v-1}]in Clause 6.4.1.1.3 of [4, TS38.211] are determined according to the ordering of DM-RS port(s) given by Tables 7.3.1.1.2-6 to 7.3.1.1.2-23 in Clause 7.3.1.1.2 of [5, TS 38.212].
+	if rank != len(flags.dmrsPusch._dmrsPorts) {
+		return errors.New(fmt.Sprintf("Inconsistent PUSCH rank and DMRS ports!(rank=%v, dmrsPorts=%v)", rank, flags.dmrsPusch._dmrsPorts))
+	}
+
+	// update PTRS for PUSCH
+	// 3GPP 38.214 vh40
+	// 6.2.2	UE DM-RS transmission procedure
+	// If a UE transmitting PUSCH scheduled by DCI format 0_2 is configured with the higher layer parameter phaseTrackingRS in dmrs-UplinkForPUSCH-MappingTypeA-DCI-0-2 or dmrs-UplinkForPUSCH-MappingTypeB-DCI-0-2, or a UE transmitting PUSCH scheduled by DCI format 0_0 or DCI format 0_1 is configured with the higher layer parameter phaseTrackingRS in dmrs-UplinkForPUSCH-MappingTypeA or dmrs-UplinkForPUSCH-MappingTypeB, the UE may assume that the following configurations are not occurring simultaneously for the transmitted PUSCH
+	//   - any DM-RS ports among 4-7 or 6-11 for DM-RS configurations type 1 and type 2, respectively are scheduled for the UE and PT-RS is transmitted from the UE.
+	var dmrsApSetNoPtrs []int
+	if flags.dmrsPusch.puschDmrsType == "Type 1" {
+		dmrsApSetNoPtrs = utils.PyRange(4, 8, 1)
+	} else {
+		dmrsApSetNoPtrs = utils.PyRange(6, 12, 1)
+	}
+	noPtrs := false
+	for _, ap := range flags.dmrsPusch._dmrsPorts {
+		if utils.ContainsInt(dmrsApSetNoPtrs, ap) {
+			noPtrs = true
+			break
+		}
+	}
+	fmt.Printf("noPTRS=%v\n", noPtrs)
+
+	// gonum library
+
+	/*
+	 dmrsApSetNoPtrs = list(range(4, 8)) if dmrsType == 'Type 1' else list(range(6, 12))
+	            noPtrs = False
+	            for i in dmrsPorts:
+	                if i in dmrsApSetNoPtrs:
+	                    noPtrs = True
+	                    break
+
+	            if noPtrs:
+	                self.nrPtrsPuschSwitchComb.setCurrentText('no')
+	                self.nrPtrsPuschSwitchComb.setEnabled(False)
+	                self.nrPtrsPuschDmrsAntPortsEdit.clear()
+	                self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
+	                self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(False)
+	                self.nrDci01PuschPtrsDmrsMappingEdit.clear()
+	            else:
+	                self.nrPtrsPuschSwitchComb.setEnabled(True)
+	                if rank > 1:
+	                    self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(True)
+	                    self.nrPtrsPuschDmrsAntPortsEdit.clear()
+	                    self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
+	                else:
+	                    self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(False)
+	                    self.nrDci01PuschPtrsDmrsMappingEdit.clear()
+	                    if tp == 'enabled':
+	                        self.nrPtrsPuschTpDmrsAntPortsEdit.setText(str(dmrsPorts[0]))
+	                        self.nrPtrsPuschDmrsAntPortsEdit.clear()
+	                    else:
+	                        self.nrPtrsPuschDmrsAntPortsEdit.setText(str(dmrsPorts[0]))
+	                        self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
+
+	                self.updatePtrsPusch()
+	 */
+
+	// update PUSCH TBS
 
 	return nil
 }
-
 
 // getRaType0Rbgs return RBGs for PDSCH/PUSCH resource allocation Type 0.
 func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
@@ -2338,7 +2433,10 @@ func init() {
 	nrrgCmd.AddCommand(confAdvancedCmd)
 
 	nrrgCmd.AddCommand(nrrgSimCmd)
-	rootCmd.AddCommand(nrrgCmd)
+
+	if cmdFlags& CMD_FLAG_NRRG != 0 {
+		rootCmd.AddCommand(nrrgCmd)
+	}
 
 	// Here you will define your flags and configuration settings.
 
@@ -2738,7 +2836,7 @@ func initConfDci01Cmd() {
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01McsCw0, "dci01McsCw0", 28, "Modulation-and-coding-scheme-cw0 field of DCI 0_1[0..28]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01._tbs, "_tbs", 475584, "Transport block size(bits) for PUSCH")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01CbTpmiNumLayers, "dci01CbTpmiNumLayers", 2, "Precoding-information-and-number-of-layers field of DCI 0_1[0..63]")
-	confDci01Cmd.Flags().StringVar(&flags.dci01.dci01Sri, "dci01Sri", "", "SRS-resource-indicator field of DCI 0_1")
+	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01Sri, "dci01Sri", 0, "SRS-resource-indicator field of DCI 0_1")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01AntPorts, "dci01AntPorts", 0, "Antenna_port(s) field of DCI 0_1[0..7]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01PtrsDmrsMap, "dci01PtrsDmrsMap", 0, "PTRS-DMRS-association field of DCI 0_1[0..3]")
 	confDci01Cmd.Flags().SortFlags = false
@@ -3475,7 +3573,7 @@ func loadNrrgFlags() {
 	flags.dci01.dci01McsCw0 = viper.GetInt("nrrg.dci01.dci01McsCw0")
 	flags.dci01._tbs = viper.GetInt("nrrg.dci01._tbs")
 	flags.dci01.dci01CbTpmiNumLayers = viper.GetInt("nrrg.dci01.dci01CbTpmiNumLayers")
-	flags.dci01.dci01Sri = viper.GetString("nrrg.dci01.dci01Sri")
+	flags.dci01.dci01Sri = viper.GetInt("nrrg.dci01.dci01Sri")
 	flags.dci01.dci01AntPorts = viper.GetInt("nrrg.dci01.dci01AntPorts")
 	flags.dci01.dci01PtrsDmrsMap = viper.GetInt("nrrg.dci01.dci01PtrsDmrsMap")
 

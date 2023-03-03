@@ -2267,25 +2267,27 @@ var Dci11AntPortsDmrsType2MaxLen2TwoCws = map[int]*AntPortsInfo{
 // Valid keys of Dci11AntPortsDmrsType2MaxLen2TwoCws.
 var Dci11AntPortsDmrsType2MaxLen2TwoCwsValid = "0-5"
 
-// refer to 3GPP 38.212 vf30
-//  Table 7.3.1.1.2-6: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=1
-//  Table 7.3.1.1.2-7: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=2
-//  Table 7.3.1.1.2-8: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 1
-//  Table 7.3.1.1.2-9: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 2
-//  Table 7.3.1.1.2-10: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 3
-//  Table 7.3.1.1.2-11: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 4
-//  Table 7.3.1.1.2-12: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 1
-//  Table 7.3.1.1.2-13: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 2
-//  Table 7.3.1.1.2-14: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 3
-//  Table 7.3.1.1.2-15: Antenna port{s}, transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 4
-//  Table 7.3.1.1.2-16: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=1
-//  Table 7.3.1.1.2-17: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=2
-//  Table 7.3.1.1.2-18: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=3
-//  Table 7.3.1.1.2-19: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=4
-//  Table 7.3.1.1.2-20: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=1
-//  Table 7.3.1.1.2-21: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=2
-//  Table 7.3.1.1.2-22: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=3
-//  Table 7.3.1.1.2-23: Antenna port{s}, transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=4
+// refer to 3GPP 38.212 vh40
+//  Table 7.3.1.1.2-6: Antenna port(s), transform precoder is enabled, dmrs-Type=1, maxLength=1, except that dmrs-UplinkTransformPrecoding and tp-pi2BPSK are both configured and π/2-BPSK modulation is used
+//  Table 7.3.1.1.2-6A: Antenna port(s), transform precoder is enabled, dmrs-UplinkTransformPrecoding and tp-pi2BPSK are both configured, π/2-BPSK modulation is used, dmrs-Type=1, maxLength=1
+//  Table 7.3.1.1.2-7: Antenna port(s), transform precoder is enabled, dmrs-Type=1, maxLength=2, except that dmrs-UplinkTransformPrecoding and tp-pi2BPSK are both configured and π/2-BPSK modulation is used
+//  Table 7.3.1.1.2-7A: Antenna port(s), transform precoder is enabled, dmrs-UplinkTransformPrecoding and tp-pi2BPSK are both configured, π/2-BPSK modulation is used, dmrs-Type=1, maxLength=2
+//  Table 7.3.1.1.2-8: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 1
+//  Table 7.3.1.1.2-9: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 2
+//  Table 7.3.1.1.2-10: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 3
+//  Table 7.3.1.1.2-11: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=1, rank = 4
+//  Table 7.3.1.1.2-12: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 1
+//  Table 7.3.1.1.2-13: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 2
+//  Table 7.3.1.1.2-14: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 3
+//  Table 7.3.1.1.2-15: Antenna port(s), transform precoder is disabled, dmrs-Type=1, maxLength=2, rank = 4
+//  Table 7.3.1.1.2-16: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=1
+//  Table 7.3.1.1.2-17: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=2
+//  Table 7.3.1.1.2-18: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=3
+//  Table 7.3.1.1.2-19: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=1, rank=4
+//  Table 7.3.1.1.2-20: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=1
+//  Table 7.3.1.1.2-21: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=2
+//  Table 7.3.1.1.2-22: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=3
+//  Table 7.3.1.1.2-23: Antenna port(s), transform precoder is disabled, dmrs-Type=2, maxLength=2, rank=4
 var Dci01AntPorts = map[string]*AntPortsInfo{
 	// Table 7.3.1.1.2-6: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=1
 	// Table 7.3.1.1.2-7: Antenna port{s}, transform precoder is enabled, dmrs-Type=1, maxLength=2

@@ -201,10 +201,18 @@ And finally means finally: init is called after all the variable declarations in
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 */
 func init() {
-	rootCmd.AddCommand(cmCmd)
-	rootCmd.AddCommand(cmDiffCmd)
-	rootCmd.AddCommand(cmFindCmd)
-	rootCmd.AddCommand(cmPdcchCmd)
+	if cmdFlags& CMD_FLAG_CM != 0 {
+		rootCmd.AddCommand(cmCmd)
+	}
+	if cmdFlags& CMD_FLAG_CM_DIFF != 0 {
+		rootCmd.AddCommand(cmDiffCmd)
+	}
+	if cmdFlags& CMD_FLAG_CM_FIND != 0 {
+		rootCmd.AddCommand(cmFindCmd)
+	}
+	if cmdFlags& CMD_FLAG_CM_PDCCH != 0 {
+		rootCmd.AddCommand(cmPdcchCmd)
+	}
 
 	// Here you will define your flags and configuration settings.
 
