@@ -615,6 +615,59 @@ var Dci01NonCbSri = map[string][]int{
 	"4_4_15": nil,
 }
 
+// refer to 3GPP 38.211 vh40
+// Table 6.3.1.5-1: Precoding matrix  for single-layer transmission using two antenna ports.
+// Table 6.3.1.5-4: Precoding matrix  for two-layer transmission using two antenna ports with transform precoding disabled.
+// Table 6.3.1.5-2: Precoding matrix  for single-layer transmission using four antenna ports with transform precoding enabled.
+// Table 6.3.1.5-3: Precoding matrix  for single-layer transmission using four antenna ports with transform precoding disabled.
+// Table 6.3.1.5-5: Precoding matrix  for two-layer transmission using four antenna ports with transform precoding disabled.
+// Table 6.3.1.5-6: Precoding matrix  for three-layer transmission using four antenna ports with transform precoding disabled.
+// Table 6.3.1.5-7: Precoding matrix  for four-layer transmission using four antenna ports with transform precoding disabled.
+// key=(antenna ports, number of layers, TPMI), val=DMRS port index per PUSCH antenna port
+var CbPuschTpmiDmrsAssociation = map[string][]string{
+	// one layer with two antenna ports
+	"ports2_1_0" : {"0", "-"},
+	"ports2_1_1" : {"-", "0"},
+	// two layers with two antenna ports
+	"ports2_2_0" : {"0", "1"},
+	// one layer with four antenna ports (transform precoding is either enabled or disabled)
+	"ports4_1_0" : {"0", "-", "-", "-"},
+	"ports4_1_1" : {"-", "0", "-", "-"},
+	"ports4_1_2" : {"-", "-", "0", "-"},
+	"ports4_1_3" : {"-", "-", "-", "0"},
+	"ports4_1_4" : {"0", "-", "0", "-"},
+	"ports4_1_5" : {"0", "-", "0", "-"},
+	"ports4_1_6" : {"0", "-", "0", "-"},
+	"ports4_1_7" : {"0", "-", "0", "-"},
+	"ports4_1_8" : {"-", "0", "-", "0"},
+	"ports4_1_9" : {"-", "0", "-", "0"},
+	"ports4_1_10" : {"-", "0", "-", "0"},
+	"ports4_1_11" : {"-", "0", "-", "0"},
+	// two layers with four antenna ports
+	"ports4_2_0" : {"0", "1", "-", "-"},
+	"ports4_2_1" : {"0", "-", "1", "-"},
+	"ports4_2_2" : {"0", "-", "-", "1"},
+	"ports4_2_3" : {"-", "0", "1", "-"},
+	"ports4_2_4" : {"-", "0", "-", "1"},
+	"ports4_2_5" : {"-", "-", "0", "1"},
+	"ports4_2_6" : {"0", "1", "0", "1"},
+	"ports4_2_7" : {"0", "1", "0", "1"},
+	"ports4_2_8" : {"0", "1", "0", "1"},
+	"ports4_2_9" : {"0", "1", "0", "1"},
+	"ports4_2_10" : {"0", "1", "0", "1"},
+	"ports4_2_11" : {"0", "1", "0", "1"},
+	"ports4_2_12" : {"0", "1", "0", "1"},
+	"ports4_2_13" : {"0", "1", "0", "1"},
+	// three layers with four antenna ports
+	"ports4_3_0" : {"0", "1", "2", "-"},
+	"ports4_3_1" : {"0", "1", "0", "2"},
+	"ports4_3_2" : {"0", "1", "0", "2"},
+	// four layers with four antenna ports
+	"ports4_4_0" : {"0", "1", "2", "3"},
+	"ports4_4_1" : {"0,1", "2,3", "0,1", "2,3"},
+	"ports4_4_2" : {"0,1", "2,3", "0,1", "2,3"},
+}
+
 // refer to 3GPP 38.331 vf30
 // ssb-perRACH-OccasionAndCB-PreamblesPerSSB of RACH-ConfigCommon
 var SsbPerRachOccasion2Float = map[string]float64{

@@ -366,6 +366,7 @@ type DmrsPuschFlags struct {
 	_numFrontLoadSymbs int
 	_tdL               string
 	_fdK               string
+	_nonCbSri []int
 }
 
 // PTRS for PUSCH
@@ -1695,6 +1696,7 @@ func validatePuschAntPorts() error {
 
 	// determine rank
 	var rank, tpmi int
+	var coherence string
 	if flags.pusch.puschTxCfg == "codebook" {
 		// 3GPP 38.212 vh40
 		// Table 7.3.1.1.2-32: SRI indication or Second SRI indication, for codebook based PUSCH transmission, if ul-FullPowerTransmission is not configured, or ul-FullPowerTransmission = fullpowerMode1, or ul-FullPowerTransmission = fullpowerMode2, or ul-FullPowerTransmission = fullpower and
@@ -1714,6 +1716,8 @@ func validatePuschAntPorts() error {
 
 		numAp := len(apCbPusch)
 		tp := flags.pusch.puschTp
+		// maxRank IE of PUSCH-Config, 38.331 vh30
+		//  Subset of PMIs addressed by TRIs from 1 to ULmaxRank (see TS 38.214 [19], clause 6.1.1.1). The field maxRank applies to DCI format 0_1 and the field maxRankDCI-0-2 applies to DCI format 0_2 (see TS 38.214 [19], clause 6.1.1.1).
 		maxRank := flags.pusch.puschCbMaxRankNonCbMaxLayers
 		cbSubset := flags.pusch.puschCbSubset
 		precoding := flags.dci01.dci01CbTpmiNumLayers
@@ -1725,24 +1729,48 @@ func validatePuschAntPorts() error {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp0MaxRank234!", key))
 			}
 			rank, tpmi = p[0], p[1]
+			if tpmi >= 0 && tpmi <= 11 {
+				coherence = "nonCoherent"
+			} else if tpmi >= 12 && tpmi <= 31 {
+				coherence = "partialCoherent"
+			} else {
+				coherence = "fullyCoherent"
+			}
 		} else if numAp == 4 && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
 			p, exist := nrgrid.Dci01TpmiAp4Tp1OrTp0MaxRank1[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp4Tp1OrTp0MaxRank1!", key))
 			}
 			rank, tpmi = p[0], p[1]
+			if tpmi >= 0 && tpmi <= 3 {
+				coherence = "nonCoherent"
+			} else if tpmi >= 4 && tpmi <= 11 {
+				coherence = "partialCoherent"
+			} else {
+				coherence = "fullyCoherent"
+			}
 		} else if numAp == 2 && tp == "disabled" && maxRank == 2 {
 			p, exist := nrgrid.Dci01TpmiAp2Tp0MaxRank2[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp0MaxRank2!", key))
 			}
 			rank, tpmi = p[0], p[1]
+			if tpmi >= 0 && tpmi <= 2 {
+				coherence = "nonCoherent"
+			} else {
+				coherence = "fullyCoherent"
+			}
 		} else if numAp == 2 && (tp == "enabled" || (tp == "disabled" && maxRank == 1)) {
 			p, exist := nrgrid.Dci01TpmiAp2Tp1OrTp0MaxRank1[key]
 			if !exist || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01TpmiAp2Tp1OrTp0MaxRank1!", key))
 			}
 			rank, tpmi = p[0], p[1]
+			if tpmi >= 0 && tpmi <= 1 {
+				coherence = "nonCoherent"
+			} else {
+				coherence = "fullyCoherent"
+			}
 		} else if numAp == 1 {
 			rank = 1
 			tpmi = -1
@@ -1750,11 +1778,16 @@ func validatePuschAntPorts() error {
 			return errors.New(fmt.Sprintf("Invalid PUSCH configurations(numAp=%v, tp=%v, maxRank=%v)!", numAp, tp, maxRank))
 		}
 
-		fmt.Printf("CB PUSCH Rank=%v, TPMI=%v\n", rank, tpmi)
+		fmt.Printf("CB PUSCH Rank=%v, TPMI=%v, Coherence=%v (with PUSCH CB Subset=%v, DCI 0_1 Precoding Field=%v)\n", rank, tpmi, coherence, cbSubset, precoding)
 	} else {
-		Lmax := flags.pusch.puschCbMaxRankNonCbMaxLayers
-		tokens := strings.Split(flags.srs.srsSetResIdList[1], ",")
+		tokens := strings.Split(flags.srs.srsSetResIdList[1], "_")
 		Nsrs := len(tokens)
+
+		// maxNumberMIMO-LayersNonCB-PUSCH, 38.306 vh30
+		//  Defines supported maximum number of MIMO layers at the UE for PUSCH transmission using non-codebook precoding.
+		// or maxMIMO-Layers IE of PUSCH-ServingCellConfig, 38.331 vh30
+		//  Indicates the maximum MIMO layer to be used for PUSCH in all BWPs of the corresponding UL of this serving cell (see TS 38.212 [17], clause 5.4.2.1).
+		Lmax := flags.pusch.puschCbMaxRankNonCbMaxLayers
 
 		var apNonCbPusch []int
 		if Nsrs == 1 {
@@ -1774,6 +1807,8 @@ func validatePuschAntPorts() error {
 			for _, sri := range p {
 				apNonCbPusch = append(apNonCbPusch, 1000+sri)
 			}
+
+			flags.dmrsPusch._nonCbSri = p
 		}
 
 		fmt.Printf("NonCB PUSCH using antenna port(s): %v\n", apNonCbPusch)
@@ -1819,43 +1854,76 @@ func validatePuschAntPorts() error {
 			break
 		}
 	}
-	fmt.Printf("noPTRS=%v\n", noPtrs)
+	fmt.Printf("PUSCH noPTRS=%v\n", noPtrs)
+
+	if !noPtrs {
+		if flags.pusch.puschTxCfg == "codebook" {
+			if coherence == "fullyCoherent" {
+				// refer to 38.214 vh40
+				// 6.2.3.1	UE PT-RS transmission procedure when transform precoding is not enabled
+				// If a UE has reported the capability of supporting full-coherent UL transmission, the UE shall expect the number of UL PT-RS ports to be configured as one if UL-PTRS is configured
+				// refer to 38.212 vh40
+				// Table 7.3.1.1.2-25: PTRS-DMRS association or Second PTRS-DMRS association for UL PTRS port 0
+				// TODO: flags.dci01.dci01PtrsDmrsMap < len(flags.dmrsPusch._dmrsPorts)
+				flags.ptrsPusch._dmrsPorts = []int{flags.dmrsPusch._dmrsPorts[flags.dci01.dci01PtrsDmrsMap]}
+			} else {
+				//ptrsDmrsAssociation := map[int][]int{0 : {}, 1 : {}}
+
+			}
+		} else {
+			ptrsDmrsAssociation := map[int][]int{0 : {}, 1 : {}}
+			for i, sri := range flags.dmrsPusch._nonCbSri {
+				if flags.srs.srsNonCbPtrsPort[sri] == "n0" {
+					ptrsDmrsAssociation[0] = append(ptrsDmrsAssociation[0], flags.dmrsPusch._dmrsPorts[i])
+				} else {
+					ptrsDmrsAssociation[1] = append(ptrsDmrsAssociation[1], flags.dmrsPusch._dmrsPorts[i])
+				}
+			}
+
+			// determine number of PTRS antenna port(s)
+			var numPtrsAp int
+			if len(ptrsDmrsAssociation[0]) > 0 && len(ptrsDmrsAssociation[1]) == 0 {
+				numPtrsAp = 1
+			} else if utils.ContainsInt([]int{1, 2}, len(ptrsDmrsAssociation[0])) && utils.ContainsInt([]int{1, 2}, len(ptrsDmrsAssociation[1])) {
+				numPtrsAp = 2
+			} else {
+				// TODO: report error
+			}
+
+			// determine associated DMRS port per PTRS port
+			if numPtrsAp == 1 {
+				// TODO: flags.dci01.dci01PtrsDmrsMap < len(flags.dmrsPusch._dmrsPorts)
+				// refer to 38.212 vh40
+				// Table 7.3.1.1.2-25: PTRS-DMRS association or Second PTRS-DMRS association for UL PTRS port 0
+				flags.ptrsPusch._dmrsPorts = []int{flags.dmrsPusch._dmrsPorts[flags.dci01.dci01PtrsDmrsMap]}
+			} else {
+				// refer to 38.212 vh40
+				// Table 7.3.1.1.2-26: PTRS-DMRS association or Second PTRS-DMRS association for UL PTRS ports 0 and 1
+				var msb, lsb int
+				switch flags.dci01.dci01PtrsDmrsMap {
+				case 0:
+					msb = 0; lsb = 0
+				case 1:
+					msb = 0; lsb = 1
+				case 2:
+					msb = 1; lsb = 0
+				case 3:
+					msb = 1; lsb = 1
+				}
+
+				if msb == 0 || (msb == 1 && len(ptrsDmrsAssociation[0]) == 2) {
+					flags.ptrsPusch._dmrsPorts = append(flags.ptrsPusch._dmrsPorts, ptrsDmrsAssociation[0][msb])
+				}
+
+				if lsb == 0 || (lsb == 1 && len(ptrsDmrsAssociation[1]) == 2) {
+					flags.ptrsPusch._dmrsPorts = append(flags.ptrsPusch._dmrsPorts, ptrsDmrsAssociation[1][lsb])
+				}
+			}
+		}
+	}
 
 	// gonum library
 
-	/*
-	 dmrsApSetNoPtrs = list(range(4, 8)) if dmrsType == 'Type 1' else list(range(6, 12))
-	            noPtrs = False
-	            for i in dmrsPorts:
-	                if i in dmrsApSetNoPtrs:
-	                    noPtrs = True
-	                    break
-
-	            if noPtrs:
-	                self.nrPtrsPuschSwitchComb.setCurrentText('no')
-	                self.nrPtrsPuschSwitchComb.setEnabled(False)
-	                self.nrPtrsPuschDmrsAntPortsEdit.clear()
-	                self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
-	                self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(False)
-	                self.nrDci01PuschPtrsDmrsMappingEdit.clear()
-	            else:
-	                self.nrPtrsPuschSwitchComb.setEnabled(True)
-	                if rank > 1:
-	                    self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(True)
-	                    self.nrPtrsPuschDmrsAntPortsEdit.clear()
-	                    self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
-	                else:
-	                    self.nrDci01PuschPtrsDmrsMappingEdit.setEnabled(False)
-	                    self.nrDci01PuschPtrsDmrsMappingEdit.clear()
-	                    if tp == 'enabled':
-	                        self.nrPtrsPuschTpDmrsAntPortsEdit.setText(str(dmrsPorts[0]))
-	                        self.nrPtrsPuschDmrsAntPortsEdit.clear()
-	                    else:
-	                        self.nrPtrsPuschDmrsAntPortsEdit.setText(str(dmrsPorts[0]))
-	                        self.nrPtrsPuschTpDmrsAntPortsEdit.clear()
-
-	                self.updatePtrsPusch()
-	 */
 
 	// update PUSCH TBS
 
