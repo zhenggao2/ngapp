@@ -261,6 +261,7 @@ type Dci01Flags struct {
 	dci01TdNumSymbs      int
 	dci01FdRaType        string
 	dci01FdFreqHop       string
+	dci01FdFreqHopOffset int
 	dci01FdRa            string
 	dci01FdStartRb       int
 	dci01FdNumRbs        int
@@ -398,13 +399,14 @@ type PuschFlags struct {
 	puschTxCfg                   string
 	puschCbSubset                string
 	puschCbMaxRankNonCbMaxLayers int
-	puschFreqHopOffset           int
-	puschTp                      string
-	puschAggFactor               string
-	puschRbgCfg                  string
-	_rbgSize                     int
-	puschMcsTable                string
-	puschXOh                     string
+	//dci01FdFreqHopOffset           int
+	puschTp        string
+	puschAggFactor string
+	puschRbgCfg    string
+	_rbgSize       int
+	puschMcsTable  string
+	puschXOh       string
+	_puschRepType  string // pusch-RepTypeIndicatorDCI-0-1-r16 or pusch-RepTypeIndicatorDCI-0-2-r16 of PUSCH-Config
 }
 
 // NZP-CSI-RS resource
@@ -843,15 +845,15 @@ var confGridSettingCmd = &cobra.Command{
 				return
 			}
 
-			// validate DCI 0_1 scheduled PUSCH
-			err = validatePuschAntPorts()
+			// validate 'Time domain resource assignment" field of DCI 0_1
+			err = validateDci01TdRa()
 			if err != nil {
 				regRed.Printf("[ERR]: " + err.Error())
 				return
 			}
 
-			// update TBS of Msg3 PUSCH scheduled by RAR Msg2
-			err = updateMsg3PuschTbs()
+			// validate 'Time domain resource assignment' field of Msg3 PUSCH scheduled by RAR Msg2
+			err = validateMsg3TdRa()
 			if err != nil {
 				regRed.Printf("[ERR]: " + err.Error())
 				return
@@ -1263,10 +1265,10 @@ func validateDci10TdRa() error {
 			// update DCI 1_0 info
 			fmt.Printf("TimeAllocInfo(DCI 1_0, rnti=%v, coreset0MultiplexingPat=%v): %v\n", rnti, flags.gridsetting._coreset0MultiplexingPat, *p)
 			flags.dci10._tdMappingType[i] = p.MappingType
-			flags.dci10._tdK0[i] = p.K0
+			flags.dci10._tdK0[i] = p.K0K2
 			flags.dci10._tdStartSymb[i] = p.S
 			flags.dci10._tdNumSymbs[i] = p.L
-			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
+			sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal", "")
 			flags.dci10._tdSliv[i] = sliv
 
 			// update DMRS info
@@ -1377,10 +1379,10 @@ func validateDci11TdRa() error {
 		// update dci11 info
 		fmt.Printf("TimeAllocInfo(DCI 1_1, rnti=C-RNTI): %v\n", *p)
 		flags.dci11._dci11TdMappingType = p.MappingType
-		flags.dci11._dci11TdK0 = p.K0
+		flags.dci11._dci11TdK0 = p.K0K2
 		flags.dci11._dci11TdStartSymb = p.S
 		flags.dci11._dci11TdNumSymbs = p.L
-		sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal")
+		sliv, _ := nrgrid.ToSliv(p.S, p.L, "PDSCH", p.MappingType, "normal", "")
 		flags.dci11._dci11TdSliv = sliv
 	}
 
@@ -1542,8 +1544,8 @@ func validatePdschAntPorts() error {
 	//  - if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
 	//	- if the higher-layer parameter lte-CRS-ToMatchAround, lte-CRS-PatternList1, or lte-CRS-PatternList2 is configured,...(2023/2/23: DSS is not supported!)
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
-	if dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
-		return errors.New(fmt.Sprintf("The case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
+	if tdMappingType == "typeA" && dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
+		return errors.New(fmt.Sprintf("For PDSCH mapping type A, the case dmrs-AdditionalPosition equals to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\npdschDmrsAddPos=%v,dmrsTypeAPos=%v\n", flags.dmrsPdsch.pdschDmrsAddPos, dmrsTypeAPos))
 	}
 	if tdMappingType == "typeA" {
 		if (ld == 3 || ld == 4) && dmrsTypeAPos != "pos2" {
@@ -1581,9 +1583,19 @@ func validatePdschAntPorts() error {
 	return nil
 }
 
-/*
-updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
-*/
+func validateMsg3TdRa() error {
+	regYellow.Printf("-->calling validateMsg3TdRa\n")
+
+	// update TBS info
+	err := updateMsg3PuschTbs()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
 func updateMsg3PuschTbs() error {
 	regYellow.Printf("-->calling updateMsg3PuschTbs\n")
 
@@ -1685,6 +1697,49 @@ func updateMsg3PuschTbs() error {
 	} else {
 		fmt.Printf("CW0 TBS=%v bits\n", tbs)
 		flags.msg3._tbs = tbs
+	}
+
+	return nil
+}
+
+// validateDci01TdRa validates the "Time domain resource assignment" field of DCI 0_1 scheduling PDSCH.
+func validateDci01TdRa() error {
+	regYellow.Printf("-->calling validateDci01TdRa\n")
+
+	// refer to 3GPP TS 38.214 vh40:
+	//  - Table 6.1.2.1.1-1: Applicable PUSCH time domain resource allocation for common search space and DCI format 0_0 in UE specific search space
+	//  - Table 6.1.2.1.1-1A: Applicable PUSCH time domain resource allocation for DCI format 0_1 in UE specific search space scrambled with C-RNTI, MCS-C-RNTI, CS-RNTI or SP-CSI-RNTI
+	//  - Table 6.1.2.1.1-1B: Applicable PUSCH time domain resource allocation for DCI format 0_2 in UE specific search space scrambled with C-RNTI, MCS-C-RNTI, CS-RNTI or SP-CSI-RNTI
+	//  - Table 6.1.2.1.1-2: Default PUSCH time domain resource allocation A for normal CP
+	//  - Table 6.1.2.1.1-3: Default PUSCH time domain resource allocation A for extended CP
+	// 2023/3/5: For simplicity, pusch-AllocationList configured PUSCH TDRA is not supported!
+	row := flags.dci01.dci01TdRa + 1
+	var p *nrgrid.TimeAllocInfo
+	var exist bool
+
+	if flags.bwp._bwpCp[DED_UL_BWP] == "normal" {
+		p, exist = nrgrid.PuschTimeAllocDefANormCp[row]
+	} else {
+		p, exist = nrgrid.PuschTimeAllocDefAExtCp[row]
+	}
+
+	if !exist {
+		return errors.New(fmt.Sprintf("Invalid PUSCH time domain allocation: dci01TdRa=%v, dmrsTypeAPos=%v\n", flags.dci01.dci01TdRa, flags.gridsetting.dmrsTypeAPos))
+	} else {
+		// update dci01 info
+		fmt.Printf("TimeAllocInfo(DCI 0_1, rnti=C-RNTI): %v\n", *p)
+		flags.dci01.dci01TdMappingType = p.MappingType
+		flags.dci01.dci01TdK2 = p.K0K2 + nrgrid.PuschTimeAllocK2j[flags.gridsetting.scs]
+		flags.dci01.dci01TdStartSymb = p.S
+		flags.dci01.dci01TdNumSymbs = p.L
+		sliv, _ := nrgrid.ToSliv(p.S, p.L, "PUSCH", p.MappingType, "normal", flags.pusch._puschRepType)
+		flags.dci01.dci01TdSliv = sliv
+	}
+
+	// validate 'Antenna port(s)' field of DCI 0_1 scheduling PUSCH
+	err := validatePuschAntPorts()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -2063,20 +2118,24 @@ func validatePuschAntPorts() error {
 			}
 			flags.dmrsPusch._dmrsPosLBar = p
 		} else {
-			// refer to 38.211 vh40 6.4.1.1.3
-			// For PUSCH mapping type A,
-			//  - ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-			// Table 6.4.1.1.3-4: PUSCH DM-RS positions l_bar within a slot for double-symbol DM-RS and intra-slot frequency hopping disabled.
-			if tdMappingType == "typeA" && ld == 4 && flags.gridsetting.dmrsTypeAPos != "pos2" {
-				return errors.New(fmt.Sprintf("For PUSCH mapping type A, ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'!(dmrsTypeAPos=%v)", flags.gridsetting.dmrsTypeAPos))
-			}
-
 			p, e := nrgrid.DmrsPuschPosTwoSymbsWoIntraSlotFh[key]
 			if !e || p == nil {
 				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosTwoSymbsWoIntraSlotFh!", key))
 			}
 			flags.dmrsPusch._dmrsPosLBar = p
 		}
+	}
+
+	// refer to 38.211 vh40 6.4.1.1.3
+	// For PUSCH mapping type A,
+	//  - the case dmrs-AdditionalPosition is equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2';
+	//  - ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	// Table 6.4.1.1.3-4: PUSCH DM-RS positions l_bar within a slot for double-symbol DM-RS and intra-slot frequency hopping disabled.
+	if tdMappingType == "typeA" && dmrsAddPos == "pos3" && flags.gridsetting.dmrsTypeAPos != "pos2" {
+		return errors.New(fmt.Sprintf("For PUSCH mapping type A, the case dmrs-AdditionalPosition is equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'!(dmrsTypeAPos=%v)", flags.gridsetting.dmrsTypeAPos))
+	}
+	if tdMappingType == "typeA" && ld == 4 && flags.dmrsPusch._numFrontLoadSymbs == 2 && flags.gridsetting.dmrsTypeAPos != "pos2" {
+		return errors.New(fmt.Sprintf("For PUSCH mapping type A, ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'!(dmrsTypeAPos=%v)", flags.gridsetting.dmrsTypeAPos))
 	}
 
 	var dmrsOh int
@@ -2121,39 +2180,6 @@ func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
 	}
 
 	return rbgs
-}
-
-func validateDci01TdRa() error {
-	fmt.Printf("\n-->%s\n", "calling validateDci01TdRa")
-
-	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
-
-	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources (DMRS for PUSCH)
-	// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-	// For PUSCH mapping type A, l_d = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-	//
-	//- ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
-	//-	ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
-	//-	ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used.
-	if flags.dci01.dci01TdMappingType == "typeA" && flags.dmrsPusch.puschDmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
-		return errors.New(fmt.Sprintf("For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.\ndci01TdMappingType=%v, puschDmrsAddPos=%v, dmrsTypeAPos=%v\n", flags.dci01.dci01TdMappingType, flags.dmrsPusch.puschDmrsAddPos, dmrsTypeAPos))
-	}
-
-	// update PUSCH TBS
-	// TODO
-
-	return nil
-}
-
-func validateMsg3TdRa() error {
-	fmt.Printf("\n-->%s\n", "calling validateMsg3TdRa")
-
-	// dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
-
-	// update Msg3 TBS
-	// TODO
-
-	return nil
 }
 
 //getTbs calculates TBS for PUSCH/PDSCH.
@@ -2946,12 +2972,12 @@ func initConfDci11Cmd() {
 	confDci11Cmd.Flags().IntVar(&flags.dci11._muPdsch, "_muPdsch", 1, "Subcarrier spacing of PDSCH[0..3]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._actBwp, "_actBwp", 1, "Active DL bandwidth part of PDSCH[0..1]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._indicatedBwp, "_indicatedBwp", 1, "Bandwidth-part-indicator field of DCI 1_1[0..1]")
-	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdRa, "dci11TdRa", 16, "Time-domain-resource-assignment field of DCI 1_1[0..15 or 16]")
+	confDci11Cmd.Flags().IntVar(&flags.dci11.dci11TdRa, "dci11TdRa", 11, "Time-domain-resource-assignment field of DCI 1_1[0..15]")
 	confDci11Cmd.Flags().StringVar(&flags.dci11._dci11TdMappingType, "_dci11TdMappingType", "typeA", "Mapping type for PDSCH time-domain allocation[typeA,typeB]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdK0, "_dci11TdK0", 0, "Slot offset K0 for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdSliv, "_dci11TdSliv", 27, "SLIV for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdStartSymb, "_dci11TdStartSymb", 0, "Starting symbol S for PDSCH time-domain allocation")
-	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdNumSymbs, "_dci11TdNumSymbs", 14, "Number of OFDM symbols L for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdSliv, "_dci11TdSliv", 40, "SLIV for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdStartSymb, "_dci11TdStartSymb", 1, "Starting symbol S for PDSCH time-domain allocation")
+	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11TdNumSymbs, "_dci11TdNumSymbs", 13, "Number of OFDM symbols L for PDSCH time-domain allocation")
 	confDci11Cmd.Flags().StringVar(&flags.dci11.dci11FdRaType, "dci11FdRaType", "raType1", "resourceAllocation for PDSCH frequency-domain allocation[raType0,raType1]")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType0, "_dci11FdBitwidthRaType0", 18, "Bitwidth of PDSCH frequency-domain allocation for RA Type 0")
 	confDci11Cmd.Flags().IntVar(&flags.dci11._dci11FdBitwidthRaType1, "_dci11FdBitwidthRaType1", 16, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
@@ -3059,17 +3085,18 @@ func initConfDci01Cmd() {
 	confDci01Cmd.Flags().IntVar(&flags.dci01._muPusch, "_muPusch", 1, "Subcarrier spacing of PUSCH[0..3]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01._actBwp, "_actBwp", 1, "Active UL bandwidth part of PUSCH[0..1]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01._indicatedBwp, "_indicatedBwp", 1, "Bandwidth-part-indicator field of DCI 0_1[0..1]")
-	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdRa, "dci01TdRa", 16, "Time-domain-resource-assignment field of DCI 0_1[0..15 or 16]")
+	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdRa, "dci01TdRa", 7, "Time-domain-resource-assignment field of DCI 0_1[0..15]")
 	confDci01Cmd.Flags().StringVar(&flags.dci01.dci01TdMappingType, "dci01TdMappingType", "typeA", "Mapping type for PUSCH time-domain allocation[typeA,typeB]")
-	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdK2, "dci01TdK2", 1, "Slot offset K2 for PUSCH time-domain allocation[0..32]")
+	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdK2, "dci01TdK2", 2, "Slot offset K2 for PUSCH time-domain allocation[0..32]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdSliv, "dci01TdSliv", 27, "SLIV for PUSCH time-domain allocation")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdStartSymb, "dci01TdStartSymb", 0, "Starting symbol S for PUSCH time-domain allocation")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01TdNumSymbs, "dci01TdNumSymbs", 14, "Number of OFDM symbols L for PUSCH time-domain allocation")
 	confDci01Cmd.Flags().StringVar(&flags.dci01.dci01FdRaType, "dci01FdRaType", "raType1", "resourceAllocation for PUSCH frequency-domain allocation[raType0,raType1]")
 	confDci01Cmd.Flags().StringVar(&flags.dci01.dci01FdFreqHop, "dci01FdFreqHop", "disabled", "Frequency-hopping-flag field for DCI 0_1[disabled,intraSlot,interSlot]")
+	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01FdFreqHopOffset, "dci01FdFreqHopOffset", 0, "frequencyHoppingOffsetLists of PUSCH-Config[0..274]")
 	confDci01Cmd.Flags().StringVar(&flags.dci01.dci01FdRa, "dci01FdRa", "0000001000100001", "Frequency-domain-resource-assignment field of DCI 0_1")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01FdStartRb, "dci01FdStartRb", 0, "RB_start of RIV for PUSCH frequency-domain allocation")
-	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01FdNumRbs, "dci01FdNumRbs", 273, "L_RBs of RIV for PUSCH frequency-domain allocation")
+	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01FdNumRbs, "dci01FdNumRbs", 160, "L_RBs of RIV for PUSCH frequency-domain allocation")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01McsCw0, "dci01McsCw0", 28, "Modulation-and-coding-scheme-cw0 field of DCI 0_1[0..28]")
 	confDci01Cmd.Flags().IntVar(&flags.dci01._tbs, "_tbs", 475584, "Transport block size(bits) for PUSCH")
 	confDci01Cmd.Flags().IntVar(&flags.dci01.dci01CbTpmiNumLayers, "dci01CbTpmiNumLayers", 2, "Precoding-information-and-number-of-layers field of DCI 0_1[0..63]")
@@ -3090,6 +3117,7 @@ func initConfDci01Cmd() {
 	viper.BindPFlag("nrrg.dci01.dci01TdNumSymbs", confDci01Cmd.Flags().Lookup("dci01TdNumSymbs"))
 	viper.BindPFlag("nrrg.dci01.dci01FdRaType", confDci01Cmd.Flags().Lookup("dci01FdRaType"))
 	viper.BindPFlag("nrrg.dci01.dci01FdFreqHop", confDci01Cmd.Flags().Lookup("dci01FdFreqHop"))
+	viper.BindPFlag("nrrg.dci01.dci01FdFreqHopOffset", confDci01Cmd.Flags().Lookup("dci01FdFreqHopOffset"))
 	viper.BindPFlag("nrrg.dci01.dci01FdRa", confDci01Cmd.Flags().Lookup("dci01FdRa"))
 	viper.BindPFlag("nrrg.dci01.dci01FdStartRb", confDci01Cmd.Flags().Lookup("dci01FdStartRb"))
 	viper.BindPFlag("nrrg.dci01.dci01FdNumRbs", confDci01Cmd.Flags().Lookup("dci01FdNumRbs"))
@@ -3341,25 +3369,26 @@ func initConfPuschCmd() {
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschTxCfg, "puschTxCfg", "codebook", "txConfig of PUSCH-Config[codebook,nonCodebook]")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschCbSubset, "puschCbSubset", "fullyAndPartialAndNonCoherent", "codebookSubset of PUSCH-Config[fullyAndPartialAndNonCoherent,partialAndNonCoherent,nonCoherent]")
 	confPuschCmd.Flags().IntVar(&flags.pusch.puschCbMaxRankNonCbMaxLayers, "puschCbMaxRankNonCbMaxLayers", 2, "maxRank of PUSCH-Config or maxMIMO-Layers of PUSCH-ServingCellConfig[1..4]")
-	confPuschCmd.Flags().IntVar(&flags.pusch.puschFreqHopOffset, "puschFreqHopOffset", 0, "frequencyHoppingOffsetLists of PUSCH-Config[0..274]")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschTp, "puschTp", "disabled", "transformPrecoder of PUSCH-Config[disabled,enabled]")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschAggFactor, "puschAggFactor", "n1", "pusch-AggregationFactor of PUSCH-Config[n1,n2,n4,n8]")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschRbgCfg, "puschRbgCfg", "config1", "rbg-Size of PUSCH-Config[config1,config2]")
 	confPuschCmd.Flags().IntVar(&flags.pusch._rbgSize, "_rbgSize", 16, "RBG size of PUSCH resource allocation type 0")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschMcsTable, "puschMcsTable", "qam64", "mcs-Table of PUSCH-Config[qam64,qam256,qam64LowSE]")
 	confPuschCmd.Flags().StringVar(&flags.pusch.puschXOh, "puschXOh", "xOh0", "xOverhead of PUSCH-ServingCellConfig[xOh0,xOh6,xOh12,xOh18]")
+	confPuschCmd.Flags().StringVar(&flags.pusch._puschRepType, "_puschRepType", "typeA", "pusch-RepTypeIndicator of PUSCH-Config[typeA,typeB]")
 	confPuschCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.pusch.puschTxCfg", confPuschCmd.Flags().Lookup("puschTxCfg"))
 	viper.BindPFlag("nrrg.pusch.puschCbSubset", confPuschCmd.Flags().Lookup("puschCbSubset"))
 	viper.BindPFlag("nrrg.pusch.puschCbMaxRankNonCbMaxLayers", confPuschCmd.Flags().Lookup("puschCbMaxRankNonCbMaxLayers"))
-	viper.BindPFlag("nrrg.pusch.puschFreqHopOffset", confPuschCmd.Flags().Lookup("puschFreqHopOffset"))
 	viper.BindPFlag("nrrg.pusch.puschTp", confPuschCmd.Flags().Lookup("puschTp"))
 	viper.BindPFlag("nrrg.pusch.puschAggFactor", confPuschCmd.Flags().Lookup("puschAggFactor"))
 	viper.BindPFlag("nrrg.pusch.puschRbgCfg", confPuschCmd.Flags().Lookup("puschRbgCfg"))
 	viper.BindPFlag("nrrg.pusch._rbgSize", confPuschCmd.Flags().Lookup("_rbgSize"))
 	viper.BindPFlag("nrrg.pusch.puschMcsTable", confPuschCmd.Flags().Lookup("puschMcsTable"))
 	viper.BindPFlag("nrrg.pusch.puschXOh", confPuschCmd.Flags().Lookup("puschXOh"))
+	viper.BindPFlag("nrrg.pusch._puschRepType", confPuschCmd.Flags().Lookup("_puschRepType"))
 	confPuschCmd.Flags().MarkHidden("_rbgSize")
+	confPuschCmd.Flags().MarkHidden("_puschRepType")
 }
 
 func initConfNzpCsiRsCmd() {
@@ -3804,6 +3833,7 @@ func loadNrrgFlags() {
 	flags.dci01.dci01TdNumSymbs = viper.GetInt("nrrg.dci01.dci01TdNumSymbs")
 	flags.dci01.dci01FdRaType = viper.GetString("nrrg.dci01.dci01FdRaType")
 	flags.dci01.dci01FdFreqHop = viper.GetString("nrrg.dci01.dci01FdFreqHop")
+	flags.dci01.dci01FdFreqHopOffset = viper.GetInt("nrrg.dci01.dci01FdFreqHopOffset")
 	flags.dci01.dci01FdRa = viper.GetString("nrrg.dci01.dci01FdRa")
 	flags.dci01.dci01FdStartRb = viper.GetInt("nrrg.dci01.dci01FdStartRb")
 	flags.dci01.dci01FdNumRbs = viper.GetInt("nrrg.dci01.dci01FdNumRbs")
@@ -3899,13 +3929,13 @@ func loadNrrgFlags() {
 	flags.pusch.puschTxCfg = viper.GetString("nrrg.pusch.puschTxCfg")
 	flags.pusch.puschCbSubset = viper.GetString("nrrg.pusch.puschCbSubset")
 	flags.pusch.puschCbMaxRankNonCbMaxLayers = viper.GetInt("nrrg.pusch.puschCbMaxRankNonCbMaxLayers")
-	flags.pusch.puschFreqHopOffset = viper.GetInt("nrrg.pusch.puschFreqHopOffset")
 	flags.pusch.puschTp = viper.GetString("nrrg.pusch.puschTp")
 	flags.pusch.puschAggFactor = viper.GetString("nrrg.pusch.puschAggFactor")
 	flags.pusch.puschRbgCfg = viper.GetString("nrrg.pusch.puschRbgCfg")
 	flags.pusch._rbgSize = viper.GetInt("nrrg.pusch._rbgSize")
 	flags.pusch.puschMcsTable = viper.GetString("nrrg.pusch.puschMcsTable")
 	flags.pusch.puschXOh = viper.GetString("nrrg.pusch.puschXOh")
+	flags.pusch._puschRepType = viper.GetString("nrrg.pusch._puschRepType")
 
 	flags.nzpCsiRs._resSetId = viper.GetInt("nrrg.nzpcsirs._resSetId")
 	flags.nzpCsiRs._trsInfo = viper.GetBool("nrrg.nzpcsirs._trsInfo")

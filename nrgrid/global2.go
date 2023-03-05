@@ -865,13 +865,16 @@ var LrbsDedPuschTp = []int{}
 var PdschToSliv, PdschFromSliv = initPdschSliv()
 
 // SLIV look-up tables for PUSCH
-var PuschToSliv, PuschFromSliv = initPuschSliv()
+var PuschToSlivRepTypeA, PuschFromSlivRepTypeA = initPuschSlivRepTypeA()
+var PuschToSlivRepTypeB, PuschFromSlivRepTypeB = initPuschSlivRepTypeB()
 
 // constants
 const (
 	NumScPerPrb = 12
 )
 
+// refer to 3GPP 38.214 vh40
+//  Table 5.1.2.1-1: Valid S and L combinations
 func initPdschSliv() (map[string]int, map[string][]int) {
 	// prefix
 	// "00": mapping type A + normal cp
@@ -886,7 +889,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	prefix = "00"
 	for _, S := range utils.PyRange(0, 4, 1) {
 		for _, L := range utils.PyRange(3, 15, 1) {
-			if S+L >= 3 && S+L < 15 {
+			if S+L >= 3 && S+L <= 14 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -902,7 +905,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	prefix = "01"
 	for _, S := range utils.PyRange(0, 4, 1) {
 		for _, L := range utils.PyRange(3, 13, 1) {
-			if S+L >= 3 && S+L < 13 {
+			if S+L >= 3 && S+L <= 12 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -917,8 +920,8 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	// case #3: prefix="10"
 	prefix = "10"
 	for _, S := range utils.PyRange(0, 13, 1) {
-		for _, L := range []int{2, 4, 7} {
-			if S+L >= 2 && S+L < 15 {
+		for _, L := range utils.PyRange(2, 14, 1) {
+			if S+L >= 2 && S+L <= 14 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -934,7 +937,7 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	prefix = "11"
 	for _, S := range utils.PyRange(0, 11, 1) {
 		for _, L := range []int{2, 4, 6} {
-			if S+L >= 2 && S+L < 13 {
+			if S+L >= 2 && S+L <= 12 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -949,7 +952,9 @@ func initPdschSliv() (map[string]int, map[string][]int) {
 	return pdschToSliv, pdschFromSliv
 }
 
-func initPuschSliv() (map[string]int, map[string][]int) {
+// refer to 3GPP 38.214 vh40
+//  Table 6.1.2.1-1: Valid S and L combinations
+func initPuschSlivRepTypeA() (map[string]int, map[string][]int) {
 	// prefix
 	// "00": mapping type A + normal cp
 	// "01": mapping type A + extended cp
@@ -963,7 +968,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	prefix = "00"
 	for _, S := range []int{0} {
 		for _, L := range utils.PyRange(4, 15, 1) {
-			if S+L >= 4 && S+L < 15 {
+			if S+L >= 4 && S+L <= 14 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -979,7 +984,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	prefix = "01"
 	for _, S := range []int{0} {
 		for _, L := range utils.PyRange(4, 13, 1) {
-			if S+L >= 4 && S+L < 13 {
+			if S+L >= 4 && S+L <= 12 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -995,7 +1000,7 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 	prefix = "10"
 	for _, S := range utils.PyRange(0, 14, 1) {
 		for _, L := range utils.PyRange(1, 15, 1) {
-			if S+L >= 1 && S+L < 15 {
+			if S+L >= 1 && S+L <= 14 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -1009,9 +1014,56 @@ func initPuschSliv() (map[string]int, map[string][]int) {
 
 	// case #4: prefix="11"
 	prefix = "11"
-	for _, S := range utils.PyRange(0, 13, 1) {
+	for _, S := range utils.PyRange(0, 12, 1) {
 		for _, L := range utils.PyRange(1, 13, 1) {
-			if S+L >= 1 && S+L < 13 {
+			if S+L >= 1 && S+L <= 12 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	return puschToSliv, puschFromSliv
+}
+
+// refer to 3GPP 38.214 vh40
+//  Table 6.1.2.1-1: Valid S and L combinations
+func initPuschSlivRepTypeB() (map[string]int, map[string][]int) {
+	// prefix
+	// "00": mapping type A + normal cp, for PUSCH repetition Type A only
+	// "01": mapping type A + extended cp, for PUSCH repetition Type A only
+	// "10": mapping type B + normal cp
+	// "11": mapping type B + extended cp
+	puschToSliv := make(map[string]int)
+	puschFromSliv := make(map[string][]int)
+	var prefix string
+
+	// case #3: prefix="10"
+	prefix = "10"
+	for _, S := range utils.PyRange(0, 14, 1) {
+		for _, L := range utils.PyRange(1, 15, 1) {
+			if S+L >= 1 && S+L <= 27 {
+				sliv, err := makeSliv(S, L)
+				if err == nil {
+					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
+					puschToSliv[keyToSliv] = sliv
+					keyFromSliv := fmt.Sprintf("%s_%d", prefix, sliv)
+					puschFromSliv[keyFromSliv] = []int{S, L}
+				}
+			}
+		}
+	}
+
+	// case #4: prefix="11"
+	prefix = "11"
+	for _, S := range utils.PyRange(0, 12, 1) {
+		for _, L := range utils.PyRange(1, 13, 1) {
+			if S+L >= 1 && S+L <= 23 {
 				sliv, err := makeSliv(S, L)
 				if err == nil {
 					keyToSliv := fmt.Sprintf("%s_%d_%d", prefix, S, L)
@@ -1045,9 +1097,10 @@ func makeSliv(S, L int) (int, error) {
 //  S: starting symbol
 //	L: number of symbols
 //	sch: PDSCH or PUSCH
-//	mappingType: typeA or typeB
+//	mappingType: TD mapping type, can be typeA or typeB
 //	cp: normal or extended
-func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
+//  repetitionType: PUSCH repetition type, can be typeA or typeB
+func ToSliv(S, L int, sch, mappingType, cp, repetitionType string) (int, error) {
 	var prefix string
 	if mappingType == "typeA" {
 		prefix += "0"
@@ -1067,7 +1120,11 @@ func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
 	if sch == "PDSCH" {
 		sliv, exist = PdschToSliv[key]
 	} else {
-		sliv, exist = PuschToSliv[key]
+		if repetitionType == "typeA" {
+			sliv, exist = PuschToSlivRepTypeA[key]
+		} else {
+			sliv, exist = PuschToSlivRepTypeB[key]
+		}
 	}
 
 	if !exist {
@@ -1080,9 +1137,10 @@ func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
 // FromSliv returns S/L from given sliv.
 //  sliv: start and length indicator
 //	sch: PDSCH or PUSCH
-//	mappingType: typeA or typeB
+//	mappingType: TD mapping type, can be typeA or typeB
 //	cp: normal or extended
-func FromSliv(sliv int, sch, mappingType, cp string) ([]int, error) {
+//  repetitionType: PUSCH repetition type, can be typeA or typeB
+func FromSliv(sliv int, sch, mappingType, cp, repetitionType string) ([]int, error) {
 	var prefix string
 	if mappingType == "typeA" {
 		prefix += "0"
@@ -1102,7 +1160,11 @@ func FromSliv(sliv int, sch, mappingType, cp string) ([]int, error) {
 	if sch == "PDSCH" {
 		sl, exist = PdschFromSliv[key]
 	} else {
-		sl, exist = PuschFromSliv[key]
+		if repetitionType == "typeA" {
+			sl, exist = PuschFromSlivRepTypeA[key]
+		} else {
+			sl, exist = PuschFromSlivRepTypeB[key]
+		}
 	}
 
 	if !exist {
@@ -1115,7 +1177,7 @@ func FromSliv(sliv int, sch, mappingType, cp string) ([]int, error) {
 /*
 # initialize SLIV look-up tables
         self.initPdschSliv()
-        self.initPuschSliv()
+        self.initPuschSlivRepTypeA()
         '''
         self.ngwin.logEdit.append('contents of self.nrPdschToSliv: ')
         for key, val in self.nrPdschToSliv.items():
