@@ -18,6 +18,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/Knetic/govaluate"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -27,50 +28,48 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"github.com/Knetic/govaluate"
 )
 
 var (
-    flags NrrgFlags
-    minChBw int
-	boldRed = color.New(color.FgRed).Add(color.Bold).SprintFunc()
-	regRed = color.New(color.FgRed)
-	boldGreen = color.New(color.FgGreen).Add(color.Bold).SprintFunc()
-	regGreen = color.New(color.FgGreen)
-	boldBlue = color.New(color.FgBlue).Add(color.Bold).SprintFunc()
-	regBlue = color.New(color.FgBlue)
+	flags      NrrgFlags
+	minChBw    int
+	boldRed    = color.New(color.FgRed).Add(color.Bold).SprintFunc()
+	regRed     = color.New(color.FgRed)
+	boldGreen  = color.New(color.FgGreen).Add(color.Bold).SprintFunc()
+	regGreen   = color.New(color.FgGreen)
+	boldBlue   = color.New(color.FgBlue).Add(color.Bold).SprintFunc()
+	regBlue    = color.New(color.FgBlue)
 	boldYellow = color.New(color.FgYellow).Add(color.Bold).SprintFunc()
-	regYellow = color.New(color.FgYellow)
+	regYellow  = color.New(color.FgYellow)
 )
 
-
 type NrrgFlags struct {
-	gridsetting GridSettingFlags
-	mib MibFlags
+	gridsetting   GridSettingFlags
+	mib           MibFlags
 	commonSetting CommonSettingFlags
-	css0 Css0Flags
-	coreset1 Coreset1Flags
-	uss UssFlags
-	dci10 Dci10Flags
-	dci11 Dci11Flags
-	msg3 Msg3Flags
-	dci01 Dci01Flags
-	bwp BwpFlags
-	rach RachFlags
-	dmrsCommon DmrsCommonFlags
-	dmrsPdsch DmrsPdschFlags
-	ptrsPdsch PtrsPdschFlags
-	dmrsPusch DmrsPuschFlags
-	ptrsPusch PtrsPuschFlags
-	pdsch PdschFlags
-	pusch PuschFlags
-	nzpCsiRs NzpCsiRsFlags
-	trs TrsFlags
-	csiIm CsiImFlags
-	csiReport CsiReportFlags
-	srs SrsFlags
-	pucch PucchFlags
-	advanced AdvancedFlags
+	css0          Css0Flags
+	coreset1      Coreset1Flags
+	uss           UssFlags
+	dci10         Dci10Flags
+	dci11         Dci11Flags
+	msg3          Msg3Flags
+	dci01         Dci01Flags
+	bwp           BwpFlags
+	rach          RachFlags
+	dmrsCommon    DmrsCommonFlags
+	dmrsPdsch     DmrsPdschFlags
+	ptrsPdsch     PtrsPdschFlags
+	dmrsPusch     DmrsPuschFlags
+	ptrsPusch     PtrsPuschFlags
+	pdsch         PdschFlags
+	pusch         PuschFlags
+	nzpCsiRs      NzpCsiRsFlags
+	trs           TrsFlags
+	csiIm         CsiImFlags
+	csiReport     CsiReportFlags
+	srs           SrsFlags
+	pucch         PucchFlags
+	advanced      AdvancedFlags
 }
 
 // flags for grid settings
@@ -79,34 +78,34 @@ type GridSettingFlags struct {
 	scs string
 
 	// freqBand settings
-	band string
-	_duplexMode    string
-	_maxDlFreq    int
-	_freqRange    string
+	band        string
+	_duplexMode string
+	_maxDlFreq  int
+	_freqRange  string
 	_unlicensed bool
 
 	// ssbGrid settings
 	_ssbScs      string
-	gscn int
-	_ssbPattern string
-	_kSsbScs float64
+	gscn         int
+	_ssbPattern  string
+	_kSsbScs     float64
 	_kSsb        int
-	_nCrbSsbScs float64
-	_nCrbSsb    int
-	ssbPeriod   string
-	_maxLBar       int
-	_maxL	int
+	_nCrbSsbScs  float64
+	_nCrbSsb     int
+	ssbPeriod    string
+	_maxLBar     int
+	_maxL        int
 	candSsbIndex []int
 
 	// carrierGrid settings
-	_carrierScs       string
+	_carrierScs      string
 	bw               string
-	dlArfcn int
+	dlArfcn          int
 	_carrierNumRbs   int
 	_offsetToCarrier int
 
 	// MIB settings
-	_mibCommonScs                string
+	_mibCommonScs            string
 	rmsiCoreset0             int
 	rmsiCss0                 int
 	_coreset0MultiplexingPat int
@@ -114,8 +113,8 @@ type GridSettingFlags struct {
 	_coreset0NumSymbs        int
 	_coreset0OffsetList      []int
 	_coreset0Offset          int
-	_sfn                      int
-	_hrf                      int
+	_sfn                     int
+	_hrf                     int
 	dmrsTypeAPos             string
 }
 
@@ -155,7 +154,7 @@ type Coreset1Flags struct {
 	coreset1FreqRes string
 	// TODO: rename coreset1NumSymbs to coreset1Duration
 	// coreset1NumSymbs        int
-	coreset1Duration int
+	coreset1Duration        int
 	coreset1CceRegMap       string
 	coreset1RegBundleSize   string
 	coreset1InterleaverSize string
@@ -175,24 +174,24 @@ type UssFlags struct {
 
 // DCI 1_0 scheduling Sib1/Msg2/Msg4 with SI-RNTI/RA-RNTI/TC-RNTI
 type Dci10Flags struct {
-	_rnti                    []string
-	_muPdcch                 []int
-	_muPdsch                 []int
+	_rnti                     []string
+	_muPdcch                  []int
+	_muPdsch                  []int
 	_dci10TdRa                []int
-	_tdMappingType           []string
-	_tdK0                    []int
-	_tdSliv                  []int
-	_tdStartSymb             []int
-	_tdNumSymbs              []int
-	_fdRaType                []string
-	_fdBitwidthRaType1 []int
-	_fdRa                    []string
+	_tdMappingType            []string
+	_tdK0                     []int
+	_tdSliv                   []int
+	_tdStartSymb              []int
+	_tdNumSymbs               []int
+	_fdRaType                 []string
+	_fdBitwidthRaType1        []int
+	_fdRa                     []string
 	_dci10FdStartRb           []int
 	_dci10FdNumRbs            []int
 	_dci10FdVrbPrbMappingType []string
-	_fdBundleSize            []string
+	_fdBundleSize             []string
 	_dci10McsCw0              []int
-	_tbs                     []int
+	_tbs                      []int
 	_dci10Msg2TbScaling       int
 	_dci10Msg4DeltaPri        int
 	_dci10Msg4TdK1            int
@@ -206,14 +205,14 @@ type Dci11Flags struct {
 	_actBwp                  int
 	_indicatedBwp            int
 	dci11TdRa                int
-	_dci11TdMappingType       string
-	_dci11TdK0                int
-	_dci11TdSliv              int
-	_dci11TdStartSymb         int
-	_dci11TdNumSymbs          int
+	_dci11TdMappingType      string
+	_dci11TdK0               int
+	_dci11TdSliv             int
+	_dci11TdStartSymb        int
+	_dci11TdNumSymbs         int
 	dci11FdRaType            string
-	_dci11FdBitwidthRaType0 int
-	_dci11FdBitwidthRaType1 int
+	_dci11FdBitwidthRaType0  int
+	_dci11FdBitwidthRaType1  int
 	dci11FdRa                string
 	dci11FdStartRb           int
 	dci11FdNumRbs            int
@@ -247,7 +246,6 @@ type Msg3Flags struct {
 	_tbs                int
 }
 
-
 // DCI 0_1 scheduling PUSCH with C-RNTI
 type Dci01Flags struct {
 	_rnti                string
@@ -276,10 +274,10 @@ type Dci01Flags struct {
 
 // initial/dedicated UL/DL BWP
 type BwpFlags struct {
-	_bwpType    []string
-	_bwpId      []int
-	_bwpScs     []string
-	_bwpCp      []string
+	_bwpType     []string
+	_bwpId       []int
+	_bwpScs      []string
+	_bwpCp       []string
 	_bwpLocAndBw []int
 	_bwpStartRb  []int
 	_bwpNumRbs   []int
@@ -290,11 +288,11 @@ const (
 	DED_DL_BWP int = 1
 	INI_UL_BWP int = 2
 	DED_UL_BWP int = 3
-	N_SC_RB int = 12
-	DMRS_SIB1 int = 0
-	DMRS_MSG2 int = 1
-	DMRS_MSG4 int = 2
-	DMRS_MSG3 int = 3
+	N_SC_RB    int = 12
+	DMRS_SIB1  int = 0
+	DMRS_MSG2  int = 1
+	DMRS_MSG4  int = 2
+	DMRS_MSG3  int = 3
 )
 
 // random access
@@ -321,7 +319,7 @@ type RachFlags struct {
 	_raNumRbs                          int
 	_raKBar                            int
 }
-	
+
 // DMRS for SIB1/Msg2/Msg4/Msg3
 type DmrsCommonFlags struct {
 	_schInfo           []string
@@ -358,15 +356,17 @@ type PtrsPdschFlags struct {
 
 // DMRS for PUSCH
 type DmrsPuschFlags struct {
-	puschDmrsType      string
-	puschDmrsAddPos    string
-	puschMaxLength     string
-	_dmrsPorts         []int
-	_cdmGroupsWoData   int
-	_numFrontLoadSymbs int
-	_tdL               string
-	_fdK               string
-	_nonCbSri []int
+	puschDmrsType         string
+	puschDmrsAddPos       string
+	puschMaxLength        string
+	_dmrsPorts            []int
+	_cdmGroupsWoData      int
+	_numFrontLoadSymbs    int
+	_tdL                  string
+	_fdK                  string
+	_nonCbSri             []int
+	_dmrsPosLBar          []int // PUSCH DMRS positions l_bar when intra-slot FH is disabled, or l_bar of 1st hop when intra-slot FH is enabled
+	_dmrsPosLBarSecondHop []int // PUSCH DMRS positions l_bar of 2nd hop when intra-slot is enabled
 }
 
 // PTRS for PUSCH
@@ -520,44 +520,44 @@ type SrsFlags struct {
 // PUCCH-FormatConfig, PUCCH resource and DSR resource
 type PucchFlags struct {
 	// PUCCH-FormatConfig
-	pucchFmtCfgNumSlots string
+	pucchFmtCfgNumSlots         string
 	pucchFmtCfgInterSlotFreqHop string
-	pucchFmtCfgAddDmrs bool
-	pucchFmtCfgSimAckCsi bool
+	pucchFmtCfgAddDmrs          bool
+	pucchFmtCfgSimAckCsi        bool
 
 	// PUCCH resource
-	_pucchResId []int
-	_pucchFormat []string
-	_pucchResSetId []int
-	pucchStartRb []int
+	_pucchResId           []int
+	_pucchFormat          []string
+	_pucchResSetId        []int
+	pucchStartRb          []int
 	pucchIntraSlotFreqHop []string
-	pucchSecondHopPrb []int
-	pucchNumRbs []int
-	pucchStartSymb []int
-	pucchNumSymbs []int
+	pucchSecondHopPrb     []int
+	pucchNumRbs           []int
+	pucchStartSymb        []int
+	pucchNumSymbs         []int
 
 	// DSR resource
-	_dsrResId []int
+	_dsrResId    []int
 	_dsrPucchRes []int
-	dsrPeriod []string
-	dsrOffset []int
+	dsrPeriod    []string
+	dsrOffset    []int
 }
 
 // Advanced settings
 type AdvancedFlags struct {
-	bestSsb int
+	bestSsb       int
 	pdcchSlotSib1 int
-	prachOccMsg1 int
-	pdcchOccMsg2 int
-	pdcchOccMsg4 int
-	dsrRes int
+	prachOccMsg1  int
+	pdcchOccMsg2  int
+	pdcchOccMsg4  int
+	dsrRes        int
 }
 
 // nrrgCmd represents the nrrg command
 var nrrgCmd = &cobra.Command{
 	Use:   "nrrg",
 	Short: "NR resource grid tool",
-	Long: `CMD "nrrg" generates NR resource grid according to configurations.`,
+	Long:  `CMD "nrrg" generates NR resource grid according to configurations.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 		viper.WriteConfig()
@@ -573,7 +573,7 @@ var confGridSettingCmd = &cobra.Command{
 -ssbGrid: SSB grid related configurations
 -carrierGrid: Carrier grid related configurations`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-	    loadNrrgFlags()
+		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -654,9 +654,9 @@ var confGridSettingCmd = &cobra.Command{
 					key := fmt.Sprintf("%v_%v", band, scs)
 					valid := false
 					for _, i := range nrgrid.BandScs2BwFr1[key] {
-					    if i > 0 {
-					    	valid = true
-					    	break
+						if i > 0 {
+							valid = true
+							break
 						}
 					}
 					if valid {
@@ -878,14 +878,14 @@ var confGridSettingCmd = &cobra.Command{
 
 		// determine SC#0RB#0 of CORESET0 based on coreset0Offset
 		rmsiScsVal, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
-		iscSsbSc0Rb0 := (flags.gridsetting._nCrbSsb * 12 * int(flags.gridsetting._nCrbSsbScs) + flags.gridsetting._kSsb * int(flags.gridsetting._kSsbScs)) / rmsiScsVal - flags.gridsetting._offsetToCarrier * 12
+		iscSsbSc0Rb0 := (flags.gridsetting._nCrbSsb*12*int(flags.gridsetting._nCrbSsbScs)+flags.gridsetting._kSsb*int(flags.gridsetting._kSsbScs))/rmsiScsVal - flags.gridsetting._offsetToCarrier*12
 		nscCoreset0Offset := flags.gridsetting._coreset0Offset * 12
 		iscCoreset0Sc0Rb0 := iscSsbSc0Rb0 - nscCoreset0Offset
 		fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> iscSsbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, iscSsbSc0Rb0)
 		fmt.Printf("coreset0Offset=%v -> nscCoreset0Offset=%v\n", flags.gridsetting._coreset0Offset, nscCoreset0Offset)
 		fmt.Printf("iscCoreset0Sc0Rb0=%v\n", iscCoreset0Sc0Rb0)
 
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -893,9 +893,9 @@ var confGridSettingCmd = &cobra.Command{
 func updateRach() error {
 	regYellow.Printf("-->calling updateRach\n")
 
-    var p *nrgrid.RachInfo
-    var exist bool
-	if flags.gridsetting._freqRange == "FR1"{
+	var p *nrgrid.RachInfo
+	var exist bool
+	if flags.gridsetting._freqRange == "FR1" {
 		if flags.gridsetting._duplexMode == "FDD" {
 			p, exist = nrgrid.RaCfgFr1FddSUl[flags.rach.prachConfId]
 		} else {
@@ -906,7 +906,7 @@ func updateRach() error {
 	}
 
 	if !exist {
-		return  errors.New(fmt.Sprintf("Invalid configurations for PRACH: %v,%v with prach-ConfigurationIndex=%v\n",
+		return errors.New(fmt.Sprintf("Invalid configurations for PRACH: %v,%v with prach-ConfigurationIndex=%v\n",
 			flags.gridsetting._freqRange, flags.gridsetting._duplexMode, flags.rach.prachConfId))
 	}
 
@@ -943,9 +943,9 @@ func arfcn2Fref(arfcn int, maxFreq int) float64 {
 	if maxFreq < 3000 {
 		return float64(arfcn) * 0.005
 	} else if maxFreq < 24250 {
-		return 3000 + 0.015 * (float64(arfcn) - 600000)
+		return 3000 + 0.015*(float64(arfcn)-600000)
 	} else {
-		return 24250.08 + 0.06 * (float64(arfcn) - 2016667)
+		return 24250.08 + 0.06*(float64(arfcn)-2016667)
 	}
 }
 
@@ -954,17 +954,17 @@ func arfcn2Fref(arfcn int, maxFreq int) float64 {
 func gscn2Ssref(gscn int, maxFreq int) float64 {
 	if maxFreq < 3000 {
 		N := math.Floor((float64(gscn) + 1.5) / 3)
-		M := math.Mod(float64(gscn) + 1.5, 3) * 2
-		ssRef := 1.2 * N + 0.05 * M
+		M := math.Mod(float64(gscn)+1.5, 3) * 2
+		ssRef := 1.2*N + 0.05*M
 
 		fmt.Printf("GSCN=%v, N=%v, M=%v, SS_REF=%vMHz\n", gscn, N, M, ssRef)
 		return ssRef
 	} else if maxFreq < 24250 {
 		N := gscn - 7499
-		return 3000 + 1.44 * float64(N)
+		return 3000 + 1.44*float64(N)
 	} else {
 		N := gscn - 22256
-		return 24250.08 + 17.28 * float64(N)
+		return 24250.08 + 17.28*float64(N)
 	}
 }
 
@@ -988,18 +988,18 @@ func updateKSsbAndNCrbSsb() error {
 	}
 
 	ssFreq := gscn2Ssref(flags.gridsetting.gscn, flags.gridsetting._maxDlFreq)
-	ssFreqSc0Rb0 := ssFreq - 120 * ssbScs / 1000
+	ssFreqSc0Rb0 := ssFreq - 120*ssbScs/1000
 
 	dlFreq := arfcn2Fref(flags.gridsetting.dlArfcn, flags.gridsetting._maxDlFreq)
 	var dlFreqPointA float64
-	if flags.gridsetting._carrierNumRbs % 2 == 0 {
-		dlFreqPointA = dlFreq - 12 * float64(flags.gridsetting._carrierNumRbs / 2) * carrierScs / 1000
+	if flags.gridsetting._carrierNumRbs%2 == 0 {
+		dlFreqPointA = dlFreq - 12*float64(flags.gridsetting._carrierNumRbs/2)*carrierScs/1000
 	} else {
-		dlFreqPointA = dlFreq - 12 * (math.Floor(float64(flags.gridsetting._carrierNumRbs) / 2) + 6) * carrierScs / 1000
+		dlFreqPointA = dlFreq - 12*(math.Floor(float64(flags.gridsetting._carrierNumRbs)/2)+6)*carrierScs/1000
 	}
 
 	nCrbSsb := math.Floor((ssFreqSc0Rb0 - dlFreqPointA) / (12 * flags.gridsetting._nCrbSsbScs / 1000))
-	kSsb := (ssFreqSc0Rb0 - dlFreqPointA - 12 * flags.gridsetting._nCrbSsbScs / 1000 * nCrbSsb) / (flags.gridsetting._kSsbScs / 1000)
+	kSsb := (ssFreqSc0Rb0 - dlFreqPointA - 12*flags.gridsetting._nCrbSsbScs/1000*nCrbSsb) / (flags.gridsetting._kSsbScs / 1000)
 
 	fmt.Printf("%v: nCrbSsb SCS=%.0fKHz, kSsb SCS=%.0fKHz\n", flags.gridsetting._freqRange, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsbScs)
 	fmt.Printf("ssFreq=%vMHz, ssFreqSc0Rb0=%vMHz, dlFreq=%vMHz, dlFreqPointA=%vMHz, nCrbSsb=%v, kSsb=%v\n",
@@ -1134,7 +1134,7 @@ func validateCoreset0() error {
 	ssbScsVal, _ := strconv.Atoi(ssbScs[:len(ssbScs)-3])
 	var minBw int
 	if flags.gridsetting._coreset0Offset >= 0 {
-		minBw = utils.MaxInt([]int{flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset + 20 * ssbScsVal / rmsiScsVal})
+		minBw = utils.MaxInt([]int{flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0Offset + 20*ssbScsVal/rmsiScsVal})
 	} else {
 		minBw = flags.gridsetting._coreset0NumRbs - flags.gridsetting._coreset0Offset
 	}
@@ -1151,10 +1151,10 @@ func validateCoreset0() error {
 
 	// update info of initial dl bwp
 	if flags.gridsetting._coreset0Offset >= 0 {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20*ssbScsVal/rmsiScsVal)})
 		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", 0, upper)
 	} else {
-		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20 * ssbScsVal / rmsiScsVal)})
+		upper := utils.MinInt([]int{numRbsRmsiScs - flags.gridsetting._coreset0NumRbs, numRbsRmsiScs - (flags.gridsetting._coreset0NumRbs + 20*ssbScsVal/rmsiScsVal)})
 		fmt.Printf("Available RB_Start for Initial DL BWP: [%v..%v]\n", -flags.gridsetting._coreset0Offset, upper)
 	}
 	fmt.Printf("Available L_RBs for Initial DL BWP: [%v]\n", flags.gridsetting._coreset0NumRbs)
@@ -1171,11 +1171,11 @@ func validateCoreset0() error {
 func validateCss0() error {
 	regYellow.Printf("-->calling validateCss0\n")
 
-    fr := flags.gridsetting._freqRange
-    pat := flags.gridsetting._coreset0MultiplexingPat
-    css0 := flags.gridsetting.rmsiCss0
+	fr := flags.gridsetting._freqRange
+	pat := flags.gridsetting._coreset0MultiplexingPat
+	css0 := flags.gridsetting.rmsiCss0
 
-    switch pat {
+	switch pat {
 	case 1:
 		if fr == "FR1" || ((fr == "FR2-1" || fr == "FR2-2") && css0 >= 0 && css0 <= 13) {
 			return nil
@@ -1194,16 +1194,16 @@ func validateCss0() error {
 // calculate RIV (refer to 38.214 vh40)
 //  5.1.2.2.2	Downlink resource allocation type 1
 func makeRiv(L_RBs, RB_start, N_BWP_size int) int {
-	if L_RBs < 1 || L_RBs > (N_BWP_size - RB_start) {
+	if L_RBs < 1 || L_RBs > (N_BWP_size-RB_start) {
 		regRed.Printf("[ERR]: Invalid combination of L_RBs=%d, RB_start=%d, N_BWP_size=%d", L_RBs, RB_start, N_BWP_size)
 		return -1
 	}
 
 	var riv int
-	if (L_RBs - 1) <= int(math.Floor(float64(N_BWP_size) / 2)) {
-		riv = N_BWP_size * (L_RBs - 1) + RB_start
+	if (L_RBs - 1) <= int(math.Floor(float64(N_BWP_size)/2)) {
+		riv = N_BWP_size*(L_RBs-1) + RB_start
 	} else {
-		riv = N_BWP_size * (N_BWP_size - L_RBs + 1) + (N_BWP_size - 1 - RB_start)
+		riv = N_BWP_size*(N_BWP_size-L_RBs+1) + (N_BWP_size - 1 - RB_start)
 	}
 
 	return riv
@@ -1236,16 +1236,16 @@ func validateDci10TdRa() error {
 			case 2:
 				// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-4: Default PDSCH time domain resource allocation B
 				// Note 1: If the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space, the UE may assume that this PDSCH resource allocation is not applied.
-				if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10._dci10TdRa[i] + 1) {
-					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10._dci10TdRa[i] + 1))
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefBNote1Set, flags.dci10._dci10TdRa[i]+1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-4 of TS 38.214).", flags.dci10._dci10TdRa[i]+1))
 				}
 				p, exist = nrgrid.PdschTimeAllocDefB[key]
 			case 3:
 				// refer to 3GPP TS 38.214 vh40: Table 5.1.2.1.1-5: Default PDSCH time domain resource allocation C
 				// Note 1: The UE may assume that this PDSCH resource allocation is not used, if the PDSCH was scheduled with SI-RNTI in PDCCH Type0 common search space.
 				// Note 2:	This applies for Case F and Case G candidate SS/PBCH block pattern described in clause 4 of [6, TS 38.213]
-				if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10._dci10TdRa[i] + 1) {
-					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10._dci10TdRa[i] + 1))
+				if utils.ContainsInt(nrgrid.PdschTimeAllocDefCNote1Set, flags.dci10._dci10TdRa[i]+1) {
+					return errors.New(fmt.Sprintf("Row %v is invalid for SIB1 (refer to 'Note 1' of Table 5.1.2.1.1-5 of TS 38.214).", flags.dci10._dci10TdRa[i]+1))
 				}
 				p, exist = nrgrid.PdschTimeAllocDefC[key]
 			}
@@ -1343,7 +1343,7 @@ func updateDci10Tbs(i int) error {
 	if err != nil {
 		return err
 	} else {
-		fmt.Printf("CW0 TBS=%v bits\n", tbs)
+		fmt.Printf("PDSCH(DCI 1_0) CW0 TBS=%v bits\n", tbs)
 		flags.dci10._tbs[i] = tbs
 	}
 
@@ -1415,7 +1415,7 @@ func validatePdschAntPorts() error {
 	var exist bool
 	if dmrsType == "type1" && maxLength == "len1" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCwValid, "-")
-	    p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCw[ap]
+		p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen1OneCw[ap]
 	} else if dmrsType == "type1" && maxLength == "len2" && len(mcsSet) == 1 {
 		tokens = strings.Split(nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCwValid, "-")
 		p, exist = nrgrid.Dci11AntPortsDmrsType1MaxLen2OneCw[ap]
@@ -1469,17 +1469,17 @@ func validatePdschAntPorts() error {
 	if noPtrs {
 		flags.ptrsPdsch.pdschPtrsEnabled = false
 	} else {
-	    // refer to 3GPP TS 38.214 vh40: 5.1.6.3	PT-RS reception procedure
+		// refer to 3GPP TS 38.214 vh40: 5.1.6.3	PT-RS reception procedure
 		// If a UE is scheduled with one codeword, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the PDSCH.
 		// If a UE is scheduled with two codewords, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port among the DM-RS antenna ports assigned for the codeword with the higher MCS. If the MCS indices of the two codewords are the same, the PT-RS antenna port is associated with the lowest indexed DM-RS antenna port assigned for codeword 0.
-	    if len(mcsSet) == 1 {
-	    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
+		if len(mcsSet) == 1 {
+			flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
 		} else {
-		    // refer to 3GPP TS 38.211 vh40: Table 7.3.1.3-1: Codeword-to-layer mapping for spatial multiplexing.
+			// refer to 3GPP TS 38.211 vh40: Table 7.3.1.3-1: Codeword-to-layer mapping for spatial multiplexing.
 			// refer to 3GPP TS 38.211 vh40: 7.3.1.4	Antenna port mapping
-		    numLayersCw0 := utils.FloorInt(float64(len(flags.dmrsPdsch._dmrsPorts)) / 2)
-		    if mcsSet[0] >= mcsSet[1] {
-		    	flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
+			numLayersCw0 := utils.FloorInt(float64(len(flags.dmrsPdsch._dmrsPorts)) / 2)
+			if mcsSet[0] >= mcsSet[1] {
+				flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[0]
 			} else {
 				flags.ptrsPdsch._dmrsPorts = flags.dmrsPdsch._dmrsPorts[numLayersCw0]
 			}
@@ -1529,7 +1529,7 @@ func validatePdschAntPorts() error {
 	}
 
 	if !exist || dmrs == nil {
-	    return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci11._rnti, flags.dmrsPdsch._numFrontLoadSymbs, key))
+		return errors.New(fmt.Sprintf("Invalid DMRS for PDSCH settings: rnti=%v, numFrontLoadSymbs=%v, key=%v\n", flags.dci11._rnti, flags.dmrsPdsch._numFrontLoadSymbs, key))
 	}
 
 	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
@@ -1551,7 +1551,7 @@ func validatePdschAntPorts() error {
 		}
 	}
 	if tdMappingType == "typeB" && (ld <= 4) && flags.dmrsPdsch._numFrontLoadSymbs != 1 {
-	    return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
+		return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.dmrsPdsch._numFrontLoadSymbs))
 	}
 
 	dmrsOh := (2 * flags.dmrsPdsch._cdmGroupsWoData) * len(dmrs)
@@ -1563,7 +1563,7 @@ func validatePdschAntPorts() error {
 		if err != nil {
 			return err
 		} else {
-			fmt.Printf("CW0 TBS=%v bits\n", tbs)
+			fmt.Printf("PDSCH(DCI 1_1) CW0 TBS=%v bits\n", tbs)
 			flags.dci11._tbs[0] = tbs
 		}
 	}
@@ -1573,7 +1573,7 @@ func validatePdschAntPorts() error {
 		if err != nil {
 			return err
 		} else {
-			fmt.Printf("CW1 TBS=%v bits\n", tbs)
+			fmt.Printf("PDSCH(DCI 1_1) CW1 TBS=%v bits\n", tbs)
 			flags.dci11._tbs[1] = tbs
 		}
 	}
@@ -1583,7 +1583,7 @@ func validatePdschAntPorts() error {
 
 /*
 updateMsg3PuschTbs updates the TBS field of Msg3 PUSCH scheduled by RAR Msg2.
- */
+*/
 func updateMsg3PuschTbs() error {
 	regYellow.Printf("-->calling updateMsg3PuschTbs\n")
 
@@ -1704,7 +1704,7 @@ func validatePuschAntPorts() error {
 		// 3GPP 38.214 vh40: 6.1.1.1	Codebook based UL transmission
 		// The UE shall transmit PUSCH using the same antenna port(s) as the SRS port(s) in the SRS resource indicated by the DCI format 0_1 or 0_2 or by configuredGrantConfig according to clause 6.1.2.3.
 		var apCbPusch []int
-		switch flags.srs.srsNumPorts[flags.dci01.dci01Sri]{
+		switch flags.srs.srsNumPorts[flags.dci01.dci01Sri] {
 		case "port1":
 			apCbPusch = []int{1000}
 		case "ports2":
@@ -1722,7 +1722,7 @@ func validatePuschAntPorts() error {
 		cbSubset := flags.pusch.puschCbSubset
 		precoding := flags.dci01.dci01CbTpmiNumLayers
 
-		key := fmt.Sprintf("%v_%v", map[string]int{"fullyAndPartialAndNonCoherent":0, "partialAndNonCoherent":1, "nonCoherent":2}[cbSubset], precoding)
+		key := fmt.Sprintf("%v_%v", map[string]int{"fullyAndPartialAndNonCoherent": 0, "partialAndNonCoherent": 1, "nonCoherent": 2}[cbSubset], precoding)
 		if numAp == 4 && tp == "disabled" && utils.ContainsInt([]int{2, 3, 4}, maxRank) {
 			p, exist := nrgrid.Dci01TpmiAp4Tp0MaxRank234[key]
 			if !exist || p == nil {
@@ -1818,7 +1818,7 @@ func validatePuschAntPorts() error {
 	tp := flags.pusch.puschTp
 	dmrsType := flags.dmrsPusch.puschDmrsType
 	maxLen := flags.dmrsPusch.puschMaxLength
-	key := fmt.Sprintf("%v_%v_%v_%v_%v", map[string]int{"disabled" : 0, "enabled" : 1}[tp], dmrsType[len(dmrsType)-1:], maxLen[len(maxLen)-1:], rank, flags.dci01.dci01AntPorts)
+	key := fmt.Sprintf("%v_%v_%v_%v_%v", map[string]int{"disabled": 0, "enabled": 1}[tp], dmrsType[len(dmrsType)-1:], maxLen[len(maxLen)-1:], rank, flags.dci01.dci01AntPorts)
 	p, exist := nrgrid.Dci01AntPorts[key]
 	if !exist || p == nil {
 		return errors.New(fmt.Sprintf("Invalid key(=%v) when referring Dci01AntPorts!", key))
@@ -1842,7 +1842,7 @@ func validatePuschAntPorts() error {
 	// If a UE transmitting PUSCH scheduled by DCI format 0_2 is configured with the higher layer parameter phaseTrackingRS in dmrs-UplinkForPUSCH-MappingTypeA-DCI-0-2 or dmrs-UplinkForPUSCH-MappingTypeB-DCI-0-2, or a UE transmitting PUSCH scheduled by DCI format 0_0 or DCI format 0_1 is configured with the higher layer parameter phaseTrackingRS in dmrs-UplinkForPUSCH-MappingTypeA or dmrs-UplinkForPUSCH-MappingTypeB, the UE may assume that the following configurations are not occurring simultaneously for the transmitted PUSCH
 	//   - any DM-RS ports among 4-7 or 6-11 for DM-RS configurations type 1 and type 2, respectively are scheduled for the UE and PT-RS is transmitted from the UE.
 	var dmrsApSetNoPtrs []int
-	if flags.dmrsPusch.puschDmrsType == "Type 1" {
+	if flags.dmrsPusch.puschDmrsType == "type1" {
 		dmrsApSetNoPtrs = utils.PyRange(4, 8, 1)
 	} else {
 		dmrsApSetNoPtrs = utils.PyRange(6, 12, 1)
@@ -1857,21 +1857,72 @@ func validatePuschAntPorts() error {
 	fmt.Printf("PUSCH noPTRS=%v\n", noPtrs)
 
 	if !noPtrs {
+		flags.ptrsPusch._dmrsPorts = []int{}
 		if flags.pusch.puschTxCfg == "codebook" {
-			if coherence == "fullyCoherent" {
+			if flags.ptrsPusch.puschPtrsMaxNumPorts == "n1" {
 				// refer to 38.214 vh40
 				// 6.2.3.1	UE PT-RS transmission procedure when transform precoding is not enabled
 				// If a UE has reported the capability of supporting full-coherent UL transmission, the UE shall expect the number of UL PT-RS ports to be configured as one if UL-PTRS is configured
+
 				// refer to 38.212 vh40
 				// Table 7.3.1.1.2-25: PTRS-DMRS association or Second PTRS-DMRS association for UL PTRS port 0
 				// TODO: flags.dci01.dci01PtrsDmrsMap < len(flags.dmrsPusch._dmrsPorts)
 				flags.ptrsPusch._dmrsPorts = []int{flags.dmrsPusch._dmrsPorts[flags.dci01.dci01PtrsDmrsMap]}
-			} else {
-				//ptrsDmrsAssociation := map[int][]int{0 : {}, 1 : {}}
+			} else if coherence != "fullyCoherent" {
+				key = fmt.Sprintf("%v_%v_%v", flags.srs.srsNumPorts[flags.dci01.dci01Sri], rank, tpmi)
+				p, exist := nrgrid.CbPuschTpmiDmrsAssociation[key]
+				if !exist || p == nil {
+					return errors.New(fmt.Sprintf("Invalid key(=%v) when referring CbPuschTpmiDmrsAssociation!", key))
+				}
+				fmt.Printf("CbPuschTpmiDmrsAssociation: %v\n", p)
 
+				ptrsDmrsAssociation := make([][]int, 2)
+				for i := 0; i < len(p); i++ {
+					for _, ap := range strings.Split(p[i], ",") {
+						if ap == "-" {
+							break
+						} else {
+							apv, _ := strconv.Atoi(ap)
+
+							if (i == 0 || i == 2) && !utils.ContainsInt(ptrsDmrsAssociation[0], apv) {
+								ptrsDmrsAssociation[0] = append(ptrsDmrsAssociation[0], apv)
+							} else if (i == 1 || i == 3) && !utils.ContainsInt(ptrsDmrsAssociation[1], apv) {
+								ptrsDmrsAssociation[1] = append(ptrsDmrsAssociation[1], apv)
+							}
+						}
+					}
+				}
+
+				fmt.Printf("CB PUSCH ptrsDmrsAssociation=%v\n", ptrsDmrsAssociation)
+
+				// refer to 38.212 vh40
+				// Table 7.3.1.1.2-26: PTRS-DMRS association or Second PTRS-DMRS association for UL PTRS ports 0 and 1
+				var msb, lsb int
+				switch flags.dci01.dci01PtrsDmrsMap {
+				case 0:
+					msb = 0
+					lsb = 0
+				case 1:
+					msb = 0
+					lsb = 1
+				case 2:
+					msb = 1
+					lsb = 0
+				case 3:
+					msb = 1
+					lsb = 1
+				}
+
+				if (msb == 0 && len(ptrsDmrsAssociation[0]) > 0) || (msb == 1 && len(ptrsDmrsAssociation[0]) == 2) {
+					flags.ptrsPusch._dmrsPorts = append(flags.ptrsPusch._dmrsPorts, ptrsDmrsAssociation[0][msb])
+				}
+
+				if (lsb == 0 && len(ptrsDmrsAssociation[0]) > 0) || (lsb == 1 && len(ptrsDmrsAssociation[1]) == 2) {
+					flags.ptrsPusch._dmrsPorts = append(flags.ptrsPusch._dmrsPorts, ptrsDmrsAssociation[1][lsb])
+				}
 			}
 		} else {
-			ptrsDmrsAssociation := map[int][]int{0 : {}, 1 : {}}
+			ptrsDmrsAssociation := map[int][]int{0: {}, 1: {}}
 			for i, sri := range flags.dmrsPusch._nonCbSri {
 				if flags.srs.srsNonCbPtrsPort[sri] == "n0" {
 					ptrsDmrsAssociation[0] = append(ptrsDmrsAssociation[0], flags.dmrsPusch._dmrsPorts[i])
@@ -1890,6 +1941,8 @@ func validatePuschAntPorts() error {
 				// TODO: report error
 			}
 
+			fmt.Printf("non-CB PUSCH ptrsDmrsAssociation=%v\n", ptrsDmrsAssociation)
+
 			// determine associated DMRS port per PTRS port
 			if numPtrsAp == 1 {
 				// TODO: flags.dci01.dci01PtrsDmrsMap < len(flags.dmrsPusch._dmrsPorts)
@@ -1902,13 +1955,17 @@ func validatePuschAntPorts() error {
 				var msb, lsb int
 				switch flags.dci01.dci01PtrsDmrsMap {
 				case 0:
-					msb = 0; lsb = 0
+					msb = 0
+					lsb = 0
 				case 1:
-					msb = 0; lsb = 1
+					msb = 0
+					lsb = 1
 				case 2:
-					msb = 1; lsb = 0
+					msb = 1
+					lsb = 0
 				case 3:
-					msb = 1; lsb = 1
+					msb = 1
+					lsb = 1
 				}
 
 				if msb == 0 || (msb == 1 && len(ptrsDmrsAssociation[0]) == 2) {
@@ -1920,12 +1977,125 @@ func validatePuschAntPorts() error {
 				}
 			}
 		}
+
+		fmt.Printf("DMRS port(s) with associated PTRS for PUSCH: %v\n", flags.ptrsPusch._dmrsPorts)
 	}
 
-	// gonum library
-
-
 	// update PUSCH TBS
+	fdRaType := flags.dci01.dci01FdRaType
+	fdRa := flags.dci01.dci01FdRa
+	fd := 0
+	if fdRaType == "raType0" {
+		rbgs := getRaType0Rbgs(flags.bwp._bwpStartRb[DED_UL_BWP], flags.bwp._bwpNumRbs[DED_UL_BWP], flags.pdsch._rbgSize)
+		for i, c := range fdRa {
+			if c == '1' {
+				fd += rbgs[i]
+			}
+		}
+	} else {
+		fd = flags.dci01.dci01FdNumRbs
+	}
+
+	// calculate DMRS overhead
+	td := flags.dci01.dci01TdNumSymbs
+	ld := 0
+	tdMappingType := flags.dci01.dci01TdMappingType
+	dmrsAddPos := flags.dmrsPusch.puschDmrsAddPos
+	freqHop := flags.dci01.dci01FdFreqHop
+	if freqHop == "intra-slot" {
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
+		// refer to 3GPP 38.214 vf30 6.3
+		// In case of intra-slot frequency hopping, ... The number of symbols in the first hop is given by floor(N_PUSCH_symb/2) , the number of symbols in the second hop is given by N_PUSCH_symb - floor(N_PUSCH_symb/2) , where N_PUSCH_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
+		ld1 := utils.FloorInt(float64(td) / 2)
+		ld2 := td - ld1
+
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// ...and the position l0 of the first DM-RS symbol depends on the mapping type:
+		//  -	for PUSCH mapping type A:
+		//    -	l0 is given by the higher-layer parameter dmrs-TypeA-Position
+		//  -	for PUSCH mapping type B:
+		//    -	l0 = 0
+		var l0 int
+		if tdMappingType == "typeA" {
+			l0, _ = strconv.Atoi(flags.gridsetting.dmrsTypeAPos[3:])
+		} else {
+			l0 = 0
+		}
+
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// if the higher-layer parameter dmrs-AdditionalPosition is not set to 'pos0' and intra-slot frequency hopping is enabled according to clause 7.3.1.1.2 in [4, TS 38.212] and by higher layer, Tables 6.4.1.1.3-6 shall be used assuming dmrs-AdditionalPosition is equal to 'pos1' for each hop.
+		if dmrsAddPos != "pos0" {
+			dmrsAddPos = "pos1"
+		}
+
+		key1 := fmt.Sprintf("%v_%v_%v_%v_1st", ld1, tdMappingType, l0, dmrsAddPos)
+		key2 := fmt.Sprintf("%v_%v_%v_%v_2nd", ld2, tdMappingType, l0, dmrsAddPos)
+		if flags.dmrsPusch._numFrontLoadSymbs == 1 {
+			p1, e1 := nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key1]
+			p2, e2 := nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key2]
+			if !e1 || p1 == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key1))
+			}
+			if !e2 || p2 == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key2))
+			}
+			flags.dmrsPusch._dmrsPosLBar = p1
+			flags.dmrsPusch._dmrsPosLBarSecondHop = p2
+		} else {
+			return errors.New(fmt.Sprintf("Only single-symbol front-load DMRS for PUSCH is supported when intra-slot frequency hopping is enabled! (number of front-load DMRS = %v)", flags.dmrsPusch._numFrontLoadSymbs))
+		}
+	} else {
+		// refer to 38.211 vh40 6.4.1.1.3
+		// ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
+		if tdMappingType == "typeA" {
+			ld = flags.dci01.dci01TdStartSymb + td
+		} else {
+			ld = td
+		}
+
+		key = fmt.Sprintf("%v_%v_%v", ld, tdMappingType, dmrsAddPos)
+		if flags.dmrsPusch._numFrontLoadSymbs == 1 {
+			p, e := nrgrid.DmrsPuschPosOneSymbWoIntraSlotFh[key]
+			if !e || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWoIntraSlotFh!", key))
+			}
+			flags.dmrsPusch._dmrsPosLBar = p
+		} else {
+			// refer to 38.211 vh40 6.4.1.1.3
+			// For PUSCH mapping type A,
+			//  - ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+			// Table 6.4.1.1.3-4: PUSCH DM-RS positions l_bar within a slot for double-symbol DM-RS and intra-slot frequency hopping disabled.
+			if tdMappingType == "typeA" && ld == 4 && flags.gridsetting.dmrsTypeAPos != "pos2" {
+				return errors.New(fmt.Sprintf("For PUSCH mapping type A, ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'!(dmrsTypeAPos=%v)", flags.gridsetting.dmrsTypeAPos))
+			}
+
+			p, e := nrgrid.DmrsPuschPosTwoSymbsWoIntraSlotFh[key]
+			if !e || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosTwoSymbsWoIntraSlotFh!", key))
+			}
+			flags.dmrsPusch._dmrsPosLBar = p
+		}
+	}
+
+	var dmrsOh int
+	if freqHop == "intra-slot" {
+		dmrsOh = (2 * flags.dmrsPusch._cdmGroupsWoData) * (len(flags.dmrsPusch._dmrsPosLBar) + len(flags.dmrsPusch._dmrsPosLBarSecondHop))
+		fmt.Printf("PUSCH(DCI 0_1) DMRS overhead: cdmGroupsWoData=%v, l_bar of 1st hop=%v, l_bar of 2nd hop=%v\n", flags.dmrsPusch._cdmGroupsWoData, flags.dmrsPusch._dmrsPosLBar, flags.dmrsPusch._dmrsPosLBarSecondHop)
+	} else {
+		dmrsOh = (2 * flags.dmrsPusch._cdmGroupsWoData) * len(flags.dmrsPusch._dmrsPosLBar)
+		fmt.Printf("PUSCH(DCI 0_1) DMRS overhead: cdmGroupsWoData=%v, l_bar=%v\n", flags.dmrsPusch._cdmGroupsWoData, flags.dmrsPusch._dmrsPosLBar)
+	}
+
+	xoh, _ := strconv.Atoi(flags.pusch.puschXOh[3:])
+	tbs, err := getTbs("PUSCH", flags.pusch.puschTp == "enabled", "C-RNTI", flags.pusch.puschMcsTable, td, fd, flags.dci01.dci01McsCw0, len(flags.dmrsPusch._dmrsPorts), dmrsOh, xoh, 1)
+	if err != nil {
+		return err
+	} else {
+		fmt.Printf("PUSCH(DCI 0_1) CW0 TBS=%v bits\n", tbs)
+		flags.dci01._tbs = tbs
+	}
 
 	return nil
 }
@@ -1934,13 +2104,13 @@ func validatePuschAntPorts() error {
 func getRaType0Rbgs(bwpStart, bwpSize, P int) []int {
 	regYellow.Printf("-->calling getRaType0Rbgs\n")
 
-	bitwidth := utils.CeilInt((float64(bwpSize) + float64(bwpStart % P)) / float64(P))
+	bitwidth := utils.CeilInt((float64(bwpSize) + float64(bwpStart%P)) / float64(P))
 	rbgs := make([]int, bitwidth)
 	for i := 0; i < bitwidth; i++ {
 		if i == 0 {
-		    rbgs[i] = P - bwpStart % P
-		} else if i == bitwidth - 1 {
-			if (bwpStart + bwpSize) % P > 0 {
+			rbgs[i] = P - bwpStart%P
+		} else if i == bitwidth-1 {
+			if (bwpStart+bwpSize)%P > 0 {
 				rbgs[i] = (bwpStart + bwpSize) % P
 			} else {
 				rbgs[i] = P
@@ -1980,7 +2150,6 @@ func validateMsg3TdRa() error {
 
 	// dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
-
 	// update Msg3 TBS
 	// TODO
 
@@ -2019,7 +2188,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 			p = nrgrid.PdschMcsTabQam1024[mcs]
 		} else if rnti == "C-RNTI" && mcsTab == "qam256" {
 			p = nrgrid.PdschMcsTabQam256[mcs]
-		} else if rnti == "C-RNTI" &&  mcsTab == "qam64LowSE" {
+		} else if rnti == "C-RNTI" && mcsTab == "qam64LowSE" {
 			p = nrgrid.PdschMcsTabQam64LowSE[mcs]
 		} else {
 			p = nrgrid.PdschMcsTabQam64[mcs]
@@ -2027,7 +2196,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	} else if sch == "PUSCH" && tp {
 		if rnti == "C-RNTI" && mcsTab == "qam256" {
 			p = nrgrid.PdschMcsTabQam256[mcs]
-		} else if rnti == "C-RNTI" &&  mcsTab == "qam64LowSE" {
+		} else if rnti == "C-RNTI" && mcsTab == "qam64LowSE" {
 			p = nrgrid.PuschTpMcsTabQam64LowSE[mcs]
 		} else {
 			p = nrgrid.PuschTpMcsTabQam64[mcs]
@@ -2046,7 +2215,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	}
 
 	// 2nd step: get N_RE
-	N_RE_ap := N_SC_RB * td - dmrs - xoh
+	N_RE_ap := N_SC_RB*td - dmrs - xoh
 	min := utils.MinInt([]int{156, N_RE_ap})
 	N_RE := min * fd
 
@@ -2058,7 +2227,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	if N_info <= 3824 {
 		n := utils.MaxInt([]int{3, utils.FloorInt(math.Log2(N_info)) - 6})
 		n2 := 1 << n
-		N_info_ap := utils.MaxInt([]int{24, n2 * utils.FloorInt(N_info / float64(n2))})
+		N_info_ap := utils.MaxInt([]int{24, n2 * utils.FloorInt(N_info/float64(n2))})
 		for _, v := range nrgrid.TbsTabLessThan3824 {
 			if v >= N_info_ap {
 				tbs = v
@@ -2068,14 +2237,14 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	} else {
 		n := utils.FloorInt(math.Log2(N_info-24)) - 5
 		n2 := 1 << n
-		N_info_ap := utils.MaxInt([]int{3840, n2 * utils.RoundInt((N_info-24) / float64(n2))})
+		N_info_ap := utils.MaxInt([]int{3840, n2 * utils.RoundInt((N_info-24)/float64(n2))})
 		if R <= 256 {
 			C := utils.CeilInt(float64(N_info_ap+24) / 3816)
-			tbs = 8*C*utils.CeilInt(float64(N_info_ap+24) / float64(8*C)) - 24
+			tbs = 8*C*utils.CeilInt(float64(N_info_ap+24)/float64(8*C)) - 24
 		} else {
 			if N_info_ap > 8424 {
 				C := utils.CeilInt(float64(N_info_ap+24) / 8424)
-				tbs = 8*C*utils.CeilInt(float64(N_info_ap+24) / float64(8*C)) - 24
+				tbs = 8*C*utils.CeilInt(float64(N_info_ap+24)/float64(8*C)) - 24
 			} else {
 				tbs = 8*utils.CeilInt(float64(N_info_ap+24)/8) - 24
 			}
@@ -2094,12 +2263,12 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 var confCommonSettingCmd = &cobra.Command{
 	Use:   "commonsetting",
 	Short: "",
-	Long: `nrrg conf commonsetting can be used to get/set common-setting related network configurations.`,
+	Long:  `nrrg conf commonsetting can be used to get/set common-setting related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2108,12 +2277,12 @@ var confCommonSettingCmd = &cobra.Command{
 var confCss0Cmd = &cobra.Command{
 	Use:   "css0",
 	Short: "",
-	Long: `nrrg conf css0 can be used to get/set Common search space(CSS0) related network configurations.`,
+	Long:  `nrrg conf css0 can be used to get/set Common search space(CSS0) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2122,12 +2291,12 @@ var confCss0Cmd = &cobra.Command{
 var confCoreset1Cmd = &cobra.Command{
 	Use:   "coreset1",
 	Short: "",
-	Long: `nrrg conf coreset1 can be used to get/set CORESET1 related network configurations.`,
+	Long:  `nrrg conf coreset1 can be used to get/set CORESET1 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2136,12 +2305,12 @@ var confCoreset1Cmd = &cobra.Command{
 var confUssCmd = &cobra.Command{
 	Use:   "uss",
 	Short: "",
-	Long: `nrrg conf uss can be used to get/set UE-specific search space related network configurations.`,
+	Long:  `nrrg conf uss can be used to get/set UE-specific search space related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2150,12 +2319,12 @@ var confUssCmd = &cobra.Command{
 var confDci10Cmd = &cobra.Command{
 	Use:   "dci10",
 	Short: "",
-	Long: `nrrg conf dci10 can be used to get/set DCI 1_0 (scheduling SIB1/Msg2/Msg4) related network configurations.`,
+	Long:  `nrrg conf dci10 can be used to get/set DCI 1_0 (scheduling SIB1/Msg2/Msg4) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2164,12 +2333,12 @@ var confDci10Cmd = &cobra.Command{
 var confDci11Cmd = &cobra.Command{
 	Use:   "dci11",
 	Short: "",
-	Long: `nrrg conf dci11 can be used to get/set DCI 1_1(scheduling PDSCH with C-RNTI) related network configurations.`,
+	Long:  `nrrg conf dci11 can be used to get/set DCI 1_1(scheduling PDSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2178,12 +2347,12 @@ var confDci11Cmd = &cobra.Command{
 var confMsg3Cmd = &cobra.Command{
 	Use:   "msg3",
 	Short: "",
-	Long: `nrrg conf msg3 can be used to get/set Msg3(scheduled by UL grant in RAR) related network configurations.`,
+	Long:  `nrrg conf msg3 can be used to get/set Msg3(scheduled by UL grant in RAR) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2192,12 +2361,12 @@ var confMsg3Cmd = &cobra.Command{
 var confDci01Cmd = &cobra.Command{
 	Use:   "dci01",
 	Short: "",
-	Long: `nrrg conf dci01 can be used to get/set DCI 0_1(scheduling PUSCH with C-RNTI) related network configurations.`,
+	Long:  `nrrg conf dci01 can be used to get/set DCI 0_1(scheduling PUSCH with C-RNTI) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2206,12 +2375,12 @@ var confDci01Cmd = &cobra.Command{
 var confBwpCmd = &cobra.Command{
 	Use:   "bwp",
 	Short: "",
-	Long: `nrrg conf bwp can be used to get/set generic BWP related network configurations.`,
+	Long:  `nrrg conf bwp can be used to get/set generic BWP related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2220,7 +2389,7 @@ var confBwpCmd = &cobra.Command{
 var confRachCmd = &cobra.Command{
 	Use:   "rach",
 	Short: "",
-	Long: `nrrg conf rach can be used to get/set random access related network configurations.`,
+	Long:  `nrrg conf rach can be used to get/set random access related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2234,12 +2403,12 @@ var confRachCmd = &cobra.Command{
 var confDmrsCommonCmd = &cobra.Command{
 	Use:   "dmrscommon",
 	Short: "",
-	Long: `nrrg conf dmrscommon can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
+	Long:  `nrrg conf dmrscommon can be used to get/set DMRS of SIB1/Msg2/Msg4/Msg3 related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2248,12 +2417,12 @@ var confDmrsCommonCmd = &cobra.Command{
 var confDmrsPdschCmd = &cobra.Command{
 	Use:   "dmrspdsch",
 	Short: "",
-	Long: `nrrg conf dmrspdsch can be used to get/set DMRS of PDSCH related network configurations.`,
+	Long:  `nrrg conf dmrspdsch can be used to get/set DMRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2262,7 +2431,7 @@ var confDmrsPdschCmd = &cobra.Command{
 var confPtrsPdschCmd = &cobra.Command{
 	Use:   "ptrspdsch",
 	Short: "",
-	Long: `nrrg conf ptrspdsch can be used to get/set PTRS of PDSCH related network configurations.`,
+	Long:  `nrrg conf ptrspdsch can be used to get/set PTRS of PDSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2276,7 +2445,7 @@ var confPtrsPdschCmd = &cobra.Command{
 var confDmrsPuschCmd = &cobra.Command{
 	Use:   "dmrspusch",
 	Short: "",
-	Long: `nrrg conf dmrspusch can be used to get/set DMRS of PUSCH related network configurations.`,
+	Long:  `nrrg conf dmrspusch can be used to get/set DMRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2290,7 +2459,7 @@ var confDmrsPuschCmd = &cobra.Command{
 var confPtrsPuschCmd = &cobra.Command{
 	Use:   "ptrspusch",
 	Short: "",
-	Long: `nrrg conf ptrspusch can be used to get/set PTRS of PUSCH related network configurations.`,
+	Long:  `nrrg conf ptrspusch can be used to get/set PTRS of PUSCH related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2304,12 +2473,12 @@ var confPtrsPuschCmd = &cobra.Command{
 var confPdschCmd = &cobra.Command{
 	Use:   "pdsch",
 	Short: "",
-	Long: `nrrg conf pdsch can be used to get/set PDSCH-config or PDSCH-ServingCellConfig related network configurations.`,
+	Long:  `nrrg conf pdsch can be used to get/set PDSCH-config or PDSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-	    laPrint(cmd, args)
+		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
 }
@@ -2318,7 +2487,7 @@ var confPdschCmd = &cobra.Command{
 var confPuschCmd = &cobra.Command{
 	Use:   "pusch",
 	Short: "",
-	Long: `nrrg conf pusch can be used to get/set PUSCH-config or PUSCH-ServingCellConfig related network configurations.`,
+	Long:  `nrrg conf pusch can be used to get/set PUSCH-config or PUSCH-ServingCellConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2332,7 +2501,7 @@ var confPuschCmd = &cobra.Command{
 var confNzpCsiRsCmd = &cobra.Command{
 	Use:   "nzpcsirs",
 	Short: "",
-	Long: `nrrg conf nzpcsirs can be used to get/set NZP-CSI-RS resource related network configurations.`,
+	Long:  `nrrg conf nzpcsirs can be used to get/set NZP-CSI-RS resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2346,7 +2515,7 @@ var confNzpCsiRsCmd = &cobra.Command{
 var confTrsCmd = &cobra.Command{
 	Use:   "trs",
 	Short: "",
-	Long: `nrrg conf trs can be used to get/set TRS resources related network configurations.`,
+	Long:  `nrrg conf trs can be used to get/set TRS resources related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2360,7 +2529,7 @@ var confTrsCmd = &cobra.Command{
 var confCsiImCmd = &cobra.Command{
 	Use:   "csiim",
 	Short: "",
-	Long: `nrrg conf csiim can be used to get/set CSI-IM resource related network configurations.`,
+	Long:  `nrrg conf csiim can be used to get/set CSI-IM resource related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2374,7 +2543,7 @@ var confCsiImCmd = &cobra.Command{
 var confCsiReportCmd = &cobra.Command{
 	Use:   "csireport",
 	Short: "",
-	Long: `nrrg conf csireport can be used to get/set CSI-ResourceConfig and CSI-ReportConfig related network configurations.`,
+	Long:  `nrrg conf csireport can be used to get/set CSI-ResourceConfig and CSI-ReportConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2388,7 +2557,7 @@ var confCsiReportCmd = &cobra.Command{
 var confSrsCmd = &cobra.Command{
 	Use:   "srs",
 	Short: "",
-	Long: `nrrg conf srs can be used to get/set SRS-Resource and SRS-ResourceSet related network configurations.`,
+	Long:  `nrrg conf srs can be used to get/set SRS-Resource and SRS-ResourceSet related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2402,7 +2571,7 @@ var confSrsCmd = &cobra.Command{
 var confPucchCmd = &cobra.Command{
 	Use:   "pucch",
 	Short: "",
-	Long: `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
+	Long:  `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2416,7 +2585,7 @@ var confPucchCmd = &cobra.Command{
 var confAdvancedCmd = &cobra.Command{
 	Use:   "advanced",
 	Short: "",
-	Long: `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
+	Long:  `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2432,9 +2601,9 @@ var confAdvancedCmd = &cobra.Command{
 var nrrgSimCmd = &cobra.Command{
 	Use:   "sim",
 	Short: "",
-	Long: `nrrg sim can be used to perform NR-Uu simulation.`,
+	Long:  `nrrg sim can be used to perform NR-Uu simulation.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
-		
+
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("nrrg sim called")
@@ -2502,7 +2671,7 @@ func init() {
 
 	nrrgCmd.AddCommand(nrrgSimCmd)
 
-	if cmdFlags& CMD_FLAG_NRRG != 0 {
+	if cmdFlags&CMD_FLAG_NRRG != 0 {
 		rootCmd.AddCommand(nrrgCmd)
 	}
 
@@ -2574,7 +2743,7 @@ func initConfGridSettingCmd() {
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.ssbPeriod, "ssbPeriod", "20ms", "ssb-PeriodicityServingCell[5ms,10ms,20ms,40ms,80ms,160ms]")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._maxLBar, "_maxLBar", 4, "L_max_bar as specified in 38.213")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._maxL, "_maxL", 4, "L_max as specified in 38.213")
-	confGridSettingCmd.Flags().IntSliceVar(&flags.gridsetting.candSsbIndex, "candSsbIndex", []int{0,1,2,3}, "List of candidate SSB index")
+	confGridSettingCmd.Flags().IntSliceVar(&flags.gridsetting.candSsbIndex, "candSsbIndex", []int{0, 1, 2, 3}, "List of candidate SSB index")
 	confGridSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.gridsetting._ssbScs", confGridSettingCmd.Flags().Lookup("_ssbScs"))
 	viper.BindPFlag("nrrg.gridsetting.gscn", confGridSettingCmd.Flags().Lookup("gscn"))
@@ -3391,7 +3560,7 @@ func initConfSrsCmd() {
 	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsBHop, "srsBHop", []int{0, 0, 0, 0}, "b-hop of SRS-Resource[0..3]")
 	confSrsCmd.Flags().StringSliceVar(&flags.srs._type, "_type", []string{"periodic", "periodic", "periodic", "periodic"}, "resourceType of SRS-Resource")
 	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsPeriod, "srsPeriod", []string{"sl10", "sl5", "sl5", "sl5"}, "SRS-PeriodicityAndOffset of SRS-Resource[sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl32,sl40,sl64,sl80,sl160,sl320,sl640,sl1280,sl2560]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsOffset, "srsOffset", []int{7,0,0,0}, "SRS-PeriodicityAndOffset of SRS-Resource[0..period-1]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsOffset, "srsOffset", []int{7, 0, 0, 0}, "SRS-PeriodicityAndOffset of SRS-Resource[0..period-1]")
 	confSrsCmd.Flags().StringSliceVar(&flags.srs._mSRSb, "_mSRSb", []string{"48_16_8_4", "4_4_4_4", "4_4_4_4", "4_4_4_4"}, "The m_SRS_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
 	confSrsCmd.Flags().StringSliceVar(&flags.srs._Nb, "_Nb", []string{"1_3_2_2", "1_1_1_1", "1_1_1_1", "1_1_1_1"}, "The N_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
 	confSrsCmd.Flags().IntSliceVar(&flags.srs._resSetId, "_resSetId", []int{0, 1}, "srs-ResourceSetId of SRS-ResourceSet")
@@ -3857,21 +4026,30 @@ func loadNrrgFlags() {
 	flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
 }
 
-var w =[]int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
+var w = []int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
+
 // var w =[]int{len("Flag"), len("Type"), len("Current Value")}
 
 /*
 laPrint performs left-aligned printing.
- */
+*/
 func laPrint(cmd *cobra.Command, args []string) {
 	regGreen.Printf("[INFO]: List of parameters\n")
 	cmd.Flags().VisitAll(
-		func (f *pflag.Flag) {
+		func(f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
-				if len(f.Name) > w[0] { w[0] = len(f.Name) }
-				if len(f.Value.Type()) > w[1] { w[1] = len(f.Value.Type()) }
-				if len(f.Value.String()) > w[2] { w[2] = len(f.Value.String()) }
-				 if len(f.DefValue) > w[3] { w[3] = len(f.DefValue) }
+				if len(f.Name) > w[0] {
+					w[0] = len(f.Name)
+				}
+				if len(f.Value.Type()) > w[1] {
+					w[1] = len(f.Value.Type())
+				}
+				if len(f.Value.String()) > w[2] {
+					w[2] = len(f.Value.String())
+				}
+				if len(f.DefValue) > w[3] {
+					w[3] = len(f.DefValue)
+				}
 			}
 		})
 
@@ -3879,10 +4057,10 @@ func laPrint(cmd *cobra.Command, args []string) {
 		w[i] += 4
 	}
 
-	 fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
+	fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", w[3], "Default Value", "Modifiable")
 	// fmt.Printf("%-*v%-*v%-*v%v\n", w[0], "Flag", w[1], "Type", w[2], "Current Value", "Modifiable")
 	cmd.Flags().VisitAll(
-		func (f *pflag.Flag) {
+		func(f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
 				if f.Hidden {
 					fmt.Printf("%-*v%-*v%-*v%-*v%v\n", w[0], f.Name, w[1], f.Value.Type(), w[2], f.Value, w[3], f.DefValue, !f.Hidden)

@@ -1,8 +1,8 @@
 package nrgrid
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"github.com/zhenggao2/ngapp/utils"
 )
 
@@ -63,19 +63,19 @@ var DmrsPdschPosOneSymb = map[string][]int{
 	"13_typeA_pos0": {0}, "13_typeA_pos1": {0, 11}, "13_typeA_pos2": {0, 7, 11}, "13_typeA_pos3": {0, 5, 8, 11},
 	"14_typeA_pos0": {0}, "14_typeA_pos1": {0, 11}, "14_typeA_pos2": {0, 7, 11}, "14_typeA_pos3": {0, 5, 8, 11},
 	// 38.211 vh40
-	"2_typeB_pos0" : {0}, "2_typeB_pos1" : {0}, "2_typeB_pos2" : {0}, "2_typeB_pos3" : {0},
-	"3_typeB_pos0" : {0}, "3_typeB_pos1" : {0}, "3_typeB_pos2" : {0}, "3_typeB_pos3" : {0},
-	"4_typeB_pos0" : {0}, "4_typeB_pos1" : {0}, "4_typeB_pos2" : {0}, "4_typeB_pos3" : {0},
-	"5_typeB_pos0" : {0}, "5_typeB_pos1" : {0, 4}, "5_typeB_pos2" : {0, 4}, "5_typeB_pos3" : {0, 4},
-	"6_typeB_pos0" : {0}, "6_typeB_pos1" : {0, 4}, "6_typeB_pos2" : {0, 4}, "6_typeB_pos3" : {0, 4},
-	"7_typeB_pos0" : {0}, "7_typeB_pos1" : {0, 4}, "7_typeB_pos2" : {0, 4}, "7_typeB_pos3" : {0, 4},
-	"8_typeB_pos0" : {0}, "8_typeB_pos1" : {0, 6}, "8_typeB_pos2" : {0, 3, 6}, "8_typeB_pos3" : {0, 3, 6},
-	"9_typeB_pos0" : {0}, "9_typeB_pos1" : {0, 7}, "9_typeB_pos2" : {0, 4, 7}, "9_typeB_pos3" : {0, 4, 7},
-	"10_typeB_pos0" : {0}, "10_typeB_pos1" : {0, 7}, "10_typeB_pos2" : {0, 4, 7}, "10_typeB_pos3" : {0, 4, 7},
-	"11_typeB_pos0" : {0}, "11_typeB_pos1" : {0, 8}, "11_typeB_pos2" : {0, 4, 8}, "11_typeB_pos3" : {0, 3, 6, 9},
-	"12_typeB_pos0" : {0}, "12_typeB_pos1" : {0, 9}, "12_typeB_pos2" : {0, 5, 9}, "12_typeB_pos3" : {0, 3, 6, 9},
-	"13_typeB_pos0" : {0}, "13_typeB_pos1" : {0, 9}, "13_typeB_pos2" : {0, 5, 9}, "13_typeB_pos3" : {0, 3, 6, 9},
-	"14_typeB_pos0" : nil, "14_typeB_pos1" : nil, "14_typeB_pos2" : nil, "14_typeB_pos3" : nil,
+	"2_typeB_pos0": {0}, "2_typeB_pos1": {0}, "2_typeB_pos2": {0}, "2_typeB_pos3": {0},
+	"3_typeB_pos0": {0}, "3_typeB_pos1": {0}, "3_typeB_pos2": {0}, "3_typeB_pos3": {0},
+	"4_typeB_pos0": {0}, "4_typeB_pos1": {0}, "4_typeB_pos2": {0}, "4_typeB_pos3": {0},
+	"5_typeB_pos0": {0}, "5_typeB_pos1": {0, 4}, "5_typeB_pos2": {0, 4}, "5_typeB_pos3": {0, 4},
+	"6_typeB_pos0": {0}, "6_typeB_pos1": {0, 4}, "6_typeB_pos2": {0, 4}, "6_typeB_pos3": {0, 4},
+	"7_typeB_pos0": {0}, "7_typeB_pos1": {0, 4}, "7_typeB_pos2": {0, 4}, "7_typeB_pos3": {0, 4},
+	"8_typeB_pos0": {0}, "8_typeB_pos1": {0, 6}, "8_typeB_pos2": {0, 3, 6}, "8_typeB_pos3": {0, 3, 6},
+	"9_typeB_pos0": {0}, "9_typeB_pos1": {0, 7}, "9_typeB_pos2": {0, 4, 7}, "9_typeB_pos3": {0, 4, 7},
+	"10_typeB_pos0": {0}, "10_typeB_pos1": {0, 7}, "10_typeB_pos2": {0, 4, 7}, "10_typeB_pos3": {0, 4, 7},
+	"11_typeB_pos0": {0}, "11_typeB_pos1": {0, 8}, "11_typeB_pos2": {0, 4, 8}, "11_typeB_pos3": {0, 3, 6, 9},
+	"12_typeB_pos0": {0}, "12_typeB_pos1": {0, 9}, "12_typeB_pos2": {0, 5, 9}, "12_typeB_pos3": {0, 3, 6, 9},
+	"13_typeB_pos0": {0}, "13_typeB_pos1": {0, 9}, "13_typeB_pos2": {0, 5, 9}, "13_typeB_pos3": {0, 3, 6, 9},
+	"14_typeB_pos0": nil, "14_typeB_pos1": nil, "14_typeB_pos2": nil, "14_typeB_pos3": nil,
 }
 
 // refer to 3GPP 38.211 vh40
@@ -626,46 +626,46 @@ var Dci01NonCbSri = map[string][]int{
 // key=(antenna ports, number of layers, TPMI), val=DMRS port index per PUSCH antenna port
 var CbPuschTpmiDmrsAssociation = map[string][]string{
 	// one layer with two antenna ports
-	"ports2_1_0" : {"0", "-"},
-	"ports2_1_1" : {"-", "0"},
+	"ports2_1_0": {"0", "-"},
+	"ports2_1_1": {"-", "0"},
 	// two layers with two antenna ports
-	"ports2_2_0" : {"0", "1"},
+	"ports2_2_0": {"0", "1"}, // maxNrofPorts=n1 or n2
 	// one layer with four antenna ports (transform precoding is either enabled or disabled)
-	"ports4_1_0" : {"0", "-", "-", "-"},
-	"ports4_1_1" : {"-", "0", "-", "-"},
-	"ports4_1_2" : {"-", "-", "0", "-"},
-	"ports4_1_3" : {"-", "-", "-", "0"},
-	"ports4_1_4" : {"0", "-", "0", "-"},
-	"ports4_1_5" : {"0", "-", "0", "-"},
-	"ports4_1_6" : {"0", "-", "0", "-"},
-	"ports4_1_7" : {"0", "-", "0", "-"},
-	"ports4_1_8" : {"-", "0", "-", "0"},
-	"ports4_1_9" : {"-", "0", "-", "0"},
-	"ports4_1_10" : {"-", "0", "-", "0"},
-	"ports4_1_11" : {"-", "0", "-", "0"},
+	"ports4_1_0":  {"0", "-", "-", "-"},
+	"ports4_1_1":  {"-", "0", "-", "-"},
+	"ports4_1_2":  {"-", "-", "0", "-"},
+	"ports4_1_3":  {"-", "-", "-", "0"},
+	"ports4_1_4":  {"0", "-", "0", "-"},
+	"ports4_1_5":  {"0", "-", "0", "-"},
+	"ports4_1_6":  {"0", "-", "0", "-"},
+	"ports4_1_7":  {"0", "-", "0", "-"},
+	"ports4_1_8":  {"-", "0", "-", "0"},
+	"ports4_1_9":  {"-", "0", "-", "0"},
+	"ports4_1_10": {"-", "0", "-", "0"},
+	"ports4_1_11": {"-", "0", "-", "0"},
 	// two layers with four antenna ports
-	"ports4_2_0" : {"0", "1", "-", "-"},
-	"ports4_2_1" : {"0", "-", "1", "-"},
-	"ports4_2_2" : {"0", "-", "-", "1"},
-	"ports4_2_3" : {"-", "0", "1", "-"},
-	"ports4_2_4" : {"-", "0", "-", "1"},
-	"ports4_2_5" : {"-", "-", "0", "1"},
-	"ports4_2_6" : {"0", "1", "0", "1"},
-	"ports4_2_7" : {"0", "1", "0", "1"},
-	"ports4_2_8" : {"0", "1", "0", "1"},
-	"ports4_2_9" : {"0", "1", "0", "1"},
-	"ports4_2_10" : {"0", "1", "0", "1"},
-	"ports4_2_11" : {"0", "1", "0", "1"},
-	"ports4_2_12" : {"0", "1", "0", "1"},
-	"ports4_2_13" : {"0", "1", "0", "1"},
+	"ports4_2_0":  {"0", "1", "-", "-"}, // maxNrofPorts=n1 or n2
+	"ports4_2_1":  {"0", "-", "1", "-"},
+	"ports4_2_2":  {"0", "-", "-", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_3":  {"-", "0", "1", "-"}, // maxNrofPorts=n1 or n2
+	"ports4_2_4":  {"-", "0", "-", "1"},
+	"ports4_2_5":  {"-", "-", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_6":  {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_7":  {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_8":  {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_9":  {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_10": {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_11": {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_12": {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
+	"ports4_2_13": {"0", "1", "0", "1"}, // maxNrofPorts=n1 or n2
 	// three layers with four antenna ports
-	"ports4_3_0" : {"0", "1", "2", "-"},
-	"ports4_3_1" : {"0", "1", "0", "2"},
-	"ports4_3_2" : {"0", "1", "0", "2"},
+	"ports4_3_0": {"0", "1", "2", "-"}, // maxNrofPorts=n1 or n2
+	"ports4_3_1": {"0", "1", "0", "2"}, // maxNrofPorts=n1 or n2
+	"ports4_3_2": {"0", "1", "0", "2"}, // maxNrofPorts=n1 or n2
 	// four layers with four antenna ports
-	"ports4_4_0" : {"0", "1", "2", "3"},
-	"ports4_4_1" : {"0,1", "2,3", "0,1", "2,3"},
-	"ports4_4_2" : {"0,1", "2,3", "0,1", "2,3"},
+	"ports4_4_0": {"0", "1", "2", "3"},         // maxNrofPorts=n1 or n2
+	"ports4_4_1": {"0,1", "2,3", "0,1", "2,3"}, // maxNrofPorts=n1 or n2
+	"ports4_4_2": {"0,1", "2,3", "0,1", "2,3"}, // maxNrofPorts=n1 or n2
 }
 
 // refer to 3GPP 38.331 vf30
@@ -1035,12 +1035,11 @@ func makeSliv(S, L int) (int, error) {
 	if (L - 1) <= 7 {
 		sliv = 14*(L-1) + S
 	} else {
-		sliv = 14*(14-L+1) + (14-1-S)
+		sliv = 14*(14-L+1) + (14 - 1 - S)
 	}
 
 	return sliv, nil
 }
-
 
 // ToSliv returns SLIV from given S/L.
 //  S: starting symbol
@@ -1053,7 +1052,7 @@ func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
 	if mappingType == "typeA" {
 		prefix += "0"
 	} else {
-	    prefix += "1"
+		prefix += "1"
 	}
 
 	if cp == "normal" {
@@ -1066,7 +1065,7 @@ func ToSliv(S, L int, sch, mappingType, cp string) (int, error) {
 	var sliv int
 	var exist bool
 	if sch == "PDSCH" {
-	    sliv, exist = PdschToSliv[key]
+		sliv, exist = PdschToSliv[key]
 	} else {
 		sliv, exist = PuschToSliv[key]
 	}
