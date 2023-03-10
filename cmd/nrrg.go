@@ -1586,6 +1586,36 @@ func validatePdschAntPorts() error {
 func validateMsg3TdRa() error {
 	regYellow.Printf("-->calling validateMsg3TdRa\n")
 
+	// refer to 3GPP TS 38.214 vh40:
+	//  - Table 6.1.2.1.1-1: Applicable PUSCH time domain resource allocation for common search space and DCI format 0_0 in UE specific search space
+	//  - Table 6.1.2.1.1-1A: Applicable PUSCH time domain resource allocation for DCI format 0_1 in UE specific search space scrambled with C-RNTI, MCS-C-RNTI, CS-RNTI or SP-CSI-RNTI
+	//  - Table 6.1.2.1.1-1B: Applicable PUSCH time domain resource allocation for DCI format 0_2 in UE specific search space scrambled with C-RNTI, MCS-C-RNTI, CS-RNTI or SP-CSI-RNTI
+	//  - Table 6.1.2.1.1-2: Default PUSCH time domain resource allocation A for normal CP
+	//  - Table 6.1.2.1.1-3: Default PUSCH time domain resource allocation A for extended CP
+	row := flags.msg3.msg3TdRa + 1
+	var p *nrgrid.TimeAllocInfo
+	var exist bool
+
+	if flags.bwp._bwpCp[INI_UL_BWP] == "normal" {
+		p, exist = nrgrid.PuschTimeAllocDefANormCp[row]
+	} else {
+		p, exist = nrgrid.PuschTimeAllocDefAExtCp[row]
+	}
+
+	if !exist {
+		return errors.New(fmt.Sprintf("Invalid PUSCH time domain allocation: msg3TdRa=%v, dmrsTypeAPos=%v\n", flags.msg3.msg3TdRa, flags.gridsetting.dmrsTypeAPos))
+	} else {
+		// update Msg3 info
+		fmt.Printf("TimeAllocInfo(Msg3 PUSCH): %v\n", *p)
+		flags.msg3._tdMappingType = p.MappingType
+		flags.msg3._tdK2 = p.K0K2 + nrgrid.PuschTimeAllocK2j[flags.gridsetting.scs]
+		flags.msg3._tdDelta = nrgrid.PuschTimeAllocMsg3K2Delta[flags.gridsetting.scs]
+		flags.msg3._tdStartSymb = p.S
+		flags.msg3._tdNumSymbs = p.L
+		sliv, _ := nrgrid.ToSliv(p.S, p.L, "PUSCH", p.MappingType, "normal", "typeA")
+		flags.msg3._tdSliv = sliv
+	}
+
 	// update TBS info
 	err := updateMsg3PuschTbs()
 	if err != nil {
@@ -1602,100 +1632,114 @@ func updateMsg3PuschTbs() error {
 	td := flags.msg3._tdNumSymbs
 	fd := flags.msg3.msg3FdNumRbs
 
-	// update 'cdm groups without data' of DMRS for Msg3 PUSCH
+	// update DMRS for Msg3 PUSCH
+	// 2023-3-10: assume Msg3 follows the same rules as DCI 0_0 with TC-RNTI which is used for Msg3 retransmission
 	if td <= 2 && flags.rach.msg3Tp == "disabled" {
 		flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3] = 1
 	} else {
 		flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3] = 2
 	}
+	flags.dmrsCommon._dmrsPorts[DMRS_MSG3] = 0
+	flags.dmrsCommon._numFrontLoadSymbs[DMRS_MSG3] = 1
 
-	// calculate DMRS overhead
-	mappingType := flags.msg3._tdMappingType
-	freqHop := flags.msg3.msg3FdFreqHop
-	var v1, v2, v []int
-	var e1, e2, e bool
-	var key1, key2, key string
-	// refer to 3GPP TS 38.214 vfb0: 6.2.2	UE DM-RS transmission procedure
+	// refer to 3GPP TS 38.214 vh40: 6.2.2	UE DM-RS transmission procedure
+	// When transmitted PUSCH is neither scheduled by DCI format 0_1/0_2 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, nor being a PUSCH for Type-2 random access procedure, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and the remaining REs not used for DM-RS in the symbols are not used for any PUSCH transmission except for PUSCH with allocation duration of 2 or less OFDM symbols with transform precoding disabled, additional DM-RS can be transmitted according to the scheduling type and the PUSCH duration as specified in Table 6.4.1.1.3-3 of [4, TS38.211] for frequency hopping disabled and as specified in Table 6.4.1.1.3-6 of [4, TS38.211] for frequency hopping enabled, and
 	// If frequency hopping is disabled:
 	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH duration, or
 	// If frequency hopping is enabled:
 	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos1' and up to one additional DM-RS can be transmitted according to PUSCH duration.
-	if freqHop == "enabled" {
-		// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
-		// -	ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used.
-		// -	if the higher-layer parameter dmrs-AdditionalPosition is not set to 'pos0' and intra-slot frequency hopping is enabled according to clause 7.3.1.1.2 in [4, TS 38.212] and by higher layer, Tables 6.4.1.1.3-6 shall be used assuming dmrs-AdditionalPosition is equal to 'pos1' for each hop.
+	if flags.msg3.msg3FdFreqHop == "enabled" {
+		flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] = "pos1"
+	} else {
+		flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] = "pos2"
+	}
 
-		// refer to 3GPP TS 38.214 vfb0: 6.3	UE PUSCH frequency hopping procedure
-		// In case of intra-slot frequency hopping,
-		// -	The number of symbols in the first hop is given by floor(N_PUSCH,s_symb/2) , the number of symbols in the second hop is given by N_PUSCH,s_symb - floor(N_PUSCH,s_symb/2) , where N_PUSCH,s_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
+	// calculate DMRS overhead
+	tdMappingType := flags.msg3._tdMappingType
+	dmrsAddPos := flags.dmrsCommon._dmrsAddPos[DMRS_MSG3]
+	freqHop := flags.msg3.msg3FdFreqHop
+	var v1, v2, v []int
+	var e1, e2, e bool
+	var key1, key2, key string
+	if freqHop == "enabled" {
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
+		// refer to 3GPP 38.214 vf30 6.3
+		// In case of intra-slot frequency hopping, ... The number of symbols in the first hop is given by floor(N_PUSCH_symb/2) , the number of symbols in the second hop is given by N_PUSCH_symb - floor(N_PUSCH_symb/2) , where N_PUSCH_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
 		ld1 := utils.FloorInt(float64(td) / 2)
 		ld2 := td - ld1
-		var strDmrsTypeAPos string
-		var strDmrsMsg3AddPos string
-		if mappingType == "typeA" {
-			strDmrsTypeAPos = flags.gridsetting.dmrsTypeAPos[3:]
+
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// ...and the position l0 of the first DM-RS symbol depends on the mapping type:
+		//  -	for PUSCH mapping type A:
+		//    -	l0 is given by the higher-layer parameter dmrs-TypeA-Position
+		//  -	for PUSCH mapping type B:
+		//    -	l0 = 0
+		var l0 int
+		if tdMappingType == "typeA" {
+			l0, _ = strconv.Atoi(flags.gridsetting.dmrsTypeAPos[3:])
 		} else {
-			strDmrsTypeAPos = "0"
-		}
-		if flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] != "pos0" {
-			strDmrsMsg3AddPos = "pos1"
-		} else {
-			strDmrsMsg3AddPos = "pos0"
+			l0 = 0
 		}
 
-		key1 = fmt.Sprintf("%v_%v_%v_%v_1st", ld1, mappingType, strDmrsTypeAPos, strDmrsMsg3AddPos)
-		key2 = fmt.Sprintf("%v_%v_%v_%v_2nd", ld2, mappingType, strDmrsTypeAPos, strDmrsMsg3AddPos)
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// if the higher-layer parameter dmrs-AdditionalPosition is not set to 'pos0' and intra-slot frequency hopping is enabled according to clause 7.3.1.1.2 in [4, TS 38.212] and by higher layer, Tables 6.4.1.1.3-6 shall be used assuming dmrs-AdditionalPosition is equal to 'pos1' for each hop.
+		if dmrsAddPos != "pos0" {
+			dmrsAddPos = "pos1"
+		}
+
+		key1 = fmt.Sprintf("%v_%v_%v_%v_1st", ld1, tdMappingType, l0, dmrsAddPos)
+		key2 = fmt.Sprintf("%v_%v_%v_%v_2nd", ld2, tdMappingType, l0, dmrsAddPos)
 		v1, e1 = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key1]
 		v2, e2 = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[key2]
-		if !e1 || v1 == nil || !e2 || v2 == nil {
-			return errors.New(fmt.Sprintf("Invalid key(key_1stHop=\"%v\", key_2ndHop=\"%v\") when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key1, key2))
+		if !e1 || v1 == nil {
+			return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key1))
+		}
+		if !e2 || v2 == nil {
+			return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWithIntraSlotFh!", key2))
 		}
 	} else {
-		// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
-		// -	ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
-		// -	ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// refer to 38.211 vh40 6.4.1.1.3
+		// ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
 		var ld int
-		if mappingType == "typeA" {
+		if tdMappingType == "typeA" {
 			ld = flags.msg3._tdStartSymb + td
 		} else {
 			ld = td
 		}
-		key = fmt.Sprintf("%v_%v_%v", ld, mappingType, flags.dmrsCommon._dmrsAddPos[DMRS_MSG3])
+		key = fmt.Sprintf("%v_%v_%v", ld, tdMappingType, dmrsAddPos)
 		v, e = nrgrid.DmrsPuschPosOneSymbWoIntraSlotFh[key]
 		if !e || v == nil {
-			return errors.New(fmt.Sprintf("Invalid key(=\"%v\") when referring DmrsPuschPosOneSymbWoIntraSlotFh!", key))
+			return errors.New(fmt.Sprintf("Invalid key(=%v) when referring DmrsPuschPosOneSymbWoIntraSlotFh!", key))
 		}
 	}
 
-	// refer to 3GPP TS 38.214 vfb0: 6.2.2	UE DM-RS transmission procedure
-	// When transmitted PUSCH is neither scheduled by DCI format 0_1 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and...
-	// refer to 3GPP TS 38.211 vf80: 6.4.1.1.3	Precoding and mapping to physical resources
-	// For PUSCH mapping type A, the case dmrs-AdditionalPosition equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2'.
-	// For PUSCH mapping type A, ld = 4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
-	//
+	// refer to 38.211 vh40 6.4.1.1.3
+	// For PUSCH mapping type A,
+	//  - the case dmrs-AdditionalPosition is equal to 'pos3' is only supported when dmrs-TypeA-Position is equal to 'pos2';
+	//  - ld=4 symbols in Table 6.4.1.1.3-4 is only applicable when dmrs-TypeA-Position is equal to 'pos2'.
+	// Table 6.4.1.1.3-4: PUSCH DM-RS positions l_bar within a slot for double-symbol DM-RS and intra-slot frequency hopping disabled.
 	// Rationale: dmrsAddPos of Msg3 is either 'pos1' or 'pos2', so restriction #1 is not relevant. Table 6.4.1.1.3-4 is for double symbols front-loaded DMRS, so restriction #2 is not relevant.
 
 	var dmrsOh int
 	if freqHop == "enabled" {
 		dmrsOh = (2 * flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3]) * (len(v1) + len(v2))
-		fmt.Printf("Msg3 DMRS overhead: cdmGroupsWoData=%v, key1=\"%v\", val1=%v, key2=\"%v\", val2=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key1, v1, key2, v2)
+		fmt.Printf("Msg3 PUSCH DMRS overhead: cdmGroupsWoData=%v, key1=%v, val1=%v, key2=%v, val2=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key1, v1, key2, v2)
 	} else {
 		dmrsOh = (2 * flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3]) * len(v)
-		fmt.Printf("Msg3 DMRS overhead: cdmGroupsWoData=%v, key=\"%v\", val=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key, v)
+		fmt.Printf("Msg3 PUSCH DMRS overhead: cdmGroupsWoData=%v, key=%v, val=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key, v)
 	}
 
-	var tp bool
-	if flags.rach.msg3Tp == "enabled" {
-		tp = true
-	} else {
-		tp = false
-	}
-
-	tbs, err := getTbs("PUSCH", tp, "MSG3", "qam64", td, fd, flags.msg3.msg3McsCw0, 1, dmrsOh, 0, 1)
+	// 38.214 vh40 6.1.4.2	Transport block size determination
+	// For Msg3 or MsgA PUSCH transmission the N_PRB_oh is always set to 0.
+	// 38.214 vh40 6.1.1	Transmission schemes
+	// If PUSCH is scheduled by DCI format 0_0, the PUSCH transmission is based on a single antenna port.
+	tbs, err := getTbs("PUSCH", flags.rach.msg3Tp == "enabled", "MSG3", "qam64", td, fd, flags.msg3.msg3McsCw0, 1, dmrsOh, 0, 1)
 	if err != nil {
 		return err
 	} else {
-		fmt.Printf("CW0 TBS=%v bits\n", tbs)
+		fmt.Printf("Msg3 PUSCH CW0 TBS=%v bits\n", tbs)
 		flags.msg3._tbs = tbs
 	}
 
