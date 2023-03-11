@@ -45,9 +45,7 @@ var (
 
 type NrrgFlags struct {
 	gridsetting   GridSettingFlags
-	mib           MibFlags
 	commonSetting CommonSettingFlags
-	css0          Css0Flags
 	coreset1      Coreset1Flags
 	uss           UssFlags
 	dci10         Dci10Flags
@@ -72,81 +70,58 @@ type NrrgFlags struct {
 	advanced      AdvancedFlags
 }
 
-// flags for grid settings
+// grid setting flags
 type GridSettingFlags struct {
-	// 2023-2-19: For simplicity, assume the same SCS for SSB/RMSI/Carrier/BWP etc.
-	scs string
+	scs string // Unified subcarrier spacing of SSB, RMSI, carrier and BWP
 
-	// freqBand settings
-	band        string
-	_duplexMode string
-	_maxDlFreq  int
-	_freqRange  string
-	_unlicensed bool
+	band        string // NR frequency band, n1~n256 for FR1, n257~n512 for FR2-1 and FR2-2
+	_duplexMode string // Duplex mode, which can be FDD/TDD/SUL/SDL
+	_maxDlFreq  int    // Maximum DL frequency in MHz
+	_freqRange  string // Type of frequency range, which can be FR1, FR2-1 or FR2-2
+	_unlicensed bool   // Whether the frequency band can be used for NR-U
 
-	// ssbGrid settings
-	_ssbScs      string
-	gscn         int
-	_ssbPattern  string
-	_kSsbScs     float64
-	_kSsb        int
-	_nCrbSsbScs  float64
-	_nCrbSsb     int
-	ssbPeriod    string
-	_maxLBar     int
-	_maxL        int
-	candSsbIndex []int
+	_ssbScs      string  // Subcarrier spacing of SSB
+	gscn         int     // GSCN of SSB
+	_ssbPattern  string  // SSB pattern, which can be Case A, Case B, Case C, Case D, Case E, Case F, and Case G
+	_kSsbScs     float64 // Subcarrier spacing of k_SSB
+	_kSsb        int     // The k_SSB which is determined by the ssb-SubcarrierOffset of MIB and PBCH payload
+	_nCrbSsbScs  float64 // Subcarrier spacing of N_CRB_SSB
+	_nCrbSsb     int     // The N_CRB_SSB which can be obtained from offsetToPointA
+	ssbPeriod    string  // Periodicity of SSB
+	_maxLBar     int     // Maximum number of SSBs in a half frame
+	_maxL        int     // Maximum number of transmitted SSBs within a half frame in a cell
+	candSsbIndex []int   // List of candidate SSB index
 
-	// carrierGrid settings
-	_carrierScs      string
-	bw               string
-	dlArfcn          int
-	_carrierNumRbs   int
-	_offsetToCarrier int
+	_carrierScs      string // The subcarrierSpacing of SCS-SpecificCarrier
+	bw               string // Channel bandwidth of the carrier in MHz
+	dlArfcn          int    // DL ARFCN of the carrier
+	_carrierNumRbs   int    // The carrierBandwidth of SCS-SpecificCarrier
+	_offsetToCarrier int    // The offsetToCarrier of SCS-SpecificCarrier
 
-	// MIB settings
-	_mibCommonScs            string
-	rmsiCoreset0             int
-	rmsiCss0                 int
-	_coreset0MultiplexingPat int
-	_coreset0NumRbs          int
-	_coreset0NumSymbs        int
-	_coreset0OffsetList      []int
-	_coreset0Offset          int
-	_sfn                     int
-	_hrf                     int
-	dmrsTypeAPos             string
+	_mibCommonScs            string // The subCarrierSpacingCommon of MIB
+	rmsiCoreset0             int    // The pdcch-ConfigSIB1 of MIB which determines CORESET0
+	_coreset0MultiplexingPat int    // The multiplexing pattern of CORESET0, which can be multiplexing pattern 1/2/3
+	_coreset0NumRbs          int    // Number of RBs of CORESET0
+	_coreset0NumSymbs        int    // Number of OFDM symbols of CORESET0
+	_coreset0OffsetList      []int  // List of offset of CORESET0
+	_coreset0Offset          int    // Actual offset of CORESET0
+	rmsiCss0                 int    // The pdcch-ConfigSIB1 of MIB which determines CSS0
+	_css0AggLevel            int    // CCE aggregation level of the PDCCH candidates of CSS0
+	_css0NumCandidates       string // Number of PDCCH candidates of CSS0
+	dmrsTypeAPos             string // The dmrs-TypeA-Position of MIB
+	_sfn                     int    // The systemFrameNumber of MIB
+	_hrf                     int    // The half-frame indicator for SSB transmission
 }
 
-// mib
-type MibFlags struct {
-	//_mibCommonScs                string
-	//rmsiCoreset0             int
-	//rmsiCss0                 int
-	//_coreset0MultiplexingPat int
-	//_coreset0NumRbs          int
-	//_coreset0NumSymbs        int
-	//_coreset0OffsetList      []int
-	//_coreset0Offset          int
-}
-
-// common setting
+// common setting flags
 type CommonSettingFlags struct {
-	pci     int
-	numUeAp string
-	// common setting - tdd ul/dl config common
-	_refScs       string
-	patPeriod     []string
-	patNumDlSlots []int
-	patNumDlSymbs []int
-	patNumUlSymbs []int
-	patNumUlSlots []int
-}
-
-// CSS0
-type Css0Flags struct {
-	css0AggLevel      int
-	css0NumCandidates string
+	pci           int      // Physical cell identity, which can be 0~1007
+	_refScs       string   // The referenceSubcarrierSpacing of TDD-UL-DL-ConfigCommon
+	patPeriod     []string // The dl-UL-TransmissionPeriodicityv of TDD-UL-DL-Pattern, and max length is 2
+	patNumDlSlots []int    // The nrofDownlinkSlots of TDD-UL-DL-Pattern, and max length is 2
+	patNumDlSymbs []int    // The nrofDownlinkSymbols of TDD-UL-DL-Pattern, and max length is 2
+	patNumUlSymbs []int    // The nrofUplinkSymbols of TDD-UL-DL-Pattern, and max length is 2
+	patNumUlSlots []int    // The nrofUplinkSlots of TDD-UL-DL-Pattern, and max length is 2
 }
 
 // CORESET1
@@ -321,17 +296,18 @@ type RachFlags struct {
 	_raKBar                            int
 }
 
-// DMRS for SIB1/Msg2/Msg4/Msg3
+// SIB1/Msg2/Msg4/Msg3 DMRS flags
 type DmrsCommonFlags struct {
-	_schInfo           []string
-	_dmrsType          []string
-	_dmrsAddPos        []string
-	_maxLength         []string
-	_dmrsPorts         []int
-	_cdmGroupsWoData   []int
-	_numFrontLoadSymbs []int
-	_tdL               []string
-	_fdK               []string
+	_schInfo           []string // Scheduled contents, which are in sequence of SIB1, Msg2, Msg4 and Msg3
+	_dmrsType          []string // DMRS configuration type, which can be type1 or type2
+	_dmrsAddPos        []string // The dmrs-AdditionalPosition
+	_maxLength         []string // The maxLength
+	_dmrsPorts         []int    // DMRS antenna port(s)
+	_cdmGroupsWoData   []int    // Number of CDM groups without data
+	_numFrontLoadSymbs []int    // Number of front-load OFDM symbol(s) for DMRS
+	_tdL               [][]int  // TD pattern of DMRS in a single slot
+	_tdL2              []int    // TD pattern of DMRS in a single slot, only valid for the 2nd hop of Msg3 DMRS when intra-slot frequency hopping is enabled
+	_fdK               [][]int  // FD pattern of DMRS in a single PRB
 }
 
 // DMRS for PDSCH
@@ -342,8 +318,8 @@ type DmrsPdschFlags struct {
 	_dmrsPorts         []int
 	_cdmGroupsWoData   int
 	_numFrontLoadSymbs int
-	_tdL               string
-	_fdK               string
+	_tdL               []int
+	_fdK               []int
 }
 
 // PTRS for PDSCH
@@ -363,8 +339,9 @@ type DmrsPuschFlags struct {
 	_dmrsPorts            []int
 	_cdmGroupsWoData      int
 	_numFrontLoadSymbs    int
-	_tdL                  string
-	_fdK                  string
+	_tdL                  []int
+	_tdL2                 []int
+	_fdK                  []int
 	_nonCbSri             []int
 	_dmrsPosLBar          []int // PUSCH DMRS positions l_bar when intra-slot FH is disabled, or l_bar of 1st hop when intra-slot FH is enabled
 	_dmrsPosLBarSecondHop []int // PUSCH DMRS positions l_bar of 2nd hop when intra-slot is enabled
@@ -576,6 +553,12 @@ var confGridSettingCmd = &cobra.Command{
 -carrierGrid: Carrier grid related configurations`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
+		if flags.dmrsCommon._tdL == nil {
+			flags.dmrsCommon._tdL = make([][]int, 4)
+		}
+		if flags.dmrsCommon._fdK == nil {
+			flags.dmrsCommon._fdK = make([][]int, 4)
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.WatchConfig()
@@ -1274,7 +1257,7 @@ func validateDci10TdRa() error {
 			// update DMRS info
 			// refer to 3GPP TS 38.214 vh40: 5.1.6.2	DM-RS reception procedure
 			// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
-			// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume that ... and in addition:
+			// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, ...the UE shall assume that the PDSCH is not present in any symbol carrying DM-RS except for PDSCH with allocation duration of 2 symbols with PDSCH mapping type B (described in clause 7.4.1.1.2 of [4, TS 38.211]), and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and that all the remaining orthogonal antenna ports are not associated with transmission of PDSCH to another UE and in addition:
 			// 	-For PDSCH with mapping type A and type B, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
 			//	-For PDSCH with allocation duration of 2 symbols with mapping type B, the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
 			if p.L == 2 {
@@ -1282,7 +1265,16 @@ func validateDci10TdRa() error {
 			} else {
 				flags.dmrsCommon._cdmGroupsWoData[i] = 2
 			}
+			flags.dmrsCommon._dmrsType[i] = "type1"
+			flags.dmrsCommon._dmrsPorts[i] = 1000
+			flags.dmrsCommon._maxLength[i] = "len1"
+			flags.dmrsCommon._numFrontLoadSymbs[i] = 1
 			flags.dmrsCommon._dmrsAddPos[i] = "pos2"
+
+			// update TD/FD pattern of DMRS
+			flags.dmrsCommon._tdL[i], flags.dmrsCommon._fdK[i] = getDmrsPdschTdFdPattern("type1", p.MappingType, p.S, p.L, 1, "pos2", flags.dmrsCommon._cdmGroupsWoData[i])
+			fmt.Printf("TD pattern within a slot of DMRS for %v: %v\n", flags.dmrsCommon._schInfo[i], flags.dmrsCommon._tdL[i])
+			fmt.Printf("FD pattern within a PRB of DMRS for %v: %v\n", flags.dmrsCommon._schInfo[i], flags.dmrsCommon._fdK[i])
 
 			// update TBS info
 			err := updateDci10Tbs(i)
@@ -1453,6 +1445,11 @@ func validatePdschAntPorts() error {
 	flags.dmrsPdsch._cdmGroupsWoData = p.CdmGroups
 	flags.dmrsPdsch._dmrsPorts = p.DmrsPorts
 	flags.dmrsPdsch._numFrontLoadSymbs = p.NumDmrsSymbs
+
+	// determine TD/FD pattern of DMRS for PDSCH
+	flags.dmrsPdsch._tdL, flags.dmrsPdsch._fdK = getDmrsPdschTdFdPattern(dmrsType, flags.dci11._dci11TdMappingType, flags.dci11._dci11TdStartSymb, flags.dci11._dci11TdNumSymbs, p.NumDmrsSymbs, flags.dmrsPdsch.pdschDmrsAddPos, p.CdmGroups)
+	fmt.Printf("TD pattern within a slot of DMRS for PDSCH(DCI 1_1): %v\n", flags.dmrsPdsch._tdL)
+	fmt.Printf("FD pattern within a PRB of DMRS for PDSCH(DCI 1_1): %v\n", flags.dmrsPdsch._fdK)
 
 	// update PTRS for PDSCH
 	maxDmrsPorts := utils.MaxInt(flags.dmrsPdsch._dmrsPorts)
@@ -1639,7 +1636,9 @@ func updateMsg3PuschTbs() error {
 	} else {
 		flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3] = 2
 	}
+	flags.dmrsCommon._dmrsType[DMRS_MSG3] = "type1"
 	flags.dmrsCommon._dmrsPorts[DMRS_MSG3] = 0
+	flags.dmrsCommon._maxLength[DMRS_MSG3] = "len1"
 	flags.dmrsCommon._numFrontLoadSymbs[DMRS_MSG3] = 1
 
 	// refer to 3GPP TS 38.214 vh40: 6.2.2	UE DM-RS transmission procedure
@@ -1648,11 +1647,21 @@ func updateMsg3PuschTbs() error {
 	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH duration, or
 	// If frequency hopping is enabled:
 	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos1' and up to one additional DM-RS can be transmitted according to PUSCH duration.
-	if flags.msg3.msg3FdFreqHop == "enabled" {
+	if flags.msg3.msg3FdFreqHop == "intra-slot" {
 		flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] = "pos1"
 	} else {
 		flags.dmrsCommon._dmrsAddPos[DMRS_MSG3] = "pos2"
 	}
+
+	// determine TD/FD pattern of DMRS for Msg3 PUSCH
+	flags.dmrsCommon._tdL[DMRS_MSG3], flags.dmrsCommon._tdL2, flags.dmrsCommon._fdK[DMRS_MSG3] = getDmrsPuschTdFdPattern("type1", flags.msg3._tdMappingType, flags.msg3._tdStartSymb, flags.msg3._tdNumSymbs, 1, flags.dmrsCommon._dmrsAddPos[DMRS_MSG3], flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], flags.msg3.msg3FdFreqHop)
+	if flags.msg3.msg3FdFreqHop != "intra-slot" {
+		fmt.Printf("TD pattern within a slot of DMRS for %v: %v\n", flags.dmrsCommon._schInfo[DMRS_MSG3], flags.dmrsCommon._tdL[DMRS_MSG3])
+	} else {
+		fmt.Printf("TD pattern within a slot of DMRS for %v (1st hop): %v\n", flags.dmrsCommon._schInfo[DMRS_MSG3], flags.dmrsCommon._tdL[DMRS_MSG3])
+		fmt.Printf("TD pattern within a slot of DMRS for %v (2nd hop): %v\n", flags.dmrsCommon._schInfo[DMRS_MSG3], flags.dmrsCommon._tdL2)
+	}
+	fmt.Printf("FD pattern within a PRB of DMRS for %v: %v\n", flags.dmrsCommon._schInfo[DMRS_MSG3], flags.dmrsCommon._fdK[DMRS_MSG3])
 
 	// calculate DMRS overhead
 	tdMappingType := flags.msg3._tdMappingType
@@ -1661,7 +1670,7 @@ func updateMsg3PuschTbs() error {
 	var v1, v2, v []int
 	var e1, e2, e bool
 	var key1, key2, key string
-	if freqHop == "enabled" {
+	if freqHop == "intra-slot" {
 		// refer to 3GPP 38.211 vh40 6.4.1.1.3
 		// ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
 		// refer to 3GPP 38.214 vf30 6.3
@@ -1723,7 +1732,7 @@ func updateMsg3PuschTbs() error {
 	// Rationale: dmrsAddPos of Msg3 is either 'pos1' or 'pos2', so restriction #1 is not relevant. Table 6.4.1.1.3-4 is for double symbols front-loaded DMRS, so restriction #2 is not relevant.
 
 	var dmrsOh int
-	if freqHop == "enabled" {
+	if freqHop == "intra-slot" {
 		dmrsOh = (2 * flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3]) * (len(v1) + len(v2))
 		fmt.Printf("Msg3 PUSCH DMRS overhead: cdmGroupsWoData=%v, key1=%v, val1=%v, key2=%v, val2=%v\n", flags.dmrsCommon._cdmGroupsWoData[DMRS_MSG3], key1, v1, key2, v2)
 	} else {
@@ -1934,6 +1943,16 @@ func validatePuschAntPorts() error {
 	if rank != len(flags.dmrsPusch._dmrsPorts) {
 		return errors.New(fmt.Sprintf("Inconsistent PUSCH rank and DMRS ports!(rank=%v, dmrsPorts=%v)", rank, flags.dmrsPusch._dmrsPorts))
 	}
+
+	// determine TD/FD pattern of DMRS for PUSCH
+	flags.dmrsPusch._tdL, flags.dmrsPusch._tdL2, flags.dmrsPusch._fdK = getDmrsPuschTdFdPattern(dmrsType, flags.dci01.dci01TdMappingType, flags.dci01.dci01TdStartSymb, flags.dci01.dci01TdNumSymbs, p.NumDmrsSymbs, flags.dmrsPusch.puschDmrsAddPos, p.CdmGroups, flags.dci01.dci01FdFreqHop)
+	if flags.dci01.dci01FdFreqHop != "intra-slot" {
+		fmt.Printf("TD pattern within a slot of DMRS for PUSCH (DCI 0_1): %v\n", flags.dmrsPusch._tdL)
+	} else {
+		fmt.Printf("TD pattern within a slot of DMRS for PUSCH(DCI 0_1) (1st hop): %v\n", flags.dmrsPusch._tdL)
+		fmt.Printf("TD pattern within a slot of DMRS for PUSCH(DCI 0_1) (2nd hop): %v\n", flags.dmrsPusch._tdL2)
+	}
+	fmt.Printf("FD pattern within a PRB of DMRS for PUSCH(DCI 0_1): %v\n", flags.dmrsPusch._fdK)
 
 	// update PTRS for PUSCH
 	// 3GPP 38.214 vh40
@@ -2329,25 +2348,180 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	return tbs, nil
 }
 
+// getDmrsPdschTdFdPattern determines the DMRS for PDSCH TD/FD pattern
+//  dmrsType: DMRS configuration type, which can be type1 or type2
+//	tdMappingType: PDSCH mapping type, which can be typeA or typeB
+//	slivS: the S of PDSCH SLIV
+//	slivL: the L of PDSCH SLIV
+//	numFrontLoadSymbs: number of front-load OFDM symbol(s) of DMRS for PDSCH
+//	dmrsAddPos: the dmrs-AdditionalPosition
+//	cdmGroupsWoData: number of CDM group(s) without data
+func getDmrsPdschTdFdPattern(dmrsType string, tdMappingType string, slivS int, slivL int, numFrontLoadSymbs int, dmrsAddPos string, cdmGroupsWoData int) ([]int, []int) {
+	// determine TD pattern
+	var tdL0, tdLd int
+	if tdMappingType == "typeA" {
+		tdL0, _ = strconv.Atoi(flags.gridsetting.dmrsTypeAPos[3:])
+		tdLd = slivS + slivL
+	} else {
+		tdL0 = 0
+		tdLd = slivL
+	}
+
+	var tdLbar, tdLap []int
+	if numFrontLoadSymbs == 1 {
+		tdLbar = nrgrid.DmrsPdschPosOneSymb[fmt.Sprintf("%v_%v_%v", tdLd, tdMappingType, dmrsAddPos)]
+		tdLap = []int{0}
+	} else {
+		tdLbar = nrgrid.DmrsPdschPosTwoSymbs[fmt.Sprintf("%v_%v_%v", tdLd, tdMappingType, dmrsAddPos)]
+		tdLap = []int{0, 1}
+	}
+
+	// replace tdLbar[0] with l0
+	tdLbar[0] = tdL0
+
+	var tdL []int
+	for _, i := range tdLbar {
+		for _, j := range tdLap {
+			tdL = append(tdL, i+j)
+		}
+	}
+
+	// determine FD pattern within a single PRB
+	var fdN, fdKap, fdDelta []int
+	if dmrsType == "type1" {
+		fdN = []int{0, 1, 2}
+		fdKap = []int{0, 1}
+		fdDelta = []int{0, 1}[:cdmGroupsWoData]
+	} else {
+		fdN = []int{0, 1}
+		fdKap = []int{0, 1}
+		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
+	}
+
+	fdK := make([]int, N_SC_RB)
+	for _, i := range fdN {
+		for _, j := range fdKap {
+			for _, k := range fdDelta {
+				if dmrsType == "type1" {
+					fdK[4*i+2*j+k] = 1
+				} else {
+					fdK[6*i+j+k] = 1
+				}
+			}
+		}
+	}
+
+	return tdL, fdK
+}
+
+// getDmrsPuschTdFdPattern determines the DMRS for PUSCH TD/FD pattern
+//  dmrsType: DMRS configuration type, which can be type1 or type2
+//	tdMappingType: PUSCH mapping type, which can be typeA or typeB
+//	slivS: the S of PUSCH SLIV
+//	slivL: the L of PUSCH SLIV
+//	numFrontLoadSymbs: number of front-load OFDM symbol(s) of DMRS for PUSCH
+//	dmrsAddPos: the dmrs-AdditionalPosition
+//	cdmGroupsWoData: number of CDM group(s) without data
+//	freqHop: indicate whether intra-slot frequency hopping is enabled
+func getDmrsPuschTdFdPattern(dmrsType string, tdMappingType string, slivS int, slivL int, numFrontLoadSymbs int, dmrsAddPos string, cdmGroupsWoData int, freqHop string) ([]int, []int, []int) {
+	// determine TD pattern
+	var tdL0, tdLd int
+	var tdLbar, tdLap []int
+	var tdL, tdL2 []int
+	if freqHop != "intra-slot" {
+		if tdMappingType == "typeA" {
+			tdL0, _ = strconv.Atoi(flags.gridsetting.dmrsTypeAPos[3:])
+			tdLd = slivS + slivL
+		} else {
+			tdL0 = 0
+			tdLd = slivL
+		}
+
+		if numFrontLoadSymbs == 1 {
+			tdLbar = nrgrid.DmrsPuschPosOneSymbWoIntraSlotFh[fmt.Sprintf("%v_%v_%v", tdLd, tdMappingType, dmrsAddPos)]
+			tdLap = []int{0}
+		} else {
+			tdLbar = nrgrid.DmrsPuschPosTwoSymbsWoIntraSlotFh[fmt.Sprintf("%v_%v_%v", tdLd, tdMappingType, dmrsAddPos)]
+			tdLap = []int{0, 1}
+		}
+		// replace tdLbar[0] with l0
+		tdLbar[0] = tdL0
+
+		for _, i := range tdLbar {
+			for _, j := range tdLap {
+				tdL = append(tdL, i+j)
+			}
+		}
+	} else {
+		tdLd1 := utils.FloorInt(float64(slivL) / 2)
+		tdLd2 := slivL - tdLd1
+		if tdMappingType == "typeA" {
+			tdL0, _ = strconv.Atoi(flags.gridsetting.dmrsTypeAPos[3:])
+		} else {
+			tdL0 = 0
+		}
+
+		// refer to 3GPP 38.211 vh40 6.4.1.1.3
+		// if the higher-layer parameter dmrs-AdditionalPosition is not set to 'pos0' and intra-slot frequency hopping is enabled according to clause 7.3.1.1.2 in [4, TS 38.212] and by higher layer, Tables 6.4.1.1.3-6 shall be used assuming dmrs-AdditionalPosition is equal to 'pos1' for each hop.
+		if dmrsAddPos != "pos0" {
+			dmrsAddPos = "pos1"
+		}
+
+		if numFrontLoadSymbs == 1 {
+			// 1st hop
+			tdLbar = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[fmt.Sprintf("%v_%v_%v_%v_1st", tdLd1, tdMappingType, tdL0, dmrsAddPos)]
+			tdLap = []int{0}
+			for _, i := range tdLbar {
+				for _, j := range tdLap {
+					tdL = append(tdL, i+j)
+				}
+			}
+
+			// 2nd hop
+			tdLbar = nrgrid.DmrsPuschPosOneSymbWithIntraSlotFh[fmt.Sprintf("%v_%v_%v_%v_2nd", tdLd2, tdMappingType, tdL0, dmrsAddPos)]
+			for _, i := range tdLbar {
+				for _, j := range tdLap {
+					tdL2 = append(tdL2, i+j)
+				}
+			}
+		} else {
+			return nil, nil, nil
+		}
+	}
+
+	// determine FD pattern within a single PRB
+	var fdN, fdKap, fdDelta []int
+	if dmrsType == "type1" {
+		fdN = []int{0, 1, 2}
+		fdKap = []int{0, 1}
+		fdDelta = []int{0, 1}[:cdmGroupsWoData]
+	} else {
+		fdN = []int{0, 1}
+		fdKap = []int{0, 1}
+		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
+	}
+
+	fdK := make([]int, N_SC_RB)
+	for _, i := range fdN {
+		for _, j := range fdKap {
+			for _, k := range fdDelta {
+				if dmrsType == "type1" {
+					fdK[4*i+2*j+k] = 1
+				} else {
+					fdK[6*i+j+k] = 1
+				}
+			}
+		}
+	}
+
+	return tdL, tdL2, fdK
+}
+
 // confCommonSettingCmd represents the nrrg conf commonsetting command
 var confCommonSettingCmd = &cobra.Command{
 	Use:   "commonsetting",
 	Short: "",
 	Long:  `nrrg conf commonsetting can be used to get/set common-setting related network configurations.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		loadNrrgFlags()
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		laPrint(cmd, args)
-		viper.WriteConfig()
-	},
-}
-
-// confCss0Cmd represents the nrrg conf css0 command
-var confCss0Cmd = &cobra.Command{
-	Use:   "css0",
-	Short: "",
-	Long:  `nrrg conf css0 can be used to get/set Common search space(CSS0) related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -2715,7 +2889,6 @@ var nrrgSimCmd = &cobra.Command{
 func init() {
 	nrrgCmd.AddCommand(confGridSettingCmd)
 	nrrgCmd.AddCommand(confCommonSettingCmd)
-	nrrgCmd.AddCommand(confCss0Cmd)
 	nrrgCmd.AddCommand(confCoreset1Cmd)
 	nrrgCmd.AddCommand(confUssCmd)
 	nrrgCmd.AddCommand(confDci10Cmd)
@@ -2759,7 +2932,7 @@ func init() {
 	//initConfMibCmd()
 	//initConfCarrierGridCmd()
 	initConfCommonSettingCmd()
-	initConfCss0Cmd()
+	//initConfCss0Cmd()
 	initConfCoreset1Cmd()
 	initConfUssCmd()
 	initConfDci10Cmd()
@@ -2820,10 +2993,10 @@ func initConfGridSettingCmd() {
 	viper.BindPFlag("nrrg.gridsetting._ssbPattern", confGridSettingCmd.Flags().Lookup("_ssbPattern"))
 	viper.BindPFlag("nrrg.gridsetting._kSsb", confGridSettingCmd.Flags().Lookup("_kSsb"))
 	viper.BindPFlag("nrrg.gridsetting._nCrbSsb", confGridSettingCmd.Flags().Lookup("_nCrbSsb"))
-	viper.BindPFlag("nrrg.ssbBurst.ssbPeriod", confGridSettingCmd.Flags().Lookup("ssbPeriod"))
-	viper.BindPFlag("nrrg.ssbBurst._maxLBar", confGridSettingCmd.Flags().Lookup("_maxLBar"))
-	viper.BindPFlag("nrrg.ssbBurst._maxL", confGridSettingCmd.Flags().Lookup("_maxL"))
-	viper.BindPFlag("nrrg.ssbBurst.candSsbIndex", confGridSettingCmd.Flags().Lookup("candSsbIndex"))
+	viper.BindPFlag("nrrg.gridsetting.ssbPeriod", confGridSettingCmd.Flags().Lookup("ssbPeriod"))
+	viper.BindPFlag("nrrg.gridsetting._maxLBar", confGridSettingCmd.Flags().Lookup("_maxLBar"))
+	viper.BindPFlag("nrrg.gridsetting._maxL", confGridSettingCmd.Flags().Lookup("_maxL"))
+	viper.BindPFlag("nrrg.gridsetting.candSsbIndex", confGridSettingCmd.Flags().Lookup("candSsbIndex"))
 	confGridSettingCmd.Flags().MarkHidden("_ssbScs")
 	confGridSettingCmd.Flags().MarkHidden("_ssbPattern")
 	confGridSettingCmd.Flags().MarkHidden("_kSsb")
@@ -2850,40 +3023,45 @@ func initConfGridSettingCmd() {
 	// MIB part
 	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._mibCommonScs, "_mibCommonScs", "15KHz", "subCarrierSpacingCommon of MIB")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCoreset0, "rmsiCoreset0", 7, "coresetZero of PDCCH-ConfigSIB1[0..15]")
-	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCss0, "rmsiCss0", 4, "searchSpaceZero of PDCCH-ConfigSIB1[0..15]")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0MultiplexingPat, "_coreset0MultiplexingPat", 1, "Multiplexing pattern of CORESET0")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0NumRbs, "_coreset0NumRbs", 48, "Number of PRBs of CORESET0")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0NumSymbs, "_coreset0NumSymbs", 1, "Number of OFDM symbols of CORESET0")
 	confGridSettingCmd.Flags().IntSliceVar(&flags.gridsetting._coreset0OffsetList, "_coreset0OffsetList", []int{16}, "List of offset of CORESET0")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0Offset, "_coreset0Offset", 16, "Offset of CORESET0")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCss0, "rmsiCss0", 4, "searchSpaceZero of PDCCH-ConfigSIB1[0..15]")
+	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._css0AggLevel, "_css0AggLevel", 4, "CCE aggregation level of CSS0[4,8,16]")
+	confGridSettingCmd.Flags().StringVar(&flags.gridsetting._css0NumCandidates, "_css0NumCandidates", "n4", "Number of PDCCH candidates of CSS0[n1,n2,n4]")
+	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._sfn, "_sfn", 0, "System frame number(SFN)[0..1023]")
 	confGridSettingCmd.Flags().IntVar(&flags.gridsetting._hrf, "_hrf", 0, "Half frame bit[0,1]")
-	confGridSettingCmd.Flags().StringVar(&flags.gridsetting.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
 	confGridSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.gridsetting._mibCommonScs", confGridSettingCmd.Flags().Lookup("_mibCommonScs"))
 	viper.BindPFlag("nrrg.gridsetting.rmsiCoreset0", confGridSettingCmd.Flags().Lookup("rmsiCoreset0"))
-	viper.BindPFlag("nrrg.gridsetting.rmsiCss0", confGridSettingCmd.Flags().Lookup("rmsiCss0"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0MultiplexingPat", confGridSettingCmd.Flags().Lookup("_coreset0MultiplexingPat"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0NumRbs", confGridSettingCmd.Flags().Lookup("_coreset0NumRbs"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0NumSymbs", confGridSettingCmd.Flags().Lookup("_coreset0NumSymbs"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0OffsetList", confGridSettingCmd.Flags().Lookup("_coreset0OffsetList"))
 	viper.BindPFlag("nrrg.gridsetting._coreset0Offset", confGridSettingCmd.Flags().Lookup("_coreset0Offset"))
+	viper.BindPFlag("nrrg.gridsetting.rmsiCss0", confGridSettingCmd.Flags().Lookup("rmsiCss0"))
+	viper.BindPFlag("nrrg.gridsetting._css0AggLevel", confGridSettingCmd.Flags().Lookup("_css0AggLevel"))
+	viper.BindPFlag("nrrg.gridsetting._css0NumCandidates", confGridSettingCmd.Flags().Lookup("_css0NumCandidates"))
+	viper.BindPFlag("nrrg.gridsetting.dmrsTypeAPos", confGridSettingCmd.Flags().Lookup("dmrsTypeAPos"))
 	viper.BindPFlag("nrrg.gridsetting._sfn", confGridSettingCmd.Flags().Lookup("_sfn"))
 	viper.BindPFlag("nrrg.gridsetting._hrf", confGridSettingCmd.Flags().Lookup("_hrf"))
-	viper.BindPFlag("nrrg.gridsetting.dmrsTypeAPos", confGridSettingCmd.Flags().Lookup("dmrsTypeAPos"))
 	confGridSettingCmd.Flags().MarkHidden("_mibCommonScs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0MultiplexingPat")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0NumRbs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0NumSymbs")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0OffsetList")
 	confGridSettingCmd.Flags().MarkHidden("_coreset0Offset")
+	confGridSettingCmd.Flags().MarkHidden("_css0AggLevel")
+	confGridSettingCmd.Flags().MarkHidden("_css0NumCandidates")
 	confGridSettingCmd.Flags().MarkHidden("_sfn")
 	confGridSettingCmd.Flags().MarkHidden("_hrf")
 }
 
 func initConfCommonSettingCmd() {
 	confCommonSettingCmd.Flags().IntVar(&flags.commonSetting.pci, "pci", 0, "Physical cell identity[0..1007]")
-	confCommonSettingCmd.Flags().StringVar(&flags.commonSetting.numUeAp, "numUeAp", "2T", "Number of UE antennas[1T,2T,4T]")
 	confCommonSettingCmd.Flags().StringVar(&flags.commonSetting._refScs, "_refScs", "30KHz", "referenceSubcarrierSpacing of TDD-UL-DL-ConfigCommon")
 	confCommonSettingCmd.Flags().StringSliceVar(&flags.commonSetting.patPeriod, "patPeriod", []string{"5ms"}, "dl-UL-TransmissionPeriodicity of TDD-UL-DL-ConfigCommon[0.5ms,0.625ms,1ms,1.25ms,2ms,2.5ms,3ms,4ms,5ms,10ms]")
 	confCommonSettingCmd.Flags().IntSliceVar(&flags.commonSetting.patNumDlSlots, "patNumDlSlots", []int{7}, "nrofDownlinkSlot of TDD-UL-DL-ConfigCommon[0..80]")
@@ -2892,7 +3070,6 @@ func initConfCommonSettingCmd() {
 	confCommonSettingCmd.Flags().IntSliceVar(&flags.commonSetting.patNumUlSlots, "patNumUlSlots", []int{2}, "nrofUplinkSlots of TDD-UL-DL-ConfigCommon[0..80]")
 	confCommonSettingCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.commonsetting.pci", confCommonSettingCmd.Flags().Lookup("pci"))
-	viper.BindPFlag("nrrg.commonsetting.numUeAp", confCommonSettingCmd.Flags().Lookup("numUeAp"))
 	viper.BindPFlag("nrrg.commonsetting._refScs", confCommonSettingCmd.Flags().Lookup("_refScs"))
 	viper.BindPFlag("nrrg.commonsetting.patPeriod", confCommonSettingCmd.Flags().Lookup("patPeriod"))
 	viper.BindPFlag("nrrg.commonsetting.patNumDlSlots", confCommonSettingCmd.Flags().Lookup("patNumDlSlots"))
@@ -2900,14 +3077,6 @@ func initConfCommonSettingCmd() {
 	viper.BindPFlag("nrrg.commonsetting.patNumUlSymbs", confCommonSettingCmd.Flags().Lookup("patNumUlSymbs"))
 	viper.BindPFlag("nrrg.commonsetting.patNumUlSlots", confCommonSettingCmd.Flags().Lookup("patNumUlSlots"))
 	confCommonSettingCmd.Flags().MarkHidden("_refScs")
-}
-
-func initConfCss0Cmd() {
-	confCss0Cmd.Flags().IntVar(&flags.css0.css0AggLevel, "css0AggLevel", 4, "CCE aggregation level of CSS0[4,8,16]")
-	confCss0Cmd.Flags().StringVar(&flags.css0.css0NumCandidates, "css0NumCandidates", "n4", "Number of PDCCH candidates of CSS0[n1,n2,n4]")
-	confCss0Cmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.css0.css0AggLevel", confCss0Cmd.Flags().Lookup("css0AggLevel"))
-	viper.BindPFlag("nrrg.css0.css0NumCandidates", confCss0Cmd.Flags().Lookup("css0NumCandidates"))
 }
 
 func initConfCoreset1Cmd() {
@@ -3087,7 +3256,7 @@ func initConfMsg3Cmd() {
 	confMsg3Cmd.Flags().IntVar(&flags.msg3._tdStartSymb, "_tdStartSymb", 4, "Starting symbol S for Msg3 PUSCH time-domain allocation")
 	confMsg3Cmd.Flags().IntVar(&flags.msg3._tdNumSymbs, "_tdNumSymbs", 6, "Number of OFDM symbols L for Msg3 PUSCH time-domain allocation")
 	confMsg3Cmd.Flags().StringVar(&flags.msg3._fdRaType, "_fdRaType", "raType1", "resourceAllocation for Msg3 PUSCH frequency-domain allocation")
-	confMsg3Cmd.Flags().StringVar(&flags.msg3.msg3FdFreqHop, "msg3FdFreqHop", "enabled", "Frequency-hopping-flag field of RAR UL grant scheduling Msg3[disabled,enabled]")
+	confMsg3Cmd.Flags().StringVar(&flags.msg3.msg3FdFreqHop, "msg3FdFreqHop", "intra-slot", "Frequency-hopping-flag field of RAR UL grant scheduling Msg3[disabled,intra-slot]")
 	confMsg3Cmd.Flags().StringVar(&flags.msg3.msg3FdRa, "msg3FdRa", "0100000100001101", "PUSCH-frequency-resource-allocation field of RAR UL grant scheduling Msg3")
 	confMsg3Cmd.Flags().IntVar(&flags.msg3.msg3FdStartRb, "msg3FdStartRb", 0, "RB_start of RIV for Msg3 PUSCH frequency-domain allocation")
 	confMsg3Cmd.Flags().IntVar(&flags.msg3.msg3FdNumRbs, "msg3FdNumRbs", 62, "L_RBs of RIV for Msg3 PUSCH frequency-domain allocation")
@@ -3269,11 +3438,6 @@ func initConfDmrsCommonCmd() {
 	confDmrsCommonCmd.Flags().IntSliceVar(&flags.dmrsCommon._dmrsPorts, "_dmrsPorts", []int{1000, 1000, 1000, 0}, "DMRS antenna ports")
 	confDmrsCommonCmd.Flags().IntSliceVar(&flags.dmrsCommon._cdmGroupsWoData, "_cdmGroupsWoData", []int{1, 1, 1, 2}, "CDM group(s) without data")
 	confDmrsCommonCmd.Flags().IntSliceVar(&flags.dmrsCommon._numFrontLoadSymbs, "_numFrontLoadSymbs", []int{1, 1, 1, 1}, "Number of front-load DMRS symbols")
-	// _tdL for SIB1/Msg2/Msg4 is underscore(_) separated
-	// _tdL for Msg3 is underscore(_) separated if msg3FreqHop is disabled, otherwise, _tdL is semicolon(;) separated for each hop
-	confDmrsCommonCmd.Flags().StringSliceVar(&flags.dmrsCommon._tdL, "_tdL", []string{"0", "0", "0", "0;0"}, "Time-domain locations for DMRS")
-	// _fdK indicates REs per PRB for DMRS
-	confDmrsCommonCmd.Flags().StringSliceVar(&flags.dmrsCommon._fdK, "_fdK", []string{"101010101010", "101010101010", "101010101010", "111111111111"}, "Frequency-domain locations of DMRS")
 	confDmrsCommonCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.dmrscommon._schInfo", confDmrsCommonCmd.Flags().Lookup("_schInfo"))
 	viper.BindPFlag("nrrg.dmrscommon._dmrsType", confDmrsCommonCmd.Flags().Lookup("_dmrsType"))
@@ -3282,8 +3446,6 @@ func initConfDmrsCommonCmd() {
 	viper.BindPFlag("nrrg.dmrscommon._dmrsPorts", confDmrsCommonCmd.Flags().Lookup("_dmrsPorts"))
 	viper.BindPFlag("nrrg.dmrscommon._cdmGroupsWoData", confDmrsCommonCmd.Flags().Lookup("_cdmGroupsWoData"))
 	viper.BindPFlag("nrrg.dmrscommon._numFrontLoadSymbs", confDmrsCommonCmd.Flags().Lookup("_numFrontLoadSymbs"))
-	viper.BindPFlag("nrrg.dmrscommon._tdL", confDmrsCommonCmd.Flags().Lookup("_tdL"))
-	viper.BindPFlag("nrrg.dmrscommon._fdK", confDmrsCommonCmd.Flags().Lookup("_fdK"))
 	confDmrsCommonCmd.Flags().MarkHidden("_schInfo")
 	confDmrsCommonCmd.Flags().MarkHidden("_dmrsType")
 	confDmrsCommonCmd.Flags().MarkHidden("_dmrsAddPos")
@@ -3291,8 +3453,6 @@ func initConfDmrsCommonCmd() {
 	confDmrsCommonCmd.Flags().MarkHidden("_dmrsPorts")
 	confDmrsCommonCmd.Flags().MarkHidden("_cdmGroupsWoData")
 	confDmrsCommonCmd.Flags().MarkHidden("_numFrontLoadSymbs")
-	confDmrsCommonCmd.Flags().MarkHidden("_tdL")
-	confDmrsCommonCmd.Flags().MarkHidden("_fdK")
 }
 
 func initConfDmrsPdschCmd() {
@@ -3302,10 +3462,6 @@ func initConfDmrsPdschCmd() {
 	confDmrsPdschCmd.Flags().IntSliceVar(&flags.dmrsPdsch._dmrsPorts, "_dmrsPorts", []int{1000, 1001, 1002, 1003}, "DMRS antenna ports")
 	confDmrsPdschCmd.Flags().IntVar(&flags.dmrsPdsch._cdmGroupsWoData, "_cdmGroupsWoData", 2, "CDM group(s) without data")
 	confDmrsPdschCmd.Flags().IntVar(&flags.dmrsPdsch._numFrontLoadSymbs, "_numFrontLoadSymbs", 1, "Number of front-load DMRS symbols")
-	// _tdL is underscore(_) separated
-	confDmrsPdschCmd.Flags().StringVar(&flags.dmrsPdsch._tdL, "_tdL", "2", "Time-domain locations for DMRS")
-	// _fdK indicates REs per PRB for DMRS
-	confDmrsPdschCmd.Flags().StringVar(&flags.dmrsPdsch._fdK, "_fdK", "111111111111", "Frequency-domain locations of DMRS")
 	confDmrsPdschCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.dmrspdsch.pdschDmrsType", confDmrsPdschCmd.Flags().Lookup("pdschDmrsType"))
 	viper.BindPFlag("nrrg.dmrspdsch.pdschDmrsAddPos", confDmrsPdschCmd.Flags().Lookup("pdschDmrsAddPos"))
@@ -3313,13 +3469,9 @@ func initConfDmrsPdschCmd() {
 	viper.BindPFlag("nrrg.dmrspdsch._dmrsPorts", confDmrsPdschCmd.Flags().Lookup("_dmrsPorts"))
 	viper.BindPFlag("nrrg.dmrspdsch._cdmGroupsWoData", confDmrsPdschCmd.Flags().Lookup("_cdmGroupsWoData"))
 	viper.BindPFlag("nrrg.dmrspdsch._numFrontLoadSymbs", confDmrsPdschCmd.Flags().Lookup("_numFrontLoadSymbs"))
-	viper.BindPFlag("nrrg.dmrspdsch._tdL", confDmrsPdschCmd.Flags().Lookup("_tdL"))
-	viper.BindPFlag("nrrg.dmrspdsch._fdK", confDmrsPdschCmd.Flags().Lookup("_fdK"))
 	confDmrsPdschCmd.Flags().MarkHidden("_dmrsPorts")
 	confDmrsPdschCmd.Flags().MarkHidden("_cdmGroupsWoData")
 	confDmrsPdschCmd.Flags().MarkHidden("_numFrontLoadSymbs")
-	confDmrsPdschCmd.Flags().MarkHidden("_tdL")
-	confDmrsPdschCmd.Flags().MarkHidden("_fdK")
 }
 
 func initConfPtrsPdschCmd() {
@@ -3344,10 +3496,6 @@ func initConfDmrsPuschCmd() {
 	confDmrsPuschCmd.Flags().IntSliceVar(&flags.dmrsPusch._dmrsPorts, "_dmrsPorts", []int{0, 1}, "DMRS antenna ports")
 	confDmrsPuschCmd.Flags().IntVar(&flags.dmrsPusch._cdmGroupsWoData, "_cdmGroupsWoData", 1, "CDM group(s) without data")
 	confDmrsPuschCmd.Flags().IntVar(&flags.dmrsPusch._numFrontLoadSymbs, "_numFrontLoadSymbs", 1, "Number of front-load DMRS symbols")
-	// _tdL is underscore(_) separated
-	confDmrsPuschCmd.Flags().StringVar(&flags.dmrsPusch._tdL, "_tdL", "2", "Time-domain locations for DMRS")
-	// _fdK indicates REs per PRB for DMRS
-	confDmrsPuschCmd.Flags().StringVar(&flags.dmrsPusch._fdK, "_fdK", "101010101010", "Frequency-domain locations of DMRS")
 	confDmrsPuschCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.dmrspusch.puschDmrsType", confDmrsPuschCmd.Flags().Lookup("puschDmrsType"))
 	viper.BindPFlag("nrrg.dmrspusch.puschDmrsAddPos", confDmrsPuschCmd.Flags().Lookup("puschDmrsAddPos"))
@@ -3355,13 +3503,9 @@ func initConfDmrsPuschCmd() {
 	viper.BindPFlag("nrrg.dmrspusch._dmrsPorts", confDmrsPuschCmd.Flags().Lookup("_dmrsPorts"))
 	viper.BindPFlag("nrrg.dmrspusch._cdmGroupsWoData", confDmrsPuschCmd.Flags().Lookup("_cdmGroupsWoData"))
 	viper.BindPFlag("nrrg.dmrspusch._numFrontLoadSymbs", confDmrsPuschCmd.Flags().Lookup("_numFrontLoadSymbs"))
-	viper.BindPFlag("nrrg.dmrspusch._tdL", confDmrsPuschCmd.Flags().Lookup("_tdL"))
-	viper.BindPFlag("nrrg.dmrspusch._fdK", confDmrsPuschCmd.Flags().Lookup("_fdK"))
 	confDmrsPuschCmd.Flags().MarkHidden("_dmrsPorts")
 	confDmrsPuschCmd.Flags().MarkHidden("_cdmGroupsWoData")
 	confDmrsPuschCmd.Flags().MarkHidden("_numFrontLoadSymbs")
-	confDmrsPuschCmd.Flags().MarkHidden("_tdL")
-	confDmrsPuschCmd.Flags().MarkHidden("_fdK")
 }
 
 func initConfPtrsPuschCmd() {
@@ -3749,10 +3893,10 @@ func loadNrrgFlags() {
 	flags.gridsetting._ssbPattern = viper.GetString("nrrg.gridsetting._ssbPattern")
 	flags.gridsetting._kSsb = viper.GetInt("nrrg.gridsetting._kSsb")
 	flags.gridsetting._nCrbSsb = viper.GetInt("nrrg.gridsetting._nCrbSsb")
-	flags.gridsetting.ssbPeriod = viper.GetString("nrrg.ssbBurst.ssbPeriod")
-	flags.gridsetting._maxLBar = viper.GetInt("nrrg.ssbBurst._maxLBar")
-	flags.gridsetting._maxL = viper.GetInt("nrrg.ssbBurst._maxL")
-	flags.gridsetting.candSsbIndex = viper.GetIntSlice("nrrg.ssbBurst.candSsbIndex")
+	flags.gridsetting.ssbPeriod = viper.GetString("nrrg.gridsetting.ssbPeriod")
+	flags.gridsetting._maxLBar = viper.GetInt("nrrg.gridsetting._maxLBar")
+	flags.gridsetting._maxL = viper.GetInt("nrrg.gridsetting._maxL")
+	flags.gridsetting.candSsbIndex = viper.GetIntSlice("nrrg.gridsetting.candSsbIndex")
 
 	flags.gridsetting._carrierScs = viper.GetString("nrrg.gridsetting._carrierScs")
 	flags.gridsetting.dlArfcn = viper.GetInt("nrrg.gridsetting.dlArfcn")
@@ -3762,28 +3906,26 @@ func loadNrrgFlags() {
 
 	flags.gridsetting._mibCommonScs = viper.GetString("nrrg.gridsetting._mibCommonScs")
 	flags.gridsetting.rmsiCoreset0 = viper.GetInt("nrrg.gridsetting.rmsiCoreset0")
-	flags.gridsetting.rmsiCss0 = viper.GetInt("nrrg.gridsetting.rmsiCss0")
 	flags.gridsetting._coreset0MultiplexingPat = viper.GetInt("nrrg.gridsetting._coreset0MultiplexingPat")
 	flags.gridsetting._coreset0NumRbs = viper.GetInt("nrrg.gridsetting._coreset0NumRbs")
 	flags.gridsetting._coreset0NumSymbs = viper.GetInt("nrrg.gridsetting._coreset0NumSymbs")
 	flags.gridsetting._coreset0OffsetList = viper.GetIntSlice("nrrg.gridsetting._coreset0OffsetList")
 	flags.gridsetting._coreset0Offset = viper.GetInt("nrrg.gridsetting._coreset0Offset")
+	flags.gridsetting.rmsiCss0 = viper.GetInt("nrrg.gridsetting.rmsiCss0")
+	flags.gridsetting._css0AggLevel = viper.GetInt("nrrg.gridsetting._css0AggLevel")
+	flags.gridsetting._css0NumCandidates = viper.GetString("nrrg.gridsetting._css0NumCandidates")
+	flags.gridsetting.dmrsTypeAPos = viper.GetString("nrrg.gridsetting.dmrsTypeAPos")
 	flags.gridsetting._sfn = viper.GetInt("nrrg.gridsetting._sfn")
 	flags.gridsetting._hrf = viper.GetInt("nrrg.gridsetting._hrf")
-	flags.gridsetting.dmrsTypeAPos = viper.GetString("nrrg.gridsetting.dmrsTypeAPos")
 
 	// common settings
 	flags.commonSetting.pci = viper.GetInt("nrrg.commonsetting.pci")
-	flags.commonSetting.numUeAp = viper.GetString("nrrg.commonsetting.numUeAp")
 	flags.commonSetting._refScs = viper.GetString("nrrg.commonsetting._refScs")
 	flags.commonSetting.patPeriod = viper.GetStringSlice("nrrg.commonsetting.patPeriod")
 	flags.commonSetting.patNumDlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumDlSlots")
 	flags.commonSetting.patNumDlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumDlSymbs")
 	flags.commonSetting.patNumUlSymbs = viper.GetIntSlice("nrrg.commonsetting.patNumUlSymbs")
 	flags.commonSetting.patNumUlSlots = viper.GetIntSlice("nrrg.commonsetting.patNumUlSlots")
-
-	flags.css0.css0AggLevel = viper.GetInt("nrrg.css0.css0AggLevel")
-	flags.css0.css0NumCandidates = viper.GetString("nrrg.css0.css0NumCandidates")
 
 	flags.coreset1.coreset1FreqRes = viper.GetString("nrrg.coreset1.coreset1FreqRes")
 	flags.coreset1.coreset1Duration = viper.GetInt("nrrg.coreset1.coreset1Duration")
@@ -3925,8 +4067,6 @@ func loadNrrgFlags() {
 	flags.dmrsCommon._dmrsPorts = viper.GetIntSlice("nrrg.dmrscommon._dmrsPorts")
 	flags.dmrsCommon._cdmGroupsWoData = viper.GetIntSlice("nrrg.dmrscommon._cdmGroupsWoData")
 	flags.dmrsCommon._numFrontLoadSymbs = viper.GetIntSlice("nrrg.dmrscommon._numFrontLoadSymbs")
-	flags.dmrsCommon._tdL = viper.GetStringSlice("nrrg.dmrscommon._tdL")
-	flags.dmrsCommon._fdK = viper.GetStringSlice("nrrg.dmrscommon._fdK")
 
 	flags.dmrsPdsch.pdschDmrsType = viper.GetString("nrrg.dmrspdsch.pdschDmrsType")
 	flags.dmrsPdsch.pdschDmrsAddPos = viper.GetString("nrrg.dmrspdsch.pdschDmrsAddPos")
@@ -3934,8 +4074,6 @@ func loadNrrgFlags() {
 	flags.dmrsPdsch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspdsch._dmrsPorts")
 	flags.dmrsPdsch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspdsch._cdmGroupsWoData")
 	flags.dmrsPdsch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspdsch._numFrontLoadSymbs")
-	flags.dmrsPdsch._tdL = viper.GetString("nrrg.dmrspdsch._tdL")
-	flags.dmrsPdsch._fdK = viper.GetString("nrrg.dmrspdsch._fdK")
 
 	flags.ptrsPdsch.pdschPtrsEnabled = viper.GetBool("nrrg.ptrspdsch.pdschPtrsEnabled")
 	flags.ptrsPdsch.pdschPtrsTimeDensity = viper.GetInt("nrrg.ptrspdsch.pdschPtrsTimeDensity")
@@ -3949,8 +4087,6 @@ func loadNrrgFlags() {
 	flags.dmrsPusch._dmrsPorts = viper.GetIntSlice("nrrg.dmrspusch._dmrsPorts")
 	flags.dmrsPusch._cdmGroupsWoData = viper.GetInt("nrrg.dmrspusch._cdmGroupsWoData")
 	flags.dmrsPusch._numFrontLoadSymbs = viper.GetInt("nrrg.dmrspusch._numFrontLoadSymbs")
-	flags.dmrsPusch._tdL = viper.GetString("nrrg.dmrspusch._tdL")
-	flags.dmrsPusch._fdK = viper.GetString("nrrg.dmrspusch._fdK")
 
 	flags.ptrsPusch.puschPtrsEnabled = viper.GetBool("nrrg.ptrspusch.puschPtrsEnabled")
 	flags.ptrsPusch.puschPtrsTimeDensity = viper.GetInt("nrrg.ptrspusch.puschPtrsTimeDensity")
@@ -4108,7 +4244,7 @@ var w = []int{len("Flag"), len("Type"), len("Current Value"), len("Default Value
 laPrint performs left-aligned printing.
 */
 func laPrint(cmd *cobra.Command, args []string) {
-	regGreen.Printf("[INFO]: List of parameters\n")
+	regGreen.Printf("[INFO]: List of [%v] parameters\n", cmd.Name())
 	cmd.Flags().VisitAll(
 		func(f *pflag.Flag) {
 			if f.Name != "config" && f.Name != "help" {
