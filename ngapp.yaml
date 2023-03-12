@@ -1,114 +1,78 @@
 autobip:
-  debug: true
-  gnblist: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/05-DS_interference/autobip/gnb_list.txt
-  gnblogs: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/gnb_logs_2.26/
-  gnbtools: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/
-  maxgo: 12
-  wshark: /usr/bin
+  debug: false
+  gnblist: C:/gnb_list.txt
+  gnblogs: C:/gnb_logs
+  gnbtools: C:/gnb_tools
+  maxgo: 3
+  wshark: C:/Program Files/Wireshark
 bip:
   chbw: 30m
-  debug: true
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001739_000002/generated_luashark/
-  maxgo: 12
-  pattern: .pcap
-  scs: 15k
-  tlog: bip
-  trace: /home/dabs/Downloads/06-bip_log/YNMCC_bip/gNB_10.218.219.138_20220112_091605_BIP/
-  wshark: /usr/bin
+  debug: false
+  luashark: C:/luashark
+  maxgo: 3
+  pattern: .csv
+  scs: 30k
+  tlog: l2tti
+  trace: ./data
+  wshark: C:/Program Files/Wireshark
 cm:
-  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/
-  debug: true
-  maxgo: 48
+  cmpath: ./data
+  debug: false
+  maxgo: 3
   tcm: scfc
 cmdiff:
-  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/02-scf_bak/gnb_scf_20211122/parsed_scfc
-  debug: true
+  cmpath: ./data
+  debug: false
   ignore: sbts:MRBTSDESC,nrbts:NRREL
-  ins: Full_Configuration_scf_MRBTS-1619377_通海县汉邑村公所（700）-5NHN_20211122-1406.dat,Full_Configuration_scf_MRBTS-1619515_通海县石碧（700）-5NHN_20211122-1405.dat
-  moc: nrbts
+  ins: input_1.dat,input_2.dat
+  moc: all
 cmfind:
-  cmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/gnb_scf_20211009/parsed_scfc/
-  debug: true
-  paras: /home/dabs/Documents/work/email/202105/twm_support/02-5g_scf/nr_para_list.txt
+  cmpath: ./data
+  debug: false
+  paras: para_list.txt
 cmpdcch:
-  bwpid: 31
+  bwpid: 35
   coreset:
   - coreset0_48_1
   - coreset1_120_1
   css:
-  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
-  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
-  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
-  debug: true
-  rnti: 57952
-  scs: 15k
+  - type0a_3_100_n0_n0_n2_n0_n0_sl1_coreset0
+  debug: false
+  rnti: 100
+  scs: 30k
   uss:
-  - uss_8_110_n0_n0_n5_n0_n0_sl1_coreset1
-cmpdcch-30:
-  bwpid: 30
-  coreset:
-  - coreset0_48_1
-  - coreset1_156_1
-  css:
-  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
-  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
-  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
-  debug: true
-  rnti: 57846
-  scs: 15k
-  uss:
-  - uss_8_110_n4_n2_n2_n1_n0_sl1_coreset1
-cmpdcch-31:
-  bwpid: 31
-  coreset:
-  - coreset0_48_1
-  - coreset1_54_1
-  css:
-  - type0_0_100_n0_n0_n2_n1_n0_sl1_coreset0
-  - type0a_4_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type1_5_110_n0_n0_n2_n0_n0_sl1_coreset0
-  - type2_6_100_n0_n0_n2_n0_n0_sl1_coreset0
-  - type3_7_110_n0_n0_n2_n0_n0_sl1_coreset0
-  debug: true
-  rnti: 57952
-  scs: 15k
-  uss:
-  - uss_8_110_n3_n3_n2_n1_n0_sl1_coreset1
+  - uss_8_110_n0_n0_n4_n0_n0_sl1_coreset1
 ddr4:
   chbw: 30m
-  debug: true
-  filter: ul
-  gain: 110
-  maxgo: 48
-  pattern: .bin
-  py3: /usr/bin
-  scs: 15k
-  snaptool: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001271_000000/snapshot_tool_1271/
-  tlog: ddr4
-  trace: /home/dabs/Downloads/05-ddr4_log/YNMCC_ddr4/gNB_10.218.200.225_20211026_101409_DDR4/
+  debug: false
+  filter: both
+  gain: 105
+  maxgo: 3
+  pattern: .csv
+  py3: C:/Python38
+  scs: 30k
+  snaptool: C:/snapshot_tool
+  tlog: l2tti
+  trace: ./data
 kpi:
-  btsid: all
-  debug: true
-  etime: "202111302359"
-  kpipath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/5g_kpi/
-  maxgo: 12
+  btsid: 123,456
+  debug: false
+  etime: "20060102"
+  kpipath: ./data
+  maxgo: 3
   op: cmcc
-  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
-  stime: "202111010000"
+  pmdb: ./pmdb
+  stime: "20060102"
 l2trace:
-  debug: true
-  luashark: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/generated_luashark/
-  maxgo: 5
-  pattern: .dat
-  py2: /usr/bin
-  tlda: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/5G21A_11.800.965/TLDA/
-  tlog: l2trace
-  trace: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/hz_test/field/l2trace/
-  wshark: /usr/bin
+  debug: false
+  luashark: C:/luashark
+  maxgo: 3
+  pattern: .csv
+  py2: C:/Python27
+  tlda: C:/TLDA
+  tlog: l2tti
+  trace: ./data
+  wshark: C:/Program Files/Wireshark
 nrrg:
   advanced:
     bestssb: 0
@@ -128,39 +92,33 @@ nrrg:
     - 1
     - 0
     - 1
+    _bwplocandbw:
+    - 12925
+    - 32174
+    - 32174
+    - 32174
+    _bwpnumrbs:
+    - 48
+    - 160
+    - 160
+    - 160
     _bwpscs:
-    - 30KHz
-    - 30KHz
-    - 30KHz
-    - 30KHz
+    - 15KHz
+    - 15KHz
+    - 15KHz
+    - 15KHz
+    _bwpstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
     _bwptype:
     - iniDlBwp
     - dedDlBwp
     - iniUlBwp
     - dedUlBwp
-    bwplocandbw:
-    - 12925
-    - 1099
-    - 1099
-    - 1099
-    bwpnumrbs:
-    - 48
-    - 273
-    - 273
-    - 273
-    bwpstartrb:
-    - 0
-    - 0
-    - 0
-    - 0
-  carriergrid:
-    _carriernumrbs: 273
-    _offsettocarrier: 0
-    bw: 100MHz
-    carrierscs: 30KHz
   commonsetting:
-    _refscs: 30KHz
-    numueap: 2T
+    _refscs: 15KHz
     patnumdlslots:
     - 7
     patnumdlsymbs:
@@ -219,115 +177,40 @@ nrrg:
     csirepoffset: 7
     csirepperiod: slots320
     csireppucchres: 2
-  css0:
-    css0agglevel: 4
-    css0numcandidates: n4
   dci01:
     _actbwp: 1
     _indicatedbwp: 1
-    _mupdcch: 1
-    _mupusch: 1
+    _mupdcch: 0
+    _mupusch: 0
     _rnti: C-RNTI
-    _tbs: 475584
+    _tbs: 139376
     dci01antports: 0
-    dci01cbtpminumlayers: 2
+    dci01cbtpminumlayers: 31
     dci01fdfreqhop: disabled
-    dci01fdnumrbs: 273
+    dci01fdfreqhopoffset: 0
+    dci01fdnumrbs: 160
     dci01fdra: "0000001000100001"
     dci01fdratype: raType1
     dci01fdstartrb: 0
     dci01mcscw0: 28
     dci01ptrsdmrsmap: 0
-    dci01sri: ""
-    dci01tdk2: 1
+    dci01sri: 0
+    dci01tdk2: 2
     dci01tdmappingtype: typeA
     dci01tdnumsymbs: 14
-    dci01tdra: 16
+    dci01tdra: 7
     dci01tdsliv: 27
     dci01tdstartsymb: 0
-  dci10:
-    _fdbitwidthratype1:
-    - 11
-    - 11
-    - 11
-    _fdbundlesize:
-    - n2
-    - n2
-    - n2
-    _fdra:
-    - "00001011111"
-    - "00001011111"
-    - "00001011111"
-    _fdratype:
-    - raType1
-    - raType1
-    - raType1
-    _mupdcch:
-    - 1
-    - 1
-    - 1
-    _mupdsch:
-    - 1
-    - 1
-    - 1
-    _rnti:
-    - SI-RNTI
-    - RA-RNTI
-    - TC-RNTI
-    _tbs:
-    - 408
-    - 408
-    - 408
-    _tdk0:
-    - 0
-    - 0
-    - 0
-    _tdmappingtype:
-    - typeB
-    - typeB
-    - typeB
-    _tdnumsymbs:
-    - 2
-    - 2
-    - 2
-    _tdsliv:
-    - 26
-    - 26
-    - 26
-    _tdstartsymb:
-    - 12
-    - 12
-    - 12
-    dci10fdnumrbs:
-    - 48
-    - 48
-    - 48
-    dci10fdstartrb:
-    - 0
-    - 0
-    - 0
-    dci10fdvrbprbmappingtype:
-    - interleaved
-    - interleaved
-    - interleaved
-    dci10mcscw0:
-    - 2
-    - 2
-    - 2
-    dci10msg2tbscaling: 0
-    dci10msg4deltapri: 1
-    dci10msg4tdk1: 6
-    dci10tdra:
-    - 10
-    - 10
-    - 10
-  dci11:
-    _actbwp: 1
-    _dci11fdbitwidthratype0: 18
-    _dci11fdbitwidthratype1: 16
+  dci11_removed:
+    _dci11fdra: "0000001000100001"
+    _dci11tdk0: 0
+    _dci11tdmappingtype: typeA
+    _dci11tdnumsymbs: 13
+    _dci11tdsliv: 40
+    _dci11tdstartsymb: 1
     _indicatedbwp: 1
-    _mupdcch: 1
-    _mupdsch: 1
+    _mupdcch: 0
+    _mupdsch: 0
     _rnti: C-RNTI
     _tbs:
     - 1277992
@@ -336,32 +219,128 @@ nrrg:
     dci11deltapri: 1
     dci11fdbundlesize: n2
     dci11fdnumrbs: 273
-    dci11fdra: "0000001000100001"
     dci11fdratype: raType1
     dci11fdstartrb: 0
     dci11fdvrbprbmappingtype: interleaved
     dci11mcscw0: 27
-    dci11mcscw1: -1
-    dci11tdk0: 0
     dci11tdk1: 2
-    dci11tdmappingtype: typeA
-    dci11tdnumsymbs: 14
-    dci11tdra: 16
-    dci11tdsliv: 27
-    dci11tdstartsymb: 0
+    dci11tdra: 11
+    mcscw1: -1
+  dldci:
+    _fdra:
+    - "00001011111"
+    - "00001011111"
+    - "00001011111"
+    - ""
+    _fdratype:
+    - raType1
+    - raType1
+    - raType1
+    - raType1
+    _indicatedbwp:
+    - 0
+    - 0
+    - 0
+    - 1
+    _mupdcch:
+    - 0
+    - 0
+    - 0
+    - 0
+    _mupdsch:
+    - 0
+    - 0
+    - 0
+    - 0
+    _rnti:
+    - SI-RNTI
+    - RA-RNTI
+    - TC-RNTI
+    - C-RNTI
+    _tag:
+    - DCI_10_SIB1
+    - DCI_10_MSG2
+    - DCI_10_MSG4
+    - DCI_11_PDSCH
+    _tbscw0:
+    - 2600
+    - 2600
+    - 2600
+    - 344376
+    _tbscw1: -1
+    _tdk0:
+    - 0
+    - 0
+    - 0
+    - 0
+    _tdmappingtype:
+    - typeA
+    - typeA
+    - typeA
+    - typeA
+    _tdnumsymbs:
+    - 13
+    - 13
+    - 13
+    - 13
+    _tdsliv:
+    - 40
+    - 40
+    - 40
+    - 40
+    _tdstartsymb:
+    - 1
+    - 1
+    - 1
+    - 1
+    dci11antports: 7
+    deltapri: 1
+    fdbundlesize:
+    - n2
+    - n2
+    - n2
+    - n2
+    fdnumrbs:
+    - 48
+    - 48
+    - 48
+    - 160
+    fdstartrb:
+    - 0
+    - 0
+    - 0
+    - 0
+    fdvrbprbmappingtype:
+    - interleaved
+    - interleaved
+    - interleaved
+    - interleaved
+    mcscw0:
+    - 2
+    - 2
+    - 2
+    - 27
+    mcscw1: -1
+    tbscalingfactor: "1"
+    tdk1: 2
+    tdra:
+    - 11
+    - 11
+    - 11
+    - 11
   dmrscommon:
     _cdmgroupswodata:
-    - 1
-    - 1
-    - 1
+    - 2
+    - 2
+    - 2
     - 2
     _dmrsaddpos:
-    - pos0
-    - pos0
-    - pos0
+    - pos1
+    - pos2
+    - pos2
     - pos1
     _dmrsports:
-    - 1000
+    - 0
     - 1000
     - 1000
     - 0
@@ -370,11 +349,6 @@ nrrg:
     - type1
     - type1
     - type1
-    _fdk:
-    - "101010101010"
-    - "101010101010"
-    - "101010101010"
-    - "111111111111"
     _maxlength:
     - len1
     - len1
@@ -390,70 +364,61 @@ nrrg:
     - Msg2
     - Msg4
     - Msg3
-    _tdl:
-    - "0"
-    - "0"
-    - "0"
-    - 0;0
-  dmrspdsch:
-    _cdmgroupswodata: 2
-    _dmrsports:
-    - 1000
-    - 1001
-    - 1002
-    - 1003
-    _fdk: "111111111111"
-    _numfrontloadsymbs: 1
-    _tdl: "2"
-    pdschdmrsaddpos: pos0
-    pdschdmrstype: type1
-    pdschmaxlength: len1
-  dmrspusch:
-    _cdmgroupswodata: 1
-    _dmrsports:
-    - 0
-    - 1
-    _fdk: "101010101010"
-    _numfrontloadsymbs: 1
-    _tdl: "2"
-    puschdmrsaddpos: pos0
-    puschdmrstype: type1
-    puschmaxlength: len1
-  freqband:
-    _duplexmode: TDD
-    _freqrange: FR1
-    _maxdlfreq: 2690
-    opband: n41
-  mib:
+  gridsetting:
+    _carriernumrbs: 160
+    _carrierscs: 15KHz
     _coreset0multiplexingpat: 1
     _coreset0numrbs: 48
     _coreset0numsymbs: 1
     _coreset0offset: 16
     _coreset0offsetlist:
     - 16
-    commonscs: 30KHz
+    _css0agglevel: 4
+    _css0numcandidates: n4
+    _duplexmode: FDD
+    _freqrange: FR1
+    _hrf: 0
+    _kssb: 2
+    _maxdlfreq: 803
+    _maxl: 4
+    _maxlbar: 4
+    _mibcommonscs: 15KHz
+    _ncrbssb: 69
+    _offsettocarrier: 0
+    _sfn: 0
+    _ssbpattern: Case A
+    _ssbscs: 15KHz
+    band: n28
+    bw: 30MHz
+    candssbindex:
+    - 0
+    - 1
+    - 2
+    - 3
+    dlarfcn: 154600
     dmrstypeapos: pos2
-    hrf: 0
-    rmsicoreset0: 12
-    rmsicss0: 0
-    sfn: 0
+    gscn: 1931
+    rmsicoreset0: 7
+    rmsicss0: 4
+    scs: 15KHz
+    ssbperiod: 20ms
   msg3:
     _fdratype: raType1
     _fdsecondhopfreqoff: 68
-    _mupusch: 1
-    _tbs: 1544
-    _tddelta: 3
-    _tdk2: 1
-    _tdmappingtype: typeB
-    _tdnumsymbs: 6
-    _tdsliv: 74
-    _tdstartsymb: 4
-    msg3fdfreqhop: enabled
+    _mupusch: 0
+    _tbs: 3624
+    _tddelta: 2
+    _tdk2: 2
+    _tdmappingtype: typeA
+    _tdnumsymbs: 14
+    _tdsliv: 27
+    _tdstartsymb: 0
+    msg3fdfreqhop: intra-slot
     msg3fdnumrbs: 62
     msg3fdra: "0100000100001101"
     msg3fdstartrb: 0
     msg3mcscw0: 2
-    msg3tdra: 6
+    msg3tdra: 7
   nzpcsirs:
     _cdmgrpindj:
     - 0
@@ -488,30 +453,25 @@ nrrg:
     nzpcsirsperiod: slots20
     nzpcsirsstartrb: 0
   pdsch:
+    _cdmgroupswodata: 2
+    _dmrsports:
+    - 1000
+    - 1001
+    _numfrontloadsymbs: 1
+    _ptrsdmrsports: 1000
     _rbgsize: 16
     pdschaggfactor: n1
+    pdschdmrsaddpos: pos0
+    pdschdmrstype: type1
+    pdschmaxlayers: 2
+    pdschmaxlength: len1
     pdschmcstable: qam256
-    pdschrbgcfg: config1
-    pdschxoh: xOh0
-  ptrspdsch:
-    _dmrsports: 1000
     pdschptrsenabled: true
     pdschptrsfreqdensity: 2
     pdschptrsreoffset: offset00
     pdschptrstimedensity: 1
-  ptrspusch:
-    _dmrsports:
-    - 0
-    _dmrsportstp: []
-    _numgrpstp: 2
-    _samplespergrptp: 2
-    puschptrsenabled: true
-    puschptrsfreqdensity: 2
-    puschptrsgrppatterntp: p0
-    puschptrsmaxnumports: n1
-    puschptrsreoffset: offset00
-    puschptrstimedensity: 1
-    puschptrstimedensitytp: 1
+    pdschrbgcfg: config1
+    pdschxoh: xOh6
   pucch:
     _dsrpucchres:
     - 0
@@ -584,28 +544,47 @@ nrrg:
     - 0
     - 0
   pusch:
+    _cdmgroupswodata: 1
+    _dmrsports:
+    - 0
+    _numfrontloadsymbs: 1
+    _numgrpstp: 2
+    _ptrsdmrsports:
+    - 0
+    _ptrsdmrsportstp: []
+    _puschreptype: typeA
     _rbgsize: 16
+    _samplespergrptp: 2
     puschaggfactor: n1
     puschcbmaxranknoncbmaxlayers: 2
     puschcbsubset: fullyAndPartialAndNonCoherent
-    puschfreqhopoffset: 0
+    puschdmrsaddpos: pos0
+    puschdmrstype: type1
+    puschmaxlength: len1
     puschmcstable: qam64
+    puschptrsenabled: true
+    puschptrsfreqdensity: 2
+    puschptrsgrppatterntp: p0
+    puschptrsmaxnumports: n1
+    puschptrsreoffset: offset00
+    puschptrstimedensity: 1
+    puschptrstimedensitytp: 1
     puschrbgcfg: config1
     puschtp: disabled
     puschtxcfg: codebook
     puschxoh: xOh0
   rach:
-    _raduration: 12
-    _raformat: B4
+    _raduration: 6
+    _raformat: A3
     _rakbar: 2
     _ralen: 139
-    _ranumoccasionsperslot: 1
+    _ranumoccasionsperslot: 2
     _ranumrbs: 12
-    _ranumslotspersubffr1per60kslotfr2: 1
+    _ranumslotspersubffr1per60kslotfr2: 2
     _rastartingsymb: 0
     _rasubfnumfr1slotnumfr2:
-    - 9
-    _rax: 2
+    - 4
+    _rax: 16
     _ray:
     - 1
     cbpreambsperssb: 64
@@ -697,7 +676,7 @@ nrrg:
     - n2
     - n2
     srsnumports:
-    - ports2
+    - port1
     - port1
     - port1
     - port1
@@ -729,16 +708,6 @@ nrrg:
     - 0
     - 0
     - 0
-  ssbburst:
-    _maxl: 8
-    grppresence: ""
-    inonegrp: "11111111"
-    ssbperiod: 20ms
-  ssbgrid:
-    _ncrbssb: 32
-    _ssbpattern: Case C
-    kssb: 0
-    ssbscs: 30KHz
   trs:
     _cdmgrpindj:
     - 0
@@ -785,20 +754,20 @@ nrrg:
     ussoffset: 0
     ussperiod: sl1
 pm:
-  debug: true
-  maxgo: 48
+  debug: false
+  maxgo: 3
   op: cmcc
-  pmdb: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/db/
-  pmpath: /home/dabs/Documents/work/email/202107/700m_rollout/03-YN_support/03-troubleshooting/14-Cluster_Optimization/raw_pm_22r1/
+  pmdb: ./pmdb
+  pmpath: ./data
   tpm: raw
 tti:
-  debug: true
+  debug: false
   filter: both
-  maxgo: 48
+  maxgo: 3
   pattern: .csv
-  py3: /usr/bin
+  py3: C:/Python38
   rat: nr
-  scs: 15k
+  scs: 30k
   tlog: l2tti
-  trace: /home/dabs/Downloads/08-tti_log/YNMCC_tti/gNB_10.218.220.162_20211222_115954_m/
-  ttidec: /home/dabs/Documents/work/email/202103/5g21a_hz_ojt/tools/SBTS21B_ENB_0000_001836_000000/tti-dec-bin/
+  trace: ./data
+  ttidec: C:/tti-dec-bin
