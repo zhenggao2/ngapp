@@ -177,81 +177,17 @@ nrrg:
     csirepoffset: 7
     csirepperiod: slots320
     csireppucchres: 2
-  dci01:
-    _actbwp: 1
-    _indicatedbwp: 1
-    _mupdcch: 0
-    _mupusch: 0
-    _rnti: C-RNTI
-    _tbs: 139376
-    dci01antports: 0
-    dci01cbtpminumlayers: 31
-    dci01fdfreqhop: disabled
-    dci01fdfreqhopoffset: 0
-    dci01fdnumrbs: 160
-    dci01fdra: "0000001000100001"
-    dci01fdratype: raType1
-    dci01fdstartrb: 0
-    dci01mcscw0: 28
-    dci01ptrsdmrsmap: 0
-    dci01sri: 0
-    dci01tdk2: 2
-    dci01tdmappingtype: typeA
-    dci01tdnumsymbs: 14
-    dci01tdra: 7
-    dci01tdsliv: 27
-    dci01tdstartsymb: 0
-  dci11_removed:
-    _dci11fdra: "0000001000100001"
-    _dci11tdk0: 0
-    _dci11tdmappingtype: typeA
-    _dci11tdnumsymbs: 13
-    _dci11tdsliv: 40
-    _dci11tdstartsymb: 1
-    _indicatedbwp: 1
-    _mupdcch: 0
-    _mupdsch: 0
-    _rnti: C-RNTI
-    _tbs:
-    - 1277992
-    - -1
-    dci11antports: 10
-    dci11deltapri: 1
-    dci11fdbundlesize: n2
-    dci11fdnumrbs: 273
-    dci11fdratype: raType1
-    dci11fdstartrb: 0
-    dci11fdvrbprbmappingtype: interleaved
-    dci11mcscw0: 27
-    dci11tdk1: 2
-    dci11tdra: 11
-    mcscw1: -1
   dldci:
     _fdra:
     - "00001011111"
     - "00001011111"
     - "00001011111"
-    - ""
+    - "00000100111111"
     _fdratype:
     - raType1
     - raType1
     - raType1
     - raType1
-    _indicatedbwp:
-    - 0
-    - 0
-    - 0
-    - 1
-    _mupdcch:
-    - 0
-    - 0
-    - 0
-    - 0
-    _mupdsch:
-    - 0
-    - 0
-    - 0
-    - 0
     _rnti:
     - SI-RNTI
     - RA-RNTI
@@ -263,9 +199,9 @@ nrrg:
     - DCI_10_MSG4
     - DCI_11_PDSCH
     _tbscw0:
-    - 2600
-    - 2600
-    - 2600
+    - 1672
+    - 1672
+    - 4096
     - 344376
     _tbscw1: -1
     _tdk0:
@@ -293,7 +229,7 @@ nrrg:
     - 1
     - 1
     - 1
-    dci11antports: 7
+    antennaports: 7
     deltapri: 1
     fdbundlesize:
     - n2
@@ -316,9 +252,9 @@ nrrg:
     - interleaved
     - interleaved
     mcscw0:
-    - 2
-    - 2
-    - 2
+    - 0
+    - 0
+    - 4
     - 27
     mcscw1: -1
     tbscalingfactor: "1"
@@ -335,12 +271,12 @@ nrrg:
     - 2
     - 2
     _dmrsaddpos:
-    - pos1
+    - pos2
     - pos2
     - pos2
     - pos1
     _dmrsports:
-    - 0
+    - 1000
     - 1000
     - 1000
     - 0
@@ -359,11 +295,11 @@ nrrg:
     - 1
     - 1
     - 1
-    _schinfo:
-    - SIB1
-    - Msg2
-    - Msg4
-    - Msg3
+    _tag:
+    - DCI_10_SIB1
+    - DCI_10_MSG2
+    - DCI_10_MSG4
+    - RAR_UL_MSG3
   gridsetting:
     _carriernumrbs: 160
     _carrierscs: 15KHz
@@ -402,23 +338,6 @@ nrrg:
     rmsicss0: 4
     scs: 15KHz
     ssbperiod: 20ms
-  msg3:
-    _fdratype: raType1
-    _fdsecondhopfreqoff: 68
-    _mupusch: 0
-    _tbs: 3624
-    _tddelta: 2
-    _tdk2: 2
-    _tdmappingtype: typeA
-    _tdnumsymbs: 14
-    _tdsliv: 27
-    _tdstartsymb: 0
-    msg3fdfreqhop: intra-slot
-    msg3fdnumrbs: 62
-    msg3fdra: "0100000100001101"
-    msg3fdstartrb: 0
-    msg3mcscw0: 2
-    msg3tdra: 7
   nzpcsirs:
     _cdmgrpindj:
     - 0
@@ -458,9 +377,9 @@ nrrg:
     - 1000
     - 1001
     _numfrontloadsymbs: 1
+    _pdschaggfactor: n1
     _ptrsdmrsports: 1000
     _rbgsize: 16
-    pdschaggfactor: n1
     pdschdmrsaddpos: pos0
     pdschdmrstype: type1
     pdschmaxlayers: 2
@@ -551,11 +470,10 @@ nrrg:
     _numgrpstp: 2
     _ptrsdmrsports:
     - 0
-    _ptrsdmrsportstp: []
+    _puschaggfactor: n1
     _puschreptype: typeA
     _rbgsize: 16
     _samplespergrptp: 2
-    puschaggfactor: n1
     puschcbmaxranknoncbmaxlayers: 2
     puschcbsubset: fullyAndPartialAndNonCoherent
     puschdmrsaddpos: pos0
@@ -564,7 +482,7 @@ nrrg:
     puschmcstable: qam64
     puschptrsenabled: true
     puschptrsfreqdensity: 2
-    puschptrsgrppatterntp: p0
+    puschptrsgrppatterntp: pat0
     puschptrsmaxnumports: n1
     puschptrsreoffset: offset00
     puschptrstimedensity: 1
@@ -746,6 +664,60 @@ nrrg:
     - 10
     trsperiod: slots40
     trsstartrb: 0
+  uldci:
+    _fdfreqhopoffset:
+    - 80
+    - 80
+    _fdra:
+    - "00000101000000"
+    - "00000100111111"
+    _fdratype:
+    - raType1
+    - raType1
+    _rnti:
+    - RA-RNTI
+    - C-RNTI
+    _tag:
+    - RAR_UL_MSG3
+    - DCI_01_PUSCH
+    _tbs:
+    - 104
+    - 139376
+    _tddelta: 2
+    _tdk2:
+    - 2
+    - 2
+    _tdmappingtype:
+    - typeA
+    - typeA
+    _tdnumsymbs:
+    - 14
+    - 14
+    _tdsliv:
+    - 27
+    - 27
+    _tdstartsymb:
+    - 0
+    - 0
+    antennaports: 0
+    fdfreqhop:
+    - intra-slot
+    - disabled
+    fdnumrbs:
+    - 3
+    - 160
+    fdstartrb:
+    - 0
+    - 0
+    mcscw0:
+    - 0
+    - 28
+    precodinginfonumlayers: 2
+    ptrsdmrsassociation: 0
+    srsresindicator: 0
+    tdra:
+    - 7
+    - 7
   uss:
     ussagglevel: 4
     ussduration: 1

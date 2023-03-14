@@ -32,20 +32,20 @@ import (
 var (
 	tcm    string
 	cmpath string
-	ins string
-	moc string
+	ins    string
+	moc    string
 	ignore string
-	paras string
-	bwpid int
+	paras  string
+	bwpid  int
 	// list of CORESET settings: coresetId_size_duration.
 	// For example: coreset0_48_1, coreset1_120_1
 	coreset []string
 	// list of Common search space settings: searchSpaceType_searchSpaceId_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId
 	// For example: type0a_3_100_n0_n0_n2_n0_n0_sl1_coreset0, type1_110_n0_n0_n4_n2_n0_sl1_coreset0, type2_100_n0_n0_n2_n0_n0_sl1_corest0, type3_110_n0_n0_n4_n2_n0_sl1_coreset0
-	css  []string
+	css []string
 	// list of UE-specific search space settings: searchSpaceType_searchSpaceId_monitoringSymbolWithinSlot_pdcchCandidatesAL1_pdcchCandidatesAL2_pdcchCandidatesAL4_pdcchCandidatesAL8_pdcchCandidatesAL16_periodicity_coresetId
 	// For example: uss_8_110_n0_n0_n4_n0_n0_sl1_coreset1
-	uss []string
+	uss  []string
 	rnti int
 )
 
@@ -94,7 +94,7 @@ var cmCmd = &cobra.Command{
 					go func(fn string) {
 						defer wg.Done()
 						parser.Parse(fn, tcm)
-					} (xml)
+					}(xml)
 				}
 			}
 			wg.Wait()
@@ -125,12 +125,12 @@ var cmCmd = &cobra.Command{
 					go func(fn string) {
 						defer wg.Done()
 						parser.Parse(fn)
-					} (ims2)
+					}(ims2)
 				}
 			}
 			wg.Wait()
 		} else if tcm == "cmcc" {
-			// TODO
+			// TODO CMCC CM generator
 		} else {
 			fmt.Printf("Unsupported tcm[=%s].\n", tcm)
 		}
@@ -201,16 +201,16 @@ And finally means finally: init is called after all the variable declarations in
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 */
 func init() {
-	if cmdFlags& CMD_FLAG_CM != 0 {
+	if cmdFlags&CMD_FLAG_CM != 0 {
 		rootCmd.AddCommand(cmCmd)
 	}
-	if cmdFlags& CMD_FLAG_CM_DIFF != 0 {
+	if cmdFlags&CMD_FLAG_CM_DIFF != 0 {
 		rootCmd.AddCommand(cmDiffCmd)
 	}
-	if cmdFlags& CMD_FLAG_CM_FIND != 0 {
+	if cmdFlags&CMD_FLAG_CM_FIND != 0 {
 		rootCmd.AddCommand(cmFindCmd)
 	}
-	if cmdFlags& CMD_FLAG_CM_PDCCH != 0 {
+	if cmdFlags&CMD_FLAG_CM_PDCCH != 0 {
 		rootCmd.AddCommand(cmPdcchCmd)
 	}
 
@@ -296,4 +296,3 @@ func loadCmPdcchFlags() {
 	rnti = viper.GetInt("cmpdcch.rnti")
 	debug = viper.GetBool("cmpdcch.debug")
 }
-
