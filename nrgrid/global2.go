@@ -668,32 +668,6 @@ var CbPuschTpmiDmrsAssociation = map[string][]string{
 	"ports4_4_2": {"0,1", "2,3", "0,1", "2,3"}, // maxNrofPorts=n1 or n2
 }
 
-// refer to 3GPP 38.331 vf30
-// ssb-perRACH-OccasionAndCB-PreamblesPerSSB of RACH-ConfigCommon
-var SsbPerRachOccasion2Float = map[string]float64{
-	"oneEighth": 0.125,
-	"oneFourth": 0.25,
-	"oneHalf":   0.5,
-	"one":       1,
-	"two":       2,
-	"four":      4,
-	"eight":     8,
-	"sixteen":   16,
-}
-
-// refer to 3GPP 38.331 vf30
-// ssb-perRACH-OccasionAndCB-PreamblesPerSSB of RACH-ConfigCommon
-var SsbPerRachOccasion2CbPreamblesPerSsb = map[string][]int{
-	"oneEighth": {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
-	"oneFourth": {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
-	"oneHalf":   {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
-	"one":       {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
-	"two":       {4, 8, 12, 16, 20, 24, 28, 32},
-	"four":      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-	"eight":     {1, 2, 3, 4, 5, 6, 7, 8},
-	"sixteen":   {1, 2, 3, 4},
-}
-
 // CommonPucchResInfo contains information on common PUCCH resource.
 type CommonPucchResInfo struct {
 	PucchFmt     int
@@ -847,15 +821,6 @@ var SrsBwCfg = map[string]*SrsBwInfo{
 	"62": {[]int{272, 68, 4, 4}, []int{1, 4, 17, 1}},
 	"63": {[]int{272, 16, 8, 4}, []int{1, 17, 2, 2}},
 }
-
-// offset of CORESET0 w.r.t. SSB
-var Coreset0Offset = 0
-
-// minimum channel bandwidth
-var MinChBw = 0
-
-// starting PRB of RMSI/CORESET0 w.r.t. first usable PRB of carrier
-var Coreset0StartRb = 0
 
 // valid PUSCH PRB allocations when transforming precoding is enabled
 var LrbsMsg3PuschTp = []int{}
@@ -1078,6 +1043,11 @@ func initPuschSlivRepTypeB() (map[string]int, map[string][]int) {
 	return puschToSliv, puschFromSliv
 }
 
+// makeSliv returns SLIV given S/L, refer to 38.214 vh40:
+//  - 5.1.2.1 Resource allocation in time domain
+//  - 6.1.2.1 Resource allocation in time domain
+//  S: starting symbol
+//  L: number of symbols
 func makeSliv(S, L int) (int, error) {
 	if L <= 0 || L > 14-S {
 		return -1, errors.New(fmt.Sprintf("invalid S/L combination: S=%d, L=%d", S, L))
@@ -1134,7 +1104,7 @@ func ToSliv(S, L int, sch, mappingType, cp, repetitionType string) (int, error) 
 	}
 }
 
-// FromSliv returns S/L from given sliv.
+// FromSliv returns S/L from given SLIV.
 //  sliv: start and length indicator
 //	sch: PDSCH or PUSCH
 //	mappingType: TD mapping type, can be typeA or typeB
@@ -1173,20 +1143,3 @@ func FromSliv(sliv int, sch, mappingType, cp, repetitionType string) ([]int, err
 		return sl, nil
 	}
 }
-
-/*
-# initialize SLIV look-up tables
-        self.initPdschSliv()
-        self.initPuschSlivRepTypeA()
-        '''
-        self.ngwin.logEdit.append('contents of self.nrPdschToSliv: ')
-        for key, val in self.nrPdschToSliv.items():
-            prefix, S, L = key.split('_')
-            self.ngwin.logEdit.append('%s, %s, %s, %s'%(prefix, S, L, val))
-        self.ngwin.logEdit.append('contents of self.nrPuschToSliv: ')
-        for key, val in self.nrPuschToSliv.items():
-            prefix, S, L = key.split('_')
-            self.ngwin.logEdit.append('%s, %s, %s, %s'%(prefix, S, L, val))
-        '''
-
-*/

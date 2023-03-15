@@ -26,6 +26,7 @@ import (
 	"github.com/zhenggao2/ngapp/nrgrid"
 	"github.com/zhenggao2/ngapp/utils"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -33,6 +34,7 @@ import (
 var (
 	flags   NrrgFlags
 	minChBw int
+
 	//boldRed    = color.New(color.FgHiRed).Add(color.Bold).SprintFunc()
 	regRed = color.New(color.FgHiRed)
 	//boldGreen  = color.New(color.FgHiGreen).Add(color.Bold).SprintFunc()
@@ -149,17 +151,17 @@ type UssFlags struct {
 // DL DCI 1_0/1_1 for PDSCH scheduling
 type DlDciFlags struct {
 	_tag                []string // tag of DL DCI, such as DCI_10_SIB1, DCI_10_MSG2, DCI_10_MSG4, DCI_11_PDSCH
-	_rnti               []string // the n_RNTI used for PDSCH scrambling (38.211 6.3.1.1	Scrambling)
+	_rnti               []string // the n_RNTI used for PDSCH scrambling (38.211 7.3.1.1 Scrambling)
 	_muPdcch            []int    // the u_PDCCH used for Ks calculation (38.214 5.1.2.1	Resource allocation in time domain)
 	_muPdsch            []int    // the u_PDSCH used for Ks calculation (38.214 5.1.2.1	Resource allocation in time domain)
 	_indicatedBwp       []int    // the "Bandwidth part indicator" field of DCI 1_1, which should be 0(initial DL BWP) for DCI 1_0
 	tdra                []int    // the "Time domain resource assignment" field of DCI 1_0/1_1
 	_tdMappingType      []string // the PDSCH mapping type, which can be typeA or typeB (38.214 Table 5.1.2.1-1: Valid S and L combinations)
-	_tdK0               []int    // the K0 of PDSCH TDRA (38.214 5.1.2.1	Resource allocation in time domain)
+	_tdK0               []int    // the K0 of PDSCH TDRA (38.214 5.1.2.1.1	Determination of the resource allocation table to be used for PDSCH)
 	_tdSliv             []int    // the SLIV of PDSCH TDRA (38.214 5.1.2.1	Resource allocation in time domain)
 	_tdStartSymb        []int    // the starting symbol S (38.214 5.1.2.1	Resource allocation in time domain)
 	_tdNumSymbs         []int    // the number of consecutive symbols L (38.214 5.1.2.1	Resource allocation in time domain)
-	_fdRaType           []string // the PDSCH resource allocation type, which can be raType0 or raType1 (38.214 6.1.2.2	Resource allocation in frequency domain)
+	_fdRaType           []string // the PDSCH resource allocation type, which can be raType0 or raType1 (38.214 5.1.2.2	Resource allocation in frequency domain)
 	_fdBitsRaType0      int      // the number of bits of the "Frequency domain resource assignment" field when raType0 is configured
 	_fdBitsRaType1      []int    // the number of bits of the "Frequency domain resource assignment" field when raType1 is configured
 	_fdRa               []string // the "Frequency domain resource assignment" field of DCI 1_0/1_1
@@ -179,32 +181,32 @@ type DlDciFlags struct {
 
 // UL DCI 0_1 or RAR UL grant for PUSCH scheduling
 type UlDciFlags struct {
-	_tag                   []string //new
-	_rnti                  []string
-	_muPdcch               []int
-	_muPusch               []int
-	_indicatedBwp          []int
-	tdra                   []int
-	_tdMappingType         []string
-	_tdK2                  []int
-	_tdDelta               int //new
-	_tdSliv                []int
-	_tdStartSymb           []int
-	_tdNumSymbs            []int
-	_fdRaType              []string
-	fdFreqHop              []string
-	_fdFreqHopOffset       []int
-	_fdBitsRaType0         int   // the number of bits of the "Frequency domain resource assignment" field when raType0 is configured
-	_fdBitsRaType1         []int // the number of bits of the "Frequency domain resource assignment" field when raType1 is configured
-	_fdRa                  []string
-	fdStartRb              []int
-	fdNumRbs               []int
-	mcsCw0                 []int
-	_tbs                   []int
-	precodingInfoNumLayers int
-	srsResIndicator        int
-	antennaPorts           int
-	ptrsDmrsAssociation    int
+	_tag                   []string // tag of UL DCI, such as RAR_UL_MSG3, DCI_01_PUSCH, RA_UL_MSGA, FBRAR_UL_MSG3
+	_rnti                  []string // the n_RNTI used for PUSCH scrambling (38.211 6.3.1.1	Scrambling)
+	_muPdcch               []int    // the u_PDCCH used for Ks calculation (38.214 6.1.2.1	Resource allocation in time domain)
+	_muPusch               []int    // the u_PUSCH used for Ks calculation (38.214 6.1.2.1	Resource allocation in time domain)
+	_indicatedBwp          []int    // the "Bandwidth part indicator" field of DCI 0_1, which should be 0(initial UL BWP) for Msg3 scheduled by RAR UL grant
+	tdra                   []int    // the "Time domain resource assignment" field of DCI 0_1 or RAR UL grant
+	_tdMappingType         []string // the PUSCH mapping type, which can be typeA or typeB (38.214 Table 6.1.2.1-1: Valid S and L combinations)
+	_tdK2                  []int    // the K2 of PUSCH TDRA (38.214 6.1.2.1.1	Determination of the resource allocation table to be used for PUSCH)
+	_tdDelta               int      // the delta for Msg3 PUSCH scheduled by RAR UL grant (38.213 8.3	PUSCH scheduled by RAR UL grant)
+	_tdSliv                []int    // the SLIV of PUSCH TDRA (38.214 6.1.2.1	Resource allocation in time domain)
+	_tdStartSymb           []int    // the starting symbol S (38.214 6.1.2.1	Resource allocation in time domain)
+	_tdNumSymbs            []int    // the number of consecutive symbols L (38.214 6.1.2.1	Resource allocation in time domain)
+	_fdRaType              []string // the PUSCH resource allocation type, which can be raType0 or raType1 (38.214 6.1.2.2	Resource allocation in frequency domain)
+	fdFreqHop              []string // the "Frequency hopping flag" field of DCI 0_1 or RAR UL grant (38.214 6.3	UE PUSCH frequency hopping procedure)
+	_fdFreqHopOffset       []int    // the frequency offset of 2nd hop (38.214 6.3	UE PUSCH frequency hopping procedure)
+	_fdBitsRaType0         int      // the number of bits of the "Frequency domain resource assignment" field when raType0 is configured
+	_fdBitsRaType1         []int    // the number of bits of the "Frequency domain resource assignment" field when raType1 is configured
+	_fdRa                  []string // the "Frequency domain resource assignment" field of DCI 0_1 or RAR UL grant
+	fdStartRb              []int    // the starting VRB RB_start (38.214 5.1.2.2	Resource allocation in frequency domain)
+	fdNumRbs               []int    // the number of contiguously allocated resource blocks L_RBs (38.214 6.1.2.2	Resource allocation in frequency domain)
+	mcsCw0                 []int    // the "Modulation and coding scheme" field for transport block 1 of DCI 0_1 or RAR UL grant
+	_tbs                   []int    // the calculated TBS of transport block 1
+	precodingInfoNumLayers int      // the "Precoding information and number of layers" field of DCI 0_1
+	srsResIndicator        int      // the "SRS resource indicator" field of DCI 0_1
+	antennaPorts           int      // the "Antenna ports" field of DCI 0_1
+	ptrsDmrsAssociation    int      // the "PTRS-DMRS association" field of DCI 0_1
 }
 
 // initial/dedicated UL/DL BWP
@@ -225,10 +227,6 @@ const (
 	DED_DL_BWP int = 1
 	INI_UL_BWP int = 2
 	DED_UL_BWP int = 3
-
-	// TD/FD constants
-
-	N_SC_RB int = 12
 
 	// DL DCI tags
 
@@ -263,7 +261,7 @@ type RachFlags struct {
 	_raNumSlotsPerSubfFr1Per60KSlotFr2 int
 	_raNumOccasionsPerSlot             int
 	_raDuration                        int
-	msg1Scs                            string
+	_msg1Scs                           string // the msg1-SubcarrierSpacing of RACH-ConfigCommon, which can be 15/30KHz for FR1, 60/120KHz for FR2-1 and 120/480/960KHz for FR2-2
 	msg1Fdm                            int
 	msg1FreqStart                      int
 	raRespWin                          string
@@ -279,13 +277,13 @@ type RachFlags struct {
 
 // SIB1/Msg2/Msg4/Msg3 DMRS flags
 type DmrsCommonFlags struct {
-	_tag               []string // Tag of DMRS, such as DCI_10_SIB1, DCI_10_MSG2, DCI_10_MSG4, RAR_UL_MSG3, FBRAR_UL_MSG3
-	_dmrsType          []string // The dmrs-Type, which can be type1 or type2
-	_dmrsAddPos        []string // The dmrs-AdditionalPosition, which can be pos0, pos1, pos2 or pos3
-	_maxLength         []string // The maxLength, which can be len1 or len2
+	_tag               []string // tag of DMRS, such as DCI_10_SIB1, DCI_10_MSG2, DCI_10_MSG4, RAR_UL_MSG3, FBRAR_UL_MSG3
+	_dmrsType          []string // the dmrs-Type, which can be type1 or type2
+	_dmrsAddPos        []string // the dmrs-AdditionalPosition, which can be pos0, pos1, pos2 or pos3
+	_maxLength         []string // the maxLength, which can be len1 or len2
 	_dmrsPorts         []int    // DMRS antenna port(s)
-	_cdmGroupsWoData   []int    // Number of CDM groups without data
-	_numFrontLoadSymbs []int    // Number of front-load OFDM symbol(s) for DMRS
+	_cdmGroupsWoData   []int    // number of CDM groups without data
+	_numFrontLoadSymbs []int    // number of front-load OFDM symbol(s) for DMRS
 	_tdL               [][]int  // TD pattern of DMRS in a single slot
 	_tdL2              []int    // TD pattern of DMRS in a single slot, only valid for the 2nd hop of Msg3 DMRS when intra-slot frequency hopping is enabled
 	_fdK               [][]int  // FD pattern of DMRS in a single PRB
@@ -293,19 +291,19 @@ type DmrsCommonFlags struct {
 
 // PDSCH-config and PDSCH-ServingCellConfig
 type PdschFlags struct {
-	_pdschAggFactor string // The pdsch-AggregationFactor of PDSCH-Config, which can be n1, n2, n4 or n8
-	pdschRbgCfg     string // The rbg-Size of PDSCH-Config, which can be config1 or config2
-	_rbgSize        int    // The Nominal RBG size P of FDRA type 0
-	pdschMcsTable   string // The mcs-Table or mcs-Table-r17 of PDSCH-Config, which can be qam64, qam256, qam1024, qam64LowSE
-	pdschXOh        string // The xOverhead of PDSCH-ServingCellConfig, which can be xoh0, xoh6, xoh12, xoh18
-	pdschMaxLayers  int    // The maxMIMO-Layers of PDSCH-ServingCellConfig
+	_pdschAggFactor string // the pdsch-AggregationFactor of PDSCH-Config, which can be n1, n2, n4 or n8
+	pdschRbgCfg     string // the rbg-Size of PDSCH-Config, which can be config1 or config2
+	_rbgSize        int    // the Nominal RBG size P of FDRA type 0
+	pdschMcsTable   string // the mcs-Table or mcs-Table-r17 of PDSCH-Config, which can be qam64, qam256, qam1024, qam64LowSE
+	pdschXOh        string // the xOverhead of PDSCH-ServingCellConfig, which can be xoh0, xoh6, xoh12, xoh18
+	pdschMaxLayers  int    // the maxMIMO-Layers of PDSCH-ServingCellConfig
 
-	pdschDmrsType      string // The dmrs-Type of DMRS-DownlinkConfig, which can be type1 or type2
-	pdschDmrsAddPos    string // The dmrs-AdditionalPosition of DMRS-DownlinkConfig, which can be pos0, pos1, pos2 or pos3
-	pdschMaxLength     string // The maxLength of DMRS-DownlinkConfig, which can be len1 or len2
+	pdschDmrsType      string // the dmrs-Type of DMRS-DownlinkConfig, which can be type1 or type2
+	pdschDmrsAddPos    string // the dmrs-AdditionalPosition of DMRS-DownlinkConfig, which can be pos0, pos1, pos2 or pos3
+	pdschMaxLength     string // the maxLength of DMRS-DownlinkConfig, which can be len1 or len2
 	_dmrsPorts         []int  // DMRS antenna port(s)
-	_cdmGroupsWoData   int    // Number of CDM groups without data
-	_numFrontLoadSymbs int    // Number of front-load OFDM symbol(s) for DMRS
+	_cdmGroupsWoData   int    // number of CDM groups without data
+	_numFrontLoadSymbs int    // number of front-load OFDM symbol(s) for DMRS
 	_tdL               []int  // TD pattern of DMRS in a single slot
 	_fdK               []int  // FD pattern of DMRS in a single PRB
 
@@ -318,27 +316,27 @@ type PdschFlags struct {
 
 // PUSCH-config and PUSCH-ServingCellConfig
 type PuschFlags struct {
-	puschTxCfg                   string // The txConfig of PUSCH-Config, which can be codebook or nonCodebook
-	puschCbSubset                string // The codebookSubset of PUSCH-Config, which can be fullyAndPartialAndNonCoherent, partialAndNonCoherent or nonCoherent
-	puschCbMaxRankNonCbMaxLayers int    // The maxRank of PUSCH-Config in case of CB PUSCH or the maxNumberMIMO-LayersNonCB-PUSCH in case of nonCB PUSCH
-	puschTp                      string // The transformPrecoder of PUSCH-Config
-	_puschAggFactor              string // The pusch-AggregationFactor of PUSCH-Config, which can be n1, n2, n4 or n8
-	puschRbgCfg                  string // The rbg-Size of PUSCH-Config, which can be config1 or config2
-	_rbgSize                     int    // The Nominal RBG size P of FDRA type 0
-	puschMcsTable                string // The mcs-Table or mcs-TableTransformPrecoder of PUSCH-Config, which can be qam64, qam256 or qam64LowSE
-	puschXOh                     string // The xOverhead of PUSCH-ServingCellConfig, which can be xoh0, xoh6, xoh12, xoh18
+	puschTxCfg                   string // the txConfig of PUSCH-Config, which can be codebook or nonCodebook
+	puschCbSubset                string // the codebookSubset of PUSCH-Config, which can be fullyAndPartialAndNonCoherent, partialAndNonCoherent or nonCoherent
+	puschCbMaxRankNonCbMaxLayers int    // the maxRank of PUSCH-Config in case of CB PUSCH or the maxNumberMIMO-LayersNonCB-PUSCH in case of nonCB PUSCH
+	puschTp                      string // the transformPrecoder of PUSCH-Config
+	_puschAggFactor              string // the pusch-AggregationFactor of PUSCH-Config, which can be n1, n2, n4 or n8
+	puschRbgCfg                  string // the rbg-Size of PUSCH-Config, which can be config1 or config2
+	_rbgSize                     int    // the Nominal RBG size P of FDRA type 0
+	puschMcsTable                string // the mcs-Table or mcs-TableTransformPrecoder of PUSCH-Config, which can be qam64, qam256 or qam64LowSE
+	puschXOh                     string // the xOverhead of PUSCH-ServingCellConfig, which can be xoh0, xoh6, xoh12, xoh18
 	_puschRepType                string // pusch-RepTypeIndicatorDCI-0-1-r16 or pusch-RepTypeIndicatorDCI-0-2-r16 of PUSCH-Config, which can be typeA or typeB
 
-	puschDmrsType         string // The dmrs-Type of DMRS-UplinkConfig, which can be type1 or type2
-	puschDmrsAddPos       string // The dmrs-AdditionalPosition of DMRS-UplinkConfig, which can be pos0, pos1, pos2 or pos3
-	puschMaxLength        string // The maxLength of DMRS-UplinkConfig, which can be len1 or len2
+	puschDmrsType         string // the dmrs-Type of DMRS-UplinkConfig, which can be type1 or type2
+	puschDmrsAddPos       string // the dmrs-AdditionalPosition of DMRS-UplinkConfig, which can be pos0, pos1, pos2 or pos3
+	puschMaxLength        string // the maxLength of DMRS-UplinkConfig, which can be len1 or len2
 	_dmrsPorts            []int  // DMRS antenna port(s)
-	_cdmGroupsWoData      int    // Number of CDM groups without data
-	_numFrontLoadSymbs    int    // Number of front-load OFDM symbol(s) for DMRS
+	_cdmGroupsWoData      int    // number of CDM groups without data
+	_numFrontLoadSymbs    int    // number of front-load OFDM symbol(s) for DMRS
 	_tdL                  []int  // TD pattern of DMRS in a single slot
 	_tdL2                 []int  // TD pattern of DMRS in a single slot, only valid for the 2nd hop of DMRS for PUSCH when intra-slot frequency hopping is enabled
 	_fdK                  []int  // FD pattern of DMRS in a single PRB
-	_nonCbSri             []int  // List of SRI(s) in case of nonCodebook transmission
+	_nonCbSri             []int  // list of SRI(s) in case of nonCodebook transmission
 	_dmrsPosLBar          []int  // PUSCH DMRS positions l_bar when intra-slot FH is disabled, or l_bar of 1st hop when intra-slot FH is enabled
 	_dmrsPosLBarSecondHop []int  // PUSCH DMRS positions l_bar of 2nd hop when intra-slot is enabled
 
@@ -451,17 +449,16 @@ type SrsFlags struct {
 	srsCSrs          []int
 	srsBSrs          []int
 	srsBHop          []int
-	_type            []string
+	_resType         []string
 	srsPeriod        []string
 	srsOffset        []int
 	_mSRSb           []string
 	_Nb              []string
 	// SRS resource set
-	_resSetId          []int
-	srsSetResIdList    []string
-	_resType           []string
-	_usage             []string
-	_dci01NonCbSrsList []string
+	_resSetId       []int
+	srsSetResIdList []string
+	_resSetType     []string
+	_usage          []string
 }
 
 // PUCCH-FormatConfig, PUCCH resource and DSR resource
@@ -521,6 +518,8 @@ var confGridSettingCmd = &cobra.Command{
 -carrierGrid: Carrier grid related configurations`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
+
+		// initialization
 		if flags.dmrsCommon._tdL == nil {
 			flags.dmrsCommon._tdL = make([][]int, 4)
 		}
@@ -625,13 +624,6 @@ var confGridSettingCmd = &cobra.Command{
 			}
 			fmt.Printf("Available RMSI SCS(subcarrierSpacingCommon of MIB): %v\n", rmsiScsSet)
 			fmt.Printf("Available Carrier SCS(subcarrierSpacing of SCS-SpecificCarrier): %v\n", carrierScsSet)
-
-			// update rach info
-			err := updateRach()
-			if err != nil {
-				regRed.Printf("[ERR]: %v\n", err.Error())
-				return
-			}
 		}
 
 		// process gridsetting.scs
@@ -767,6 +759,7 @@ var confGridSettingCmd = &cobra.Command{
 			bitsRaType1Bwp0 := utils.CeilInt(math.Log2(float64(flags.gridsetting._coreset0NumRbs) * (float64(flags.gridsetting._coreset0NumRbs) + 1) / 2))
 			bitsRaType1Bwp1 := utils.CeilInt(math.Log2(float64(flags.gridsetting._carrierNumRbs) * (float64(flags.gridsetting._carrierNumRbs) + 1) / 2))
 			flags.dldci._fdBitsRaType0 = bitsRaType0Dl
+			flags.dldci._fdBitsRaType1 = []int{}
 			for i, _ := range flags.dldci._rnti {
 				if i == DCI_10_SIB1 || i == DCI_10_MSG2 || i == DCI_10_MSG4 {
 					flags.dldci._fdBitsRaType1 = append(flags.dldci._fdBitsRaType1, bitsRaType1Bwp0)
@@ -777,6 +770,7 @@ var confGridSettingCmd = &cobra.Command{
 				}
 			}
 			flags.uldci._fdBitsRaType0 = bitsRaType0Ul
+			flags.uldci._fdBitsRaType1 = []int{}
 			for i, _ := range flags.uldci._rnti {
 				if i == RAR_UL_MSG3 || i == FBRAR_UL_MSG3 {
 					flags.uldci._fdBitsRaType1 = append(flags.uldci._fdBitsRaType1, 14)
@@ -833,11 +827,18 @@ var confGridSettingCmd = &cobra.Command{
 		}
 
 		regGreen.Printf("[INFO]: Post-processing...\n")
+		// update rach info
+		err := updateRach()
+		if err != nil {
+			regRed.Printf("[ERR]: %v\n", err.Error())
+			return
+		}
+
 		// update n_CRB_SSB/k_SSB
 		updateKSsbAndNCrbSsb()
 
 		// validate CORESET0
-		err := validateCoreset0()
+		err = validateCoreset0()
 		if err != nil {
 			regRed.Printf("[ERR]: %s\n", err.Error())
 			return
@@ -890,6 +891,7 @@ func updateRach() error {
 	flags.rach._raX = p.X
 	flags.rach._raY = p.Y
 	flags.rach._raSubfNumFr1SlotNumFr2 = p.SubfNumFr1SlotNumFr2
+	flags.rach._raStartingSymb = p.StartingSymb
 	flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 = p.NumSlotsPerSubfFr1Per60KSlotFr2
 	flags.rach._raNumOccasionsPerSlot = p.NumOccasionsPerSlot
 	flags.rach._raDuration = p.Duration
@@ -907,6 +909,43 @@ func updateRach() error {
 		}
 	}
 	fmt.Printf("Available short PRACH SCS(msg1-SubcarrierSpacing of RACH-ConfigCommon): %v\n", raScsSet)
+
+	if utils.ContainsStr([]string{"0", "1", "2", "3"}, flags.rach._raFormat) {
+		flags.rach._raLen = 839
+		if flags.rach._raFormat == "3" {
+			flags.rach._msg1Scs = "5KHz"
+		} else {
+			flags.rach._msg1Scs = "1.25KHz"
+		}
+	} else {
+		// refer to 38.211 vh40 Table 6.3.3.1-2
+		// L_RA=1151/571 for NR-U are not supported!
+		flags.rach._raLen = 139
+		flags.rach._msg1Scs = flags.gridsetting.scs
+	}
+
+	key := fmt.Sprintf("%v_%v_%v", flags.rach._raLen, flags.rach._msg1Scs[:len(flags.rach._msg1Scs)-3], flags.gridsetting.scs[:len(flags.gridsetting.scs)-3])
+	p2, exist2 := nrgrid.NumRbsRaAndKBar[key]
+	if !exist2 {
+		return errors.New(fmt.Sprintf("Invalid key(=%v) when referring NumRbsRaAndKBar!\n", key))
+	}
+	flags.rach._raNumRbs = p2[0]
+	flags.rach._raKBar = p2[1]
+
+	// refer to 38.211 vh40
+	// 5.3.2	OFDM baseband signal generation for PRACH
+	// - n_RA_slot is given by
+	//   - if deltaf_RA is {30, 120}kHz and either of "Number of PRACH slots within a subframe" in Tables 6.3.3.2-2 to 6.3.3.2-3 or "Number of PRACH slots within a 60 kHz slot" in Table 6.3.3.2-4 is equal to 1, then n_RA_slot = 0, otherwise n_RA_slot = {0,1}
+	if flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 == 2 && flags.rach._msg1Scs != "30KHz" && flags.rach._msg1Scs != "120KHz" {
+		return errors.New(fmt.Sprintf("Msg1 SCS must be 30KHz for FR1 or 120KHz for FR2-1 when NumSlotsPerSubfFr1Per60KSlotFr2 = 2!\n"))
+	}
+
+	// refer to 38.331 vh30 totalNumberOfRA-Preambles
+	// Total number of preambles used for contention based and contention free 4-step or 2-step random access in the RACH resources defined in RACH-ConfigCommon, excluding preambles used for other purposes (e.g. for SI request). If the field is absent, all 64 preambles are available for RA.
+	// The setting should be consistent with the setting of ssb-perRACH-OccasionAndCB-PreamblesPerSSB, i.e. it should be a multiple of the number of SSBs per RACH occasion.
+	if nrgrid.SsbPerRachOccasion2Float[flags.rach.ssbPerRachOccasion] > 1 && flags.rach.totNumPreambs%int(nrgrid.SsbPerRachOccasion2Float[flags.rach.ssbPerRachOccasion]) != 0 {
+		return errors.New(fmt.Sprintf("The totalNumberOfRA-Preambles should be a multiple of the number of SSBs per RACH occasion. (totNumPreambs=%v, ssbPerRachoccasion=%v)\n", flags.rach.totNumPreambs, flags.rach.ssbPerRachOccasion))
+	}
 
 	return nil
 }
@@ -1732,6 +1771,17 @@ func updateRarUlMsg3PuschTbs() error {
 	td := flags.uldci._tdNumSymbs[RAR_UL_MSG3]
 	fd := flags.uldci.fdNumRbs[RAR_UL_MSG3]
 
+	// validate L_RBs when transform precoding is enabled
+	if flags.rach.msg3Tp == "enabled" {
+		// valid PUSCH PRB allocations when transforming precoding is enabled
+		lrbsPuschTp := initLrbsPuschTp(flags.bwp._bwpNumRbs[INI_UL_BWP])
+
+		if !utils.ContainsInt(lrbsPuschTp, fd) {
+			lt, gt := utils.NearestInt(lrbsPuschTp, fd)
+			return errors.New(fmt.Sprintf("L_RBs(=%v) must be 2^x*3^y*5^z, where x/y/z>=0, when transforming precoding is enabled, and the nearest values are: [%v, %v].\n", fd, lt, gt))
+		}
+	}
+
 	// update FDRA
 	riv, err := makeRiv(flags.uldci.fdNumRbs[RAR_UL_MSG3], flags.uldci.fdStartRb[RAR_UL_MSG3], flags.bwp._bwpNumRbs[INI_UL_BWP])
 	if err != nil {
@@ -2261,6 +2311,18 @@ func validateDci01PuschAntPorts() error {
 		}
 	} else {
 		fd = flags.uldci.fdNumRbs[DCI_01_PUSCH]
+
+		// validate L_RBs when transform precoding is enabled
+		if tp == "enabled" {
+			// valid PUSCH PRB allocations when transforming precoding is enabled
+			lrbsPuschTp := initLrbsPuschTp(flags.bwp._bwpNumRbs[DED_UL_BWP])
+
+			if !utils.ContainsInt(lrbsPuschTp, fd) {
+				lt, gt := utils.NearestInt(lrbsPuschTp, fd)
+				return errors.New(fmt.Sprintf("L_RBs(=%v) must be 2^x*3^y*5^z, where x/y/z>=0, when transforming precoding is enabled, and the nearest values are: [%v, %v].\n", fd, lt, gt))
+			}
+		}
+
 		// update FDRA
 		riv, err := makeRiv(flags.uldci.fdNumRbs[DCI_01_PUSCH], flags.uldci.fdStartRb[DCI_01_PUSCH], flags.bwp._bwpNumRbs[DED_UL_BWP])
 		if err != nil {
@@ -2463,7 +2525,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	}
 
 	if p == nil {
-		return 0, errors.New(fmt.Sprintf("Invalid MCS: sch=%v, tp=%v, rnti=%v, mcsTab=%v, mcs=%v", sch, tp, rnti, mcsTab, mcs))
+		return 0, errors.New(fmt.Sprintf("Invalid MCS: sch=%v, tp=%v, rnti=%v, mcsTab=%v, mcs=%v\n", sch, tp, rnti, mcsTab, mcs))
 	}
 	Qm, R := p.ModOrder, p.CodeRate
 
@@ -2474,7 +2536,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	}
 
 	// 2nd step: get N_RE
-	N_RE_ap := N_SC_RB*td - dmrs - xoh
+	N_RE_ap := nrgrid.NumScPerPrb*td - dmrs - xoh
 	min := utils.MinInt([]int{156, N_RE_ap})
 	N_RE := min * fd
 
@@ -2568,7 +2630,7 @@ func getDmrsPdschTdFdPattern(dmrsType string, tdMappingType string, slivS int, s
 		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
 	}
 
-	fdK := make([]int, N_SC_RB)
+	fdK := make([]int, nrgrid.NumScPerPrb)
 	for _, i := range fdN {
 		for _, j := range fdKap {
 			for _, k := range fdDelta {
@@ -2671,7 +2733,7 @@ func getDmrsPuschTdFdPattern(dmrsType string, tdMappingType string, slivS int, s
 		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
 	}
 
-	fdK := make([]int, N_SC_RB)
+	fdK := make([]int, nrgrid.NumScPerPrb)
 	for _, i := range fdN {
 		for _, j := range fdKap {
 			for _, k := range fdDelta {
@@ -2696,6 +2758,7 @@ var confCommonSettingCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2710,6 +2773,7 @@ var confCoreset1Cmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2724,6 +2788,7 @@ var confUssCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2738,6 +2803,7 @@ var confDlDciCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2766,6 +2832,7 @@ var confBwpCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2794,6 +2861,7 @@ var confDmrsCommonCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2881,6 +2949,7 @@ var confNzpCsiRsCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2909,6 +2978,7 @@ var confCsiImCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2937,6 +3007,7 @@ var confSrsCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -2965,6 +3036,7 @@ var confAdvancedCmd = &cobra.Command{
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -3231,9 +3303,9 @@ func initConfUssCmd() {
 func initConfDlDciCmd() {
 	confDlDciCmd.Flags().StringSliceVar(&flags.dldci._tag, "_tag", []string{"DCI_10_SIB1", "DCI_10_MSG2", "DCI_10_MSG4", "DCI_11_PDSCH"}, "DCI tag")
 	confDlDciCmd.Flags().StringSliceVar(&flags.dldci._rnti, "_rnti", []string{"SI-RNTI", "RA-RNTI", "TC-RNTI", "C-RNTI"}, "RNTI for DCI 1_0/1_1")
-	//confDlDciCmd.Flags().IntSliceVar(&flags.dldci._muPdcch, "_muPdcch", []int{1, 1, 1, 1}, "Subcarrier spacing of PDCCH")
-	//confDlDciCmd.Flags().IntSliceVar(&flags.dldci._muPdsch, "_muPdsch", []int{1, 1, 1, 1}, "Subcarrier spacing of PDSCH")
-	//confDlDciCmd.Flags().IntSliceVar(&flags.dldci._indicatedBwp, "_indicatedBwp", []int{0, 0, 0, 1}, "Bandwidth part indicator field of DCI 1_1")
+	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._muPdcch, "_muPdcch", []int{1, 1, 1, 1}, "Subcarrier spacing of PDCCH")
+	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._muPdsch, "_muPdsch", []int{1, 1, 1, 1}, "Subcarrier spacing of PDSCH")
+	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._indicatedBwp, "_indicatedBwp", []int{0, 0, 0, 1}, "Bandwidth part indicator field of DCI 1_1")
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci.tdra, "tdra", []int{10, 10, 10, 10}, "Time-domain-resource-assignment field of DCI 1_0")
 	confDlDciCmd.Flags().StringSliceVar(&flags.dldci._tdMappingType, "_tdMappingType", []string{"typeA", "typeA", "typeA", "typeA"}, "Mapping type for PDSCH time-domain allocation")
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._tdK0, "_tdK0", []int{0, 0, 0, 0}, "Slot offset K0 for PDSCH time-domain allocation")
@@ -3241,7 +3313,8 @@ func initConfDlDciCmd() {
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._tdStartSymb, "_tdStartSymb", []int{12, 12, 12, 12}, "Starting symbol S for PDSCH time-domain allocation")
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._tdNumSymbs, "_tdNumSymbs", []int{2, 2, 2, 2}, "Number of OFDM symbols L for PDSCH time-domain allocation")
 	confDlDciCmd.Flags().StringSliceVar(&flags.dldci._fdRaType, "_fdRaType", []string{"raType1", "raType1", "raType1", "raType1"}, "resourceAllocation for PDSCH frequency-domain allocation")
-	//confDlDciCmd.Flags().IntSliceVar(&flags.dldci._fdBitsRaType1, "_fdBitsRaType1", []int{11, 11, 11}, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
+	confDlDciCmd.Flags().IntVar(&flags.dldci._fdBitsRaType0, "_fdBitsRaType0", 11, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
+	confDlDciCmd.Flags().IntSliceVar(&flags.dldci._fdBitsRaType1, "_fdBitsRaType1", []int{11, 11, 11, 11}, "Bitwidth of PDSCH frequency-domain allocation for RA Type 1")
 	confDlDciCmd.Flags().StringSliceVar(&flags.dldci._fdRa, "_fdRa", []string{"00001011111", "00001011111", "00001011111", ""}, "Frequency-domain-resource-assignment field of DCI 1_0/1_1")
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci.fdStartRb, "fdStartRb", []int{0, 0, 0, 0}, "RB_start of RIV for PDSCH frequency-domain allocation")
 	confDlDciCmd.Flags().IntSliceVar(&flags.dldci.fdNumRbs, "fdNumRbs", []int{48, 48, 48, 160}, "L_RBs of RIV for PDSCH frequency-domain allocation")
@@ -3258,9 +3331,9 @@ func initConfDlDciCmd() {
 	confDlDciCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.dldci._tag", confDlDciCmd.Flags().Lookup("_tag"))
 	viper.BindPFlag("nrrg.dldci._rnti", confDlDciCmd.Flags().Lookup("_rnti"))
-	//viper.BindPFlag("nrrg.dldci._muPdcch", confDlDciCmd.Flags().Lookup("_muPdcch"))
-	//viper.BindPFlag("nrrg.dldci._muPdsch", confDlDciCmd.Flags().Lookup("_muPdsch"))
-	//viper.BindPFlag("nrrg.dldci._indicatedBwp", confDlDciCmd.Flags().Lookup("_indicatedBwp"))
+	viper.BindPFlag("nrrg.dldci._muPdcch", confDlDciCmd.Flags().Lookup("_muPdcch"))
+	viper.BindPFlag("nrrg.dldci._muPdsch", confDlDciCmd.Flags().Lookup("_muPdsch"))
+	viper.BindPFlag("nrrg.dldci._indicatedBwp", confDlDciCmd.Flags().Lookup("_indicatedBwp"))
 	viper.BindPFlag("nrrg.dldci.tdra", confDlDciCmd.Flags().Lookup("tdra"))
 	viper.BindPFlag("nrrg.dldci._tdMappingType", confDlDciCmd.Flags().Lookup("_tdMappingType"))
 	viper.BindPFlag("nrrg.dldci._tdK0", confDlDciCmd.Flags().Lookup("_tdK0"))
@@ -3268,7 +3341,8 @@ func initConfDlDciCmd() {
 	viper.BindPFlag("nrrg.dldci._tdStartSymb", confDlDciCmd.Flags().Lookup("_tdStartSymb"))
 	viper.BindPFlag("nrrg.dldci._tdNumSymbs", confDlDciCmd.Flags().Lookup("_tdNumSymbs"))
 	viper.BindPFlag("nrrg.dldci._fdRaType", confDlDciCmd.Flags().Lookup("_fdRaType"))
-	//viper.BindPFlag("nrrg.dldci._fdBitsRaType1", confDlDciCmd.Flags().Lookup("_fdBitsRaType1"))
+	viper.BindPFlag("nrrg.dldci._fdBitsRaType0", confDlDciCmd.Flags().Lookup("_fdBitsRaType0"))
+	viper.BindPFlag("nrrg.dldci._fdBitsRaType1", confDlDciCmd.Flags().Lookup("_fdBitsRaType1"))
 	viper.BindPFlag("nrrg.dldci._fdRa", confDlDciCmd.Flags().Lookup("_fdRa"))
 	viper.BindPFlag("nrrg.dldci.fdStartRb", confDlDciCmd.Flags().Lookup("fdStartRb"))
 	viper.BindPFlag("nrrg.dldci.fdNumRbs", confDlDciCmd.Flags().Lookup("fdNumRbs"))
@@ -3284,16 +3358,17 @@ func initConfDlDciCmd() {
 	viper.BindPFlag("nrrg.dldci.antennaPorts", confDlDciCmd.Flags().Lookup("antennaPorts"))
 	confDlDciCmd.Flags().MarkHidden("_tag")
 	confDlDciCmd.Flags().MarkHidden("_rnti")
-	//confDlDciCmd.Flags().MarkHidden("_muPdcch")
-	//confDlDciCmd.Flags().MarkHidden("_muPdsch")
-	//confDlDciCmd.Flags().MarkHidden("_indicatedBwp")
+	confDlDciCmd.Flags().MarkHidden("_muPdcch")
+	confDlDciCmd.Flags().MarkHidden("_muPdsch")
+	confDlDciCmd.Flags().MarkHidden("_indicatedBwp")
 	confDlDciCmd.Flags().MarkHidden("_tdMappingType")
 	confDlDciCmd.Flags().MarkHidden("_tdK0")
 	confDlDciCmd.Flags().MarkHidden("_tdSliv")
 	confDlDciCmd.Flags().MarkHidden("_tdStartSymb")
 	confDlDciCmd.Flags().MarkHidden("_tdNumSymbs")
 	confDlDciCmd.Flags().MarkHidden("_fdRaType")
-	//confDlDciCmd.Flags().MarkHidden("_fdBitsRaType1")
+	confDlDciCmd.Flags().MarkHidden("_fdBitsRaType0")
+	confDlDciCmd.Flags().MarkHidden("_fdBitsRaType1")
 	confDlDciCmd.Flags().MarkHidden("_fdRa")
 	confDlDciCmd.Flags().MarkHidden("_tbsCw0")
 	confDlDciCmd.Flags().MarkHidden("_tbsCw1")
@@ -3303,10 +3378,9 @@ func initConfDlDciCmd() {
 func initConfUlDciCmd() {
 	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._tag, "_tag", []string{"RAR_MSG3", "DCI_01_PUSCH"}, "RNTI for DCI 0_1")
 	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._rnti, "_rnti", []string{"RA-RNTI", "C-RNTI"}, "RNTI for DCI 0_1")
-	//confUlDciCmd.Flags().IntSliceVar(&flags.uldci._muPdcch, "_muPdcch", []int{1, 1}, "Subcarrier spacing of PDCCH[0..3]")
-	//confUlDciCmd.Flags().IntSliceVar(&flags.uldci._muPusch, "_muPusch", []int{1, 1}, "Subcarrier spacing of PUSCH[0..3]")
-	//confUlDciCmd.Flags().IntVar(&flags.uldci._actBwp, "_actBwp", 1, "Active UL bandwidth part of PUSCH[0..1]")
-	//confUlDciCmd.Flags().IntSliceVar(&flags.uldci._indicatedBwp, "_indicatedBwp", []int{0, 1}, "Bandwidth-part-indicator field of DCI 0_1[0..1]")
+	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._muPdcch, "_muPdcch", []int{1, 1}, "Subcarrier spacing of PDCCH[0..3]")
+	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._muPusch, "_muPusch", []int{1, 1}, "Subcarrier spacing of PUSCH[0..3]")
+	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._indicatedBwp, "_indicatedBwp", []int{0, 1}, "Bandwidth-part-indicator field of DCI 0_1[0..1]")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci.tdra, "tdra", []int{7, 7}, "Time-domain-resource-assignment field of DCI 0_1[0..15]")
 	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._tdMappingType, "_tdMappingType", []string{"typeA", "typeA"}, "Mapping type for PUSCH time-domain allocation[typeA,typeB]")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._tdK2, "_tdK2", []int{2, 2}, "Slot offset K2 for PUSCH time-domain allocation[0..32]")
@@ -3315,9 +3389,11 @@ func initConfUlDciCmd() {
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._tdStartSymb, "_tdStartSymb", []int{0, 0}, "Starting symbol S for PUSCH time-domain allocation")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._tdNumSymbs, "_tdNumSymbs", []int{14, 14}, "Number of OFDM symbols L for PUSCH time-domain allocation")
 	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._fdRaType, "_fdRaType", []string{"raType1", "raType1"}, "resourceAllocation for PUSCH frequency-domain allocation[raType0,raType1]")
-	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._fdRa, "_fdRa", []string{"", "0000001000100001"}, "Frequency-domain-resource-assignment field of DCI 0_1")
 	confUlDciCmd.Flags().StringSliceVar(&flags.uldci.fdFreqHop, "fdFreqHop", []string{"intra-slot", "disabled"}, "Frequency-hopping-flag field for DCI 0_1[disabled,intraSlot,interSlot]")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._fdFreqHopOffset, "_fdFreqHopOffset", []int{0, 0}, "frequencyHoppingOffsetLists of PUSCH-Config[0..274]")
+	confUlDciCmd.Flags().IntVar(&flags.uldci._fdBitsRaType0, "_fdBitsRaType0", 11, "Bitwidth of PUSCH frequency-domain allocation for RA Type 1")
+	confUlDciCmd.Flags().IntSliceVar(&flags.uldci._fdBitsRaType1, "_fdBitsRaType1", []int{14, 11}, "Bitwidth of PUSCH frequency-domain allocation for RA Type 1")
+	confUlDciCmd.Flags().StringSliceVar(&flags.uldci._fdRa, "_fdRa", []string{"", "0000001000100001"}, "Frequency-domain-resource-assignment field of DCI 0_1")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci.fdStartRb, "fdStartRb", []int{0, 0}, "RB_start of RIV for PUSCH frequency-domain allocation")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci.fdNumRbs, "fdNumRbs", []int{3, 160}, "L_RBs of RIV for PUSCH frequency-domain allocation")
 	confUlDciCmd.Flags().IntSliceVar(&flags.uldci.mcsCw0, "mcsCw0", []int{2, 28}, "Modulation-and-coding-scheme-cw0 field of DCI 0_1[0..28]")
@@ -3329,10 +3405,9 @@ func initConfUlDciCmd() {
 	confUlDciCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.uldci._tag", confUlDciCmd.Flags().Lookup("_tag"))
 	viper.BindPFlag("nrrg.uldci._rnti", confUlDciCmd.Flags().Lookup("_rnti"))
-	//viper.BindPFlag("nrrg.uldci._muPdcch", confUlDciCmd.Flags().Lookup("_muPdcch"))
-	//viper.BindPFlag("nrrg.uldci._muPusch", confUlDciCmd.Flags().Lookup("_muPusch"))
-	//viper.BindPFlag("nrrg.uldci._actBwp", confUlDciCmd.Flags().Lookup("_actBwp"))
-	//viper.BindPFlag("nrrg.uldci._indicatedBwp", confUlDciCmd.Flags().Lookup("_indicatedBwp"))
+	viper.BindPFlag("nrrg.uldci._muPdcch", confUlDciCmd.Flags().Lookup("_muPdcch"))
+	viper.BindPFlag("nrrg.uldci._muPusch", confUlDciCmd.Flags().Lookup("_muPusch"))
+	viper.BindPFlag("nrrg.uldci._indicatedBwp", confUlDciCmd.Flags().Lookup("_indicatedBwp"))
 	viper.BindPFlag("nrrg.uldci.tdra", confUlDciCmd.Flags().Lookup("tdra"))
 	viper.BindPFlag("nrrg.uldci._tdMappingType", confUlDciCmd.Flags().Lookup("_tdMappingType"))
 	viper.BindPFlag("nrrg.uldci._tdK2", confUlDciCmd.Flags().Lookup("_tdK2"))
@@ -3341,9 +3416,11 @@ func initConfUlDciCmd() {
 	viper.BindPFlag("nrrg.uldci._tdStartSymb", confUlDciCmd.Flags().Lookup("_tdStartSymb"))
 	viper.BindPFlag("nrrg.uldci._tdNumSymbs", confUlDciCmd.Flags().Lookup("_tdNumSymbs"))
 	viper.BindPFlag("nrrg.uldci._fdRaType", confUlDciCmd.Flags().Lookup("_fdRaType"))
-	viper.BindPFlag("nrrg.uldci._fdRa", confUlDciCmd.Flags().Lookup("_fdRa"))
 	viper.BindPFlag("nrrg.uldci.fdFreqHop", confUlDciCmd.Flags().Lookup("fdFreqHop"))
 	viper.BindPFlag("nrrg.uldci._fdFreqHopOffset", confUlDciCmd.Flags().Lookup("_fdFreqHopOffset"))
+	viper.BindPFlag("nrrg.uldci._fdBitsRaType0", confUlDciCmd.Flags().Lookup("_fdBitsRaType0"))
+	viper.BindPFlag("nrrg.uldci._fdBitsRaType1", confUlDciCmd.Flags().Lookup("_fdBitsRaType1"))
+	viper.BindPFlag("nrrg.uldci._fdRa", confUlDciCmd.Flags().Lookup("_fdRa"))
 	viper.BindPFlag("nrrg.uldci.fdStartRb", confUlDciCmd.Flags().Lookup("fdStartRb"))
 	viper.BindPFlag("nrrg.uldci.fdNumRbs", confUlDciCmd.Flags().Lookup("fdNumRbs"))
 	viper.BindPFlag("nrrg.uldci.mcsCw0", confUlDciCmd.Flags().Lookup("mcsCw0"))
@@ -3354,10 +3431,9 @@ func initConfUlDciCmd() {
 	viper.BindPFlag("nrrg.uldci.ptrsDmrsAssociation", confUlDciCmd.Flags().Lookup("ptrsDmrsAssociation"))
 	confUlDciCmd.Flags().MarkHidden("_tag")
 	confUlDciCmd.Flags().MarkHidden("_rnti")
-	//confUlDciCmd.Flags().MarkHidden("_muPdcch")
-	//confUlDciCmd.Flags().MarkHidden("_muPusch")
-	//confUlDciCmd.Flags().MarkHidden("_actBwp")
-	//confUlDciCmd.Flags().MarkHidden("_indicatedBwp")
+	confUlDciCmd.Flags().MarkHidden("_muPdcch")
+	confUlDciCmd.Flags().MarkHidden("_muPusch")
+	confUlDciCmd.Flags().MarkHidden("_indicatedBwp")
 	confUlDciCmd.Flags().MarkHidden("_tdMappingType")
 	confUlDciCmd.Flags().MarkHidden("_tdK2")
 	confUlDciCmd.Flags().MarkHidden("_tdDelta")
@@ -3365,8 +3441,10 @@ func initConfUlDciCmd() {
 	confUlDciCmd.Flags().MarkHidden("_tdStartSymb")
 	confUlDciCmd.Flags().MarkHidden("_tdNumSymbs")
 	confUlDciCmd.Flags().MarkHidden("_fdRaType")
-	confUlDciCmd.Flags().MarkHidden("_fdRa")
 	confUlDciCmd.Flags().MarkHidden("_fdFreqHopOffset")
+	confUlDciCmd.Flags().MarkHidden("_fdBitsRaType0")
+	confUlDciCmd.Flags().MarkHidden("_fdBitsRaType1")
+	confUlDciCmd.Flags().MarkHidden("_fdRa")
 	confUlDciCmd.Flags().MarkHidden("_tbs")
 }
 
@@ -3405,7 +3483,7 @@ func initConfRachCmd() {
 	confRachCmd.Flags().IntVar(&flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2, "_raNumSlotsPerSubfFr1Per60KSlotFr2", 1, "The Number-of-PRACH-slots-within-a-subframe in 3GPP TS 38.211 Table 6.3.3.2-2 and Table 6.3.3.2-3, or the Number-of-PRACH-slots-within-a-60-kHz-slot in Table 6.3.3.2-4")
 	confRachCmd.Flags().IntVar(&flags.rach._raNumOccasionsPerSlot, "_raNumOccasionsPerSlot", 1, "The Number-of-time-domain-PRACH-occasions-within-a-PRACH-slot in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
 	confRachCmd.Flags().IntVar(&flags.rach._raDuration, "_raDuration", 12, "The PRACH-duration in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
-	confRachCmd.Flags().StringVar(&flags.rach.msg1Scs, "msg1Scs", "30KHz", "msg1-SubcarrierSpacing of RACH-ConfigCommon")
+	confRachCmd.Flags().StringVar(&flags.rach._msg1Scs, "_msg1Scs", "30KHz", "msg1-SubcarrierSpacing of RACH-ConfigCommon")
 	confRachCmd.Flags().IntVar(&flags.rach.msg1Fdm, "msg1Fdm", 1, "msg1-FDM of RACH-ConfigGeneric[1,2,4,8]")
 	confRachCmd.Flags().IntVar(&flags.rach.msg1FreqStart, "msg1FreqStart", 0, "msg1-FrequencyStart of RACH-ConfigGeneric[0..274]")
 	confRachCmd.Flags().StringVar(&flags.rach.raRespWin, "raRespWin", "sl20", "ra-ResponseWindow of RACH-ConfigGeneric[sl1,sl2,sl4,sl8,sl10,sl20,sl40,sl80]")
@@ -3427,7 +3505,7 @@ func initConfRachCmd() {
 	viper.BindPFlag("nrrg.rach._raNumSlotsPerSubfFr1Per60KSlotFr2", confRachCmd.Flags().Lookup("_raNumSlotsPerSubfFr1Per60KSlotFr2"))
 	viper.BindPFlag("nrrg.rach._raNumOccasionsPerSlot", confRachCmd.Flags().Lookup("_raNumOccasionsPerSlot"))
 	viper.BindPFlag("nrrg.rach._raDuration", confRachCmd.Flags().Lookup("_raDuration"))
-	viper.BindPFlag("nrrg.rach.msg1Scs", confRachCmd.Flags().Lookup("msg1Scs"))
+	viper.BindPFlag("nrrg.rach._msg1Scs", confRachCmd.Flags().Lookup("_msg1Scs"))
 	viper.BindPFlag("nrrg.rach.msg1Fdm", confRachCmd.Flags().Lookup("msg1Fdm"))
 	viper.BindPFlag("nrrg.rach.msg1FreqStart", confRachCmd.Flags().Lookup("msg1FreqStart"))
 	viper.BindPFlag("nrrg.rach.raRespWin", confRachCmd.Flags().Lookup("raRespWin"))
@@ -3447,6 +3525,7 @@ func initConfRachCmd() {
 	confRachCmd.Flags().MarkHidden("_raNumSlotsPerSubfFr1Per60KSlotFr2")
 	confRachCmd.Flags().MarkHidden("_raNumOccasionsPerSlot")
 	confRachCmd.Flags().MarkHidden("_raDuration")
+	confRachCmd.Flags().MarkHidden("_msg1Scs")
 	confRachCmd.Flags().MarkHidden("_raLen")
 	confRachCmd.Flags().MarkHidden("_raNumRbs")
 	confRachCmd.Flags().MarkHidden("_raKBar")
@@ -3771,30 +3850,29 @@ func initConfCsiReportCmd() {
 }
 
 func initConfSrsCmd() {
-	confSrsCmd.Flags().IntSliceVar(&flags.srs._resId, "_resId", []int{0, 1, 2, 3}, "srs-ResourceId of SRS-Resource")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumPorts, "srsNumPorts", []string{"ports2", "port1", "port1", "port1"}, "nrofSRS-Ports of SRS-Resource[port1,ports2,ports4]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNonCbPtrsPort, "srsNonCbPtrsPort", []string{"n0", "n0", "n0", "n0"}, "ptrs-PortIndex of SRS-Resource[n0,n1]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumCombs, "srsNumCombs", []string{"n4", "n2", "n2", "n2"}, "transmissionComb of SRS-Resource[n2,n4]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCombOff, "srsCombOff", []int{0, 0, 0, 0}, "combOffset of SRS-Resource")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCs, "srsCs", []int{11, 0, 0, 0}, "cyclicShift of SRS-Resource")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsStartPos, "srsStartPos", []int{3, 0, 0, 0}, "startPosition of SRS-Resource[0..5]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumSymbs, "srsNumSymbs", []string{"n4", "n1", "n1", "n1"}, "nrofSymbols of SRS-Resource[n1,n2,n4]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsRepetition, "srsRepetition", []string{"n4", "n1", "n1", "n1"}, "repetitionFactor of SRS-Resource[n1,n2,n4]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsFreqPos, "srsFreqPos", []int{0, 0, 0, 0}, "freqDomainPosition of SRS-Resource[0..67]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsFreqShift, "srsFreqShift", []int{0, 0, 0, 0}, "freqDomainShift of SRS-Resource[0..268]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCSrs, "srsCSrs", []int{12, 0, 0, 0}, "c-SRS of SRS-Resource[0..63]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsBSrs, "srsBSrs", []int{1, 0, 0, 0}, "b-SRS of SRS-Resource[0..3]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsBHop, "srsBHop", []int{0, 0, 0, 0}, "b-hop of SRS-Resource[0..3]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._type, "_type", []string{"periodic", "periodic", "periodic", "periodic"}, "resourceType of SRS-Resource")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsPeriod, "srsPeriod", []string{"sl10", "sl5", "sl5", "sl5"}, "SRS-PeriodicityAndOffset of SRS-Resource[sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl32,sl40,sl64,sl80,sl160,sl320,sl640,sl1280,sl2560]")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsOffset, "srsOffset", []int{7, 0, 0, 0}, "SRS-PeriodicityAndOffset of SRS-Resource[0..period-1]")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._mSRSb, "_mSRSb", []string{"48_16_8_4", "4_4_4_4", "4_4_4_4", "4_4_4_4"}, "The m_SRS_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._Nb, "_Nb", []string{"1_3_2_2", "1_1_1_1", "1_1_1_1", "1_1_1_1"}, "The N_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
-	confSrsCmd.Flags().IntSliceVar(&flags.srs._resSetId, "_resSetId", []int{0, 1}, "srs-ResourceSetId of SRS-ResourceSet")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsSetResIdList, "srsSetResIdList", []string{"0", "0_1_2_3"}, "srs-ResourceIdList of SRS-ResourceSet")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._resType, "_resType", []string{"periodic", "periodic"}, "resourceType of SRS-ResourceSet")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._usage, "_usage", []string{"codebook", "nonCodebook"}, "usage of SRS-ResourceSet")
-	confSrsCmd.Flags().StringSliceVar(&flags.srs._dci01NonCbSrsList, "_dci01NonCbSrsList", []string{"-", ""}, "The SRI(s) field of 3GPP TS 38.212 Table 7.3.1.1.2-28 ~ Table 7.3.1.1.2-31")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs._resId, "_resId", []int{0, 1, 2, 3, 4}, "srs-ResourceId of SRS-Resource")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumPorts, "srsNumPorts", []string{"ports2", "port1", "port1", "port1", "port1"}, "nrofSRS-Ports of SRS-Resource[port1,ports2,ports4]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNonCbPtrsPort, "srsNonCbPtrsPort", []string{"-", "n0", "n0", "n1", "n1"}, "ptrs-PortIndex of SRS-Resource[n0,n1]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumCombs, "srsNumCombs", []string{"n4", "n2", "n2", "n2", "n2"}, "transmissionComb of SRS-Resource[n2,n4]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCombOff, "srsCombOff", []int{0, 0, 0, 0, 0}, "combOffset of SRS-Resource")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCs, "srsCs", []int{11, 0, 0, 0, 0}, "cyclicShift of SRS-Resource")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsStartPos, "srsStartPos", []int{3, 0, 0, 0, 0}, "startPosition of SRS-Resource[0..5]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsNumSymbs, "srsNumSymbs", []string{"n4", "n1", "n1", "n1", "n1"}, "nrofSymbols of SRS-Resource[n1,n2,n4]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsRepetition, "srsRepetition", []string{"n4", "n1", "n1", "n1", "n1"}, "repetitionFactor of SRS-Resource[n1,n2,n4]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsFreqPos, "srsFreqPos", []int{0, 0, 0, 0, 0}, "freqDomainPosition of SRS-Resource[0..67]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsFreqShift, "srsFreqShift", []int{0, 0, 0, 0, 0}, "freqDomainShift of SRS-Resource[0..268]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsCSrs, "srsCSrs", []int{12, 0, 0, 0, 0}, "c-SRS of SRS-Resource[0..63]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsBSrs, "srsBSrs", []int{1, 0, 0, 0, 0}, "b-SRS of SRS-Resource[0..3]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsBHop, "srsBHop", []int{0, 0, 0, 0, 0}, "b-hop of SRS-Resource[0..3]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs._resType, "_resType", []string{"periodic", "periodic", "periodic", "periodic", "periodic"}, "resourceType of SRS-Resource")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsPeriod, "srsPeriod", []string{"sl10", "sl5", "sl5", "sl5", "sl5"}, "SRS-PeriodicityAndOffset of SRS-Resource[sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl32,sl40,sl64,sl80,sl160,sl320,sl640,sl1280,sl2560]")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs.srsOffset, "srsOffset", []int{7, 0, 0, 0, 0}, "SRS-PeriodicityAndOffset of SRS-Resource[0..period-1]")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs._mSRSb, "_mSRSb", []string{"48_16_8_4", "4_4_4_4", "4_4_4_4", "4_4_4_4", "4_4_4_4"}, "The m_SRS_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs._Nb, "_Nb", []string{"1_3_2_2", "1_1_1_1", "1_1_1_1", "1_1_1_1", "1_1_1_1"}, "The N_b with b=B_SRS of 3GPP TS 38.211 Table 6.4.1.4.3-1")
+	confSrsCmd.Flags().IntSliceVar(&flags.srs._resSetId, "_resSetId", []int{0, 1, 2}, "srs-ResourceSetId of SRS-ResourceSet")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs.srsSetResIdList, "srsSetResIdList", []string{"0", "1_2_3_4", "1_2"}, "srs-ResourceIdList of SRS-ResourceSet")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs._resSetType, "_resSetType", []string{"periodic", "periodic", "periodic"}, "resourceType of SRS-ResourceSet")
+	confSrsCmd.Flags().StringSliceVar(&flags.srs._usage, "_usage", []string{"codebook", "nonCodebook", "antennaSwitching"}, "usage of SRS-ResourceSet")
 	confSrsCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.srs._resId", confSrsCmd.Flags().Lookup("_resId"))
 	viper.BindPFlag("nrrg.srs.srsNumPorts", confSrsCmd.Flags().Lookup("srsNumPorts"))
@@ -3810,24 +3888,22 @@ func initConfSrsCmd() {
 	viper.BindPFlag("nrrg.srs.srsCSrs", confSrsCmd.Flags().Lookup("srsCSrs"))
 	viper.BindPFlag("nrrg.srs.srsBSrs", confSrsCmd.Flags().Lookup("srsBSrs"))
 	viper.BindPFlag("nrrg.srs.srsBHop", confSrsCmd.Flags().Lookup("srsBHop"))
-	viper.BindPFlag("nrrg.srs._type", confSrsCmd.Flags().Lookup("_type"))
+	viper.BindPFlag("nrrg.srs._resType", confSrsCmd.Flags().Lookup("_resType"))
 	viper.BindPFlag("nrrg.srs.srsPeriod", confSrsCmd.Flags().Lookup("srsPeriod"))
 	viper.BindPFlag("nrrg.srs.srsOffset", confSrsCmd.Flags().Lookup("srsOffset"))
 	viper.BindPFlag("nrrg.srs._mSRSb", confSrsCmd.Flags().Lookup("_mSRSb"))
 	viper.BindPFlag("nrrg.srs._Nb", confSrsCmd.Flags().Lookup("_Nb"))
 	viper.BindPFlag("nrrg.srs._resSetId", confSrsCmd.Flags().Lookup("_resSetId"))
 	viper.BindPFlag("nrrg.srs.srsSetResIdList", confSrsCmd.Flags().Lookup("srsSetResIdList"))
-	viper.BindPFlag("nrrg.srs._resType", confSrsCmd.Flags().Lookup("_resType"))
+	viper.BindPFlag("nrrg.srs._resSetType", confSrsCmd.Flags().Lookup("_resSetType"))
 	viper.BindPFlag("nrrg.srs._usage", confSrsCmd.Flags().Lookup("_usage"))
-	viper.BindPFlag("nrrg.srs._dci01NonCbSrsList", confSrsCmd.Flags().Lookup("_dci01NonCbSrsList"))
 	confSrsCmd.Flags().MarkHidden("_resId")
-	confSrsCmd.Flags().MarkHidden("_type")
+	confSrsCmd.Flags().MarkHidden("_resType")
 	confSrsCmd.Flags().MarkHidden("_mSRSb")
 	confSrsCmd.Flags().MarkHidden("_Nb")
 	confSrsCmd.Flags().MarkHidden("_resSetId")
-	confSrsCmd.Flags().MarkHidden("_resType")
+	confSrsCmd.Flags().MarkHidden("_resSetType")
 	confSrsCmd.Flags().MarkHidden("_usage")
-	confSrsCmd.Flags().MarkHidden("_dci01NonCbSrsList")
 }
 
 func initConfPucchCmd() {
@@ -3953,9 +4029,9 @@ func loadNrrgFlags() {
 
 	flags.dldci._tag = viper.GetStringSlice("nrrg.dldci._tag")
 	flags.dldci._rnti = viper.GetStringSlice("nrrg.dldci._rnti")
-	//flags.dldci._muPdcch = viper.GetIntSlice("nrrg.dldci._muPdcch")
-	//flags.dldci._muPdsch = viper.GetIntSlice("nrrg.dldci._muPdsch")
-	//flags.dldci._indicatedBwp = viper.GetIntSlice("nrrg.dldci._indicatedBwp")
+	flags.dldci._muPdcch = viper.GetIntSlice("nrrg.dldci._muPdcch")
+	flags.dldci._muPdsch = viper.GetIntSlice("nrrg.dldci._muPdsch")
+	flags.dldci._indicatedBwp = viper.GetIntSlice("nrrg.dldci._indicatedBwp")
 	flags.dldci.tdra = viper.GetIntSlice("nrrg.dldci.tdra")
 	flags.dldci._tdMappingType = viper.GetStringSlice("nrrg.dldci._tdMappingType")
 	flags.dldci._tdK0 = viper.GetIntSlice("nrrg.dldci._tdK0")
@@ -3963,7 +4039,8 @@ func loadNrrgFlags() {
 	flags.dldci._tdStartSymb = viper.GetIntSlice("nrrg.dldci._tdStartSymb")
 	flags.dldci._tdNumSymbs = viper.GetIntSlice("nrrg.dldci._tdNumSymbs")
 	flags.dldci._fdRaType = viper.GetStringSlice("nrrg.dldci._fdRaType")
-	//flags.dldci._fdBitsRaType1 = viper.GetIntSlice("nrrg.dldci._fdBitsRaType1")
+	flags.dldci._fdBitsRaType0 = viper.GetInt("nrrg.dldci._fdBitsRaType0")
+	flags.dldci._fdBitsRaType1 = viper.GetIntSlice("nrrg.dldci._fdBitsRaType1")
 	flags.dldci._fdRa = viper.GetStringSlice("nrrg.dldci._fdRa")
 	flags.dldci.fdStartRb = viper.GetIntSlice("nrrg.dldci.fdStartRb")
 	flags.dldci.fdNumRbs = viper.GetIntSlice("nrrg.dldci.fdNumRbs")
@@ -3982,7 +4059,6 @@ func loadNrrgFlags() {
 	flags.uldci._rnti = viper.GetStringSlice("nrrg.uldci._rnti")
 	flags.uldci._muPdcch = viper.GetIntSlice("nrrg.uldci._muPdcch")
 	flags.uldci._muPusch = viper.GetIntSlice("nrrg.uldci._muPusch")
-	//flags.uldci._actBwp = viper.GetInt("nrrg.uldci._actBwp")
 	flags.uldci._indicatedBwp = viper.GetIntSlice("nrrg.uldci._indicatedBwp")
 	flags.uldci.tdra = viper.GetIntSlice("nrrg.uldci.tdra")
 	flags.uldci._tdMappingType = viper.GetStringSlice("nrrg.uldci._tdMappingType")
@@ -3993,6 +4069,8 @@ func loadNrrgFlags() {
 	flags.uldci._fdRaType = viper.GetStringSlice("nrrg.uldci._fdRaType")
 	flags.uldci.fdFreqHop = viper.GetStringSlice("nrrg.uldci.fdFreqHop")
 	flags.uldci._fdFreqHopOffset = viper.GetIntSlice("nrrg.uldci._fdFreqHopOffset")
+	flags.uldci._fdBitsRaType0 = viper.GetInt("nrrg.uldci._fdBitsRaType0")
+	flags.uldci._fdBitsRaType1 = viper.GetIntSlice("nrrg.uldci._fdBitsRaType1")
 	flags.uldci._fdRa = viper.GetStringSlice("nrrg.uldci._fdRa")
 	flags.uldci.fdStartRb = viper.GetIntSlice("nrrg.uldci.fdStartRb")
 	flags.uldci.fdNumRbs = viper.GetIntSlice("nrrg.uldci.fdNumRbs")
@@ -4020,7 +4098,7 @@ func loadNrrgFlags() {
 	flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2 = viper.GetInt("nrrg.rach._raNumSlotsPerSubfFr1Per60KSlotFr2")
 	flags.rach._raNumOccasionsPerSlot = viper.GetInt("nrrg.rach._raNumOccasionsPerSlot")
 	flags.rach._raDuration = viper.GetInt("nrrg.rach._raDuration")
-	flags.rach.msg1Scs = viper.GetString("nrrg.rach.msg1Scs")
+	flags.rach._msg1Scs = viper.GetString("nrrg.rach._msg1Scs")
 	flags.rach.msg1Fdm = viper.GetInt("nrrg.rach.msg1Fdm")
 	flags.rach.msg1FreqStart = viper.GetInt("nrrg.rach.msg1FreqStart")
 	flags.rach.raRespWin = viper.GetString("nrrg.rach.raRespWin")
@@ -4173,16 +4251,15 @@ func loadNrrgFlags() {
 	flags.srs.srsCSrs = viper.GetIntSlice("nrrg.srs.srsCSrs")
 	flags.srs.srsBSrs = viper.GetIntSlice("nrrg.srs.srsBSrs")
 	flags.srs.srsBHop = viper.GetIntSlice("nrrg.srs.srsBHop")
-	flags.srs._type = viper.GetStringSlice("nrrg.srs._type")
+	flags.srs._resType = viper.GetStringSlice("nrrg.srs._resType")
 	flags.srs.srsPeriod = viper.GetStringSlice("nrrg.srs.srsPeriod")
 	flags.srs.srsOffset = viper.GetIntSlice("nrrg.srs.srsOffset")
 	flags.srs._mSRSb = viper.GetStringSlice("nrrg.srs._mSRSb")
 	flags.srs._Nb = viper.GetStringSlice("nrrg.srs._Nb")
 	flags.srs._resSetId = viper.GetIntSlice("nrrg.srs._resSetId")
 	flags.srs.srsSetResIdList = viper.GetStringSlice("nrrg.srs.srsSetResIdList")
-	flags.srs._resType = viper.GetStringSlice("nrrg.srs._resType")
+	flags.srs._resSetType = viper.GetStringSlice("nrrg.srs._resSetType")
 	flags.srs._usage = viper.GetStringSlice("nrrg.srs._usage")
-	flags.srs._dci01NonCbSrsList = viper.GetStringSlice("nrrg.srs._dci01NonCbSrsList")
 
 	flags.pucch.pucchFmtCfgNumSlots = viper.GetString("nrrg.pucch.pucchFmtCfgNumSlots")
 	flags.pucch.pucchFmtCfgInterSlotFreqHop = viper.GetString("nrrg.pucch.pucchFmtCfgInterSlotFreqHop")
@@ -4256,4 +4333,22 @@ func laPrint(cmd *cobra.Command, args []string) {
 		})
 
 	fmt.Println()
+}
+
+func initLrbsPuschTp(bwpSize int) []int {
+	var lrbsTp []int
+	for x := range utils.PyRange(0, utils.CeilInt(math.Log(float64(bwpSize))/math.Log(2)), 1) {
+		for y := range utils.PyRange(0, utils.CeilInt(math.Log(float64(bwpSize))/math.Log(3)), 1) {
+			for z := range utils.PyRange(0, utils.CeilInt(math.Log(float64(bwpSize))/math.Log(5)), 1) {
+				lrbs := int(math.Pow(2, float64(x)) * math.Pow(3, float64(y)) * math.Pow(5, float64(z)))
+				if lrbs <= bwpSize {
+					lrbsTp = append(lrbsTp, lrbs)
+				}
+			}
+		}
+	}
+
+	sort.Ints(lrbsTp)
+
+	return lrbsTp
 }

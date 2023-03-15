@@ -178,6 +178,12 @@ nrrg:
     csirepperiod: slots320
     csireppucchres: 2
   dldci:
+    _fdbitsratype0: 10
+    _fdbitsratype1:
+    - 11
+    - 11
+    - 11
+    - 14
     _fdra:
     - "00001011111"
     - "00001011111"
@@ -188,6 +194,21 @@ nrrg:
     - raType1
     - raType1
     - raType1
+    _indicatedbwp:
+    - 0
+    - 0
+    - 0
+    - 1
+    _mupdcch:
+    - 0
+    - 0
+    - 0
+    - 0
+    _mupdsch:
+    - 0
+    - 0
+    - 0
+    - 0
     _rnti:
     - SI-RNTI
     - RA-RNTI
@@ -466,6 +487,7 @@ nrrg:
     _cdmgroupswodata: 1
     _dmrsports:
     - 0
+    - 1
     _numfrontloadsymbs: 1
     _numgrpstp: 2
     _ptrsdmrsports:
@@ -492,35 +514,33 @@ nrrg:
     puschtxcfg: codebook
     puschxoh: xOh0
   rach:
-    _raduration: 6
-    _raformat: A3
-    _rakbar: 2
-    _ralen: 139
-    _ranumoccasionsperslot: 2
-    _ranumrbs: 12
-    _ranumslotspersubffr1per60kslotfr2: 2
+    _msg1scs: 1.25KHz
+    _raduration: 0
+    _raformat: "0"
+    _rakbar: 7
+    _ralen: 839
+    _ranumoccasionsperslot: 1
+    _ranumrbs: 6
+    _ranumslotspersubffr1per60kslotfr2: 1
     _rastartingsymb: 0
     _rasubfnumfr1slotnumfr2:
-    - 4
-    _rax: 16
+    - 1
+    _rax: 2
     _ray:
     - 1
     cbpreambsperssb: 64
     contrestimer: sf64
     msg1fdm: 1
     msg1freqstart: 0
-    msg1scs: 30KHz
     msg3tp: disabled
-    prachconfid: 148
+    prachconfid: 12
     rarespwin: sl20
     ssbperrachoccasion: one
     totnumpreambs: 64
   srs:
-    _dci01noncbsrslist:
-    - '-'
-    - ""
     _msrsb:
     - "48_16_8_4"
+    - "4_4_4_4"
     - "4_4_4_4"
     - "4_4_4_4"
     - "4_4_4_4"
@@ -529,18 +549,23 @@ nrrg:
     - "1_1_1_1"
     - "1_1_1_1"
     - "1_1_1_1"
+    - "1_1_1_1"
     _resid:
     - 0
     - 1
     - 2
     - 3
+    - 4
     _ressetid:
     - 0
     - 1
+    - 2
+    _ressettype:
+    - periodic
+    - periodic
+    - periodic
     _restype:
     - periodic
-    - periodic
-    _type:
     - periodic
     - periodic
     - periodic
@@ -548,7 +573,9 @@ nrrg:
     _usage:
     - codebook
     - nonCodebook
+    - antennaSwitching
     srsbhop:
+    - 0
     - 0
     - 0
     - 0
@@ -558,7 +585,9 @@ nrrg:
     - 0
     - 0
     - 0
+    - 0
     srscomboff:
+    - 0
     - 0
     - 0
     - 0
@@ -568,12 +597,15 @@ nrrg:
     - 0
     - 0
     - 0
+    - 0
     srscsrs:
     - 12
     - 0
     - 0
     - 0
+    - 0
     srsfreqpos:
+    - 0
     - 0
     - 0
     - 0
@@ -583,17 +615,21 @@ nrrg:
     - 0
     - 0
     - 0
+    - 0
     srsnoncbptrsport:
+    - '-'
     - n0
     - n0
-    - n0
-    - n0
+    - n1
+    - n1
     srsnumcombs:
     - n4
     - n2
     - n2
     - n2
+    - n2
     srsnumports:
+    - ports2
     - port1
     - port1
     - port1
@@ -603,8 +639,10 @@ nrrg:
     - n1
     - n1
     - n1
+    - n1
     srsoffset:
     - 7
+    - 0
     - 0
     - 0
     - 0
@@ -613,16 +651,20 @@ nrrg:
     - sl5
     - sl5
     - sl5
+    - sl5
     srsrepetition:
     - n4
     - n1
     - n1
     - n1
+    - n1
     srssetresidlist:
     - "0"
-    - "0_1_2_3"
+    - "1_2_3_4"
+    - "1_2"
     srsstartpos:
     - 3
+    - 0
     - 0
     - 0
     - 0
@@ -665,6 +707,10 @@ nrrg:
     trsperiod: slots40
     trsstartrb: 0
   uldci:
+    _fdbitsratype0: 10
+    _fdbitsratype1:
+    - 14
+    - 14
     _fdfreqhopoffset:
     - 80
     - 80
@@ -674,6 +720,15 @@ nrrg:
     _fdratype:
     - raType1
     - raType1
+    _indicatedbwp:
+    - 0
+    - 1
+    _mupdcch:
+    - 0
+    - 0
+    _mupusch:
+    - 0
+    - 0
     _rnti:
     - RA-RNTI
     - C-RNTI
@@ -682,7 +737,7 @@ nrrg:
     - DCI_01_PUSCH
     _tbs:
     - 104
-    - 139376
+    - 278776
     _tddelta: 2
     _tdk2:
     - 2

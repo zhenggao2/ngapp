@@ -609,6 +609,32 @@ var ScsRaLongPrach = map[string]string{
 	"839_3": "5KHz",
 }
 
+// refer to 3GPP 38.331 vh30
+// ssb-perRACH-OccasionAndCB-PreamblesPerSSB of RACH-ConfigCommon
+var SsbPerRachOccasion2Float = map[string]float64{
+	"oneEighth": 0.125,
+	"oneFourth": 0.25,
+	"oneHalf":   0.5,
+	"one":       1,
+	"two":       2,
+	"four":      4,
+	"eight":     8,
+	"sixteen":   16,
+}
+
+// refer to 3GPP 38.331 vh30
+// ssb-perRACH-OccasionAndCB-PreamblesPerSSB of RACH-ConfigCommon
+var SsbPerRachOccasion2CbPreamblesPerSsb = map[string][]int{
+	"oneEighth": {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
+	"oneFourth": {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
+	"oneHalf":   {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
+	"one":       {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64},
+	"two":       {4, 8, 12, 16, 20, 24, 28, 32},
+	"four":      {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+	"eight":     {1, 2, 3, 4, 5, 6, 7, 8},
+	"sixteen":   {1, 2, 3, 4},
+}
+
 // refer to 3GPP 38.211 vh40
 //  Table 6.3.3.2-1: Supported combinations of scsRA and scsPusch, and the corresponding value of kBar
 var NumRbsRaAndKBar = map[string][]int{
