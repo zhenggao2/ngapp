@@ -117,19 +117,6 @@ nrrg:
     - dedDlBwp
     - iniUlBwp
     - dedUlBwp
-  commonsetting:
-    _refscs: 15KHz
-    patnumdlslots:
-    - 7
-    patnumdlsymbs:
-    - 6
-    patnumulslots:
-    - 2
-    patnumulsymbs:
-    - 4
-    patperiod:
-    - 5ms
-    pci: 0
   coreset1:
     coreset1cceregmap: interleaved
     coreset1duration: 1
@@ -355,6 +342,7 @@ nrrg:
     dlarfcn: 154600
     dmrstypeapos: pos2
     gscn: 1931
+    pci: 0
     rmsicoreset0: 7
     rmsicss0: 4
     scs: 15KHz
@@ -668,6 +656,18 @@ nrrg:
     - 0
     - 0
     - 0
+  tdduldl:
+    _refscs: 15KHz
+    patnumdlslots:
+    - 7
+    patnumdlsymbs:
+    - 6
+    patnumulslots:
+    - 2
+    patnumulsymbs:
+    - 4
+    patperiod:
+    - 5ms
   trs:
     _cdmgrpindj:
     - 0
