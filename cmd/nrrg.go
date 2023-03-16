@@ -264,12 +264,12 @@ type RachFlags struct {
 	_msg1Scs                           string // the msg1-SubcarrierSpacing of RACH-ConfigCommon, which can be 15/30KHz for FR1, 60/120KHz for FR2-1 and 120/480/960KHz for FR2-2
 	msg1Fdm                            int
 	msg1FreqStart                      int
-	raRespWin                          string
 	totNumPreambs                      int
 	ssbPerRachOccasion                 string
 	cbPreambsPerSsb                    int
-	contResTimer                       string
+	raRespWin                          string
 	msg3Tp                             string
+	contResTimer                       string
 	_raLen                             int
 	_raNumRbs                          int
 	_raKBar                            int
@@ -3486,12 +3486,12 @@ func initConfRachCmd() {
 	confRachCmd.Flags().StringVar(&flags.rach._msg1Scs, "_msg1Scs", "30KHz", "msg1-SubcarrierSpacing of RACH-ConfigCommon")
 	confRachCmd.Flags().IntVar(&flags.rach.msg1Fdm, "msg1Fdm", 1, "msg1-FDM of RACH-ConfigGeneric[1,2,4,8]")
 	confRachCmd.Flags().IntVar(&flags.rach.msg1FreqStart, "msg1FreqStart", 0, "msg1-FrequencyStart of RACH-ConfigGeneric[0..274]")
-	confRachCmd.Flags().StringVar(&flags.rach.raRespWin, "raRespWin", "sl20", "ra-ResponseWindow of RACH-ConfigGeneric[sl1,sl2,sl4,sl8,sl10,sl20,sl40,sl80]")
 	confRachCmd.Flags().IntVar(&flags.rach.totNumPreambs, "totNumPreambs", 64, "totalNumberOfRA-Preambles of RACH-ConfigCommon[1..64]")
 	confRachCmd.Flags().StringVar(&flags.rach.ssbPerRachOccasion, "ssbPerRachOccasion", "one", "ssb-perRACH-Occasion of RACH-ConfigGeneric[oneEighth,oneFourth,oneHalf,one,two,four,eight,sixteen]")
 	confRachCmd.Flags().IntVar(&flags.rach.cbPreambsPerSsb, "cbPreambsPerSsb", 64, "cb-PreamblesPerSSB of RACH-ConfigCommon[depends on ssbPerRachOccasion]")
-	confRachCmd.Flags().StringVar(&flags.rach.contResTimer, "contResTimer", "sf64", "ra-ContentionResolutionTimer of RACH-ConfigGeneric[sf8,sf16,sf24,sf32,sf40,sf48,sf56,sf64]")
+	confRachCmd.Flags().StringVar(&flags.rach.raRespWin, "raRespWin", "sl20", "ra-ResponseWindow of RACH-ConfigGeneric[sl1,sl2,sl4,sl8,sl10,sl20,sl40,sl80]")
 	confRachCmd.Flags().StringVar(&flags.rach.msg3Tp, "msg3Tp", "disabled", "msg3-transformPrecoder of RACH-ConfigGeneric[disabled,enabled]")
+	confRachCmd.Flags().StringVar(&flags.rach.contResTimer, "contResTimer", "sf64", "ra-ContentionResolutionTimer of RACH-ConfigGeneric[sf8,sf16,sf24,sf32,sf40,sf48,sf56,sf64]")
 	confRachCmd.Flags().IntVar(&flags.rach._raLen, "_raLen", 139, "L_RA of 3GPP TS 38.211 Table 6.3.3.1-1 and Table 6.3.3.1-2")
 	confRachCmd.Flags().IntVar(&flags.rach._raNumRbs, "_raNumRbs", 12, "Allocation-expressed-in-number-of-RBs-for-PUSCH of 3GPP TS 38.211 Table 6.3.3.2-1")
 	confRachCmd.Flags().IntVar(&flags.rach._raKBar, "_raKBar", 2, "k_bar of 3GPP TS 38.211 Table 6.3.3.2-1")
@@ -3508,12 +3508,12 @@ func initConfRachCmd() {
 	viper.BindPFlag("nrrg.rach._msg1Scs", confRachCmd.Flags().Lookup("_msg1Scs"))
 	viper.BindPFlag("nrrg.rach.msg1Fdm", confRachCmd.Flags().Lookup("msg1Fdm"))
 	viper.BindPFlag("nrrg.rach.msg1FreqStart", confRachCmd.Flags().Lookup("msg1FreqStart"))
-	viper.BindPFlag("nrrg.rach.raRespWin", confRachCmd.Flags().Lookup("raRespWin"))
 	viper.BindPFlag("nrrg.rach.totNumPreambs", confRachCmd.Flags().Lookup("totNumPreambs"))
 	viper.BindPFlag("nrrg.rach.ssbPerRachOccasion", confRachCmd.Flags().Lookup("ssbPerRachOccasion"))
 	viper.BindPFlag("nrrg.rach.cbPreambsPerSsb", confRachCmd.Flags().Lookup("cbPreambsPerSsb"))
-	viper.BindPFlag("nrrg.rach.contResTimer", confRachCmd.Flags().Lookup("contResTimer"))
+	viper.BindPFlag("nrrg.rach.raRespWin", confRachCmd.Flags().Lookup("raRespWin"))
 	viper.BindPFlag("nrrg.rach.msg3Tp", confRachCmd.Flags().Lookup("msg3Tp"))
+	viper.BindPFlag("nrrg.rach.contResTimer", confRachCmd.Flags().Lookup("contResTimer"))
 	viper.BindPFlag("nrrg.rach._raLen", confRachCmd.Flags().Lookup("_raLen"))
 	viper.BindPFlag("nrrg.rach._raNumRbs", confRachCmd.Flags().Lookup("_raNumRbs"))
 	viper.BindPFlag("nrrg.rach._raKBar", confRachCmd.Flags().Lookup("_raKBar"))
@@ -4101,12 +4101,12 @@ func loadNrrgFlags() {
 	flags.rach._msg1Scs = viper.GetString("nrrg.rach._msg1Scs")
 	flags.rach.msg1Fdm = viper.GetInt("nrrg.rach.msg1Fdm")
 	flags.rach.msg1FreqStart = viper.GetInt("nrrg.rach.msg1FreqStart")
-	flags.rach.raRespWin = viper.GetString("nrrg.rach.raRespWin")
 	flags.rach.totNumPreambs = viper.GetInt("nrrg.rach.totNumPreambs")
 	flags.rach.ssbPerRachOccasion = viper.GetString("nrrg.rach.ssbPerRachOccasion")
 	flags.rach.cbPreambsPerSsb = viper.GetInt("nrrg.rach.cbPreambsPerSsb")
-	flags.rach.contResTimer = viper.GetString("nrrg.rach.contResTimer")
+	flags.rach.raRespWin = viper.GetString("nrrg.rach.raRespWin")
 	flags.rach.msg3Tp = viper.GetString("nrrg.rach.msg3Tp")
+	flags.rach.contResTimer = viper.GetString("nrrg.rach.contResTimer")
 	flags.rach._raLen = viper.GetInt("nrrg.rach._raLen")
 	flags.rach._raNumRbs = viper.GetInt("nrrg.rach._raNumRbs")
 	flags.rach._raKBar = viper.GetInt("nrrg.rach._raKBar")
