@@ -52,8 +52,7 @@ var (
 type NrrgFlags struct {
 	gridsetting GridSettingFlags
 	tdduldl     TddUlDlFlags
-	coreset1    Coreset1Flags
-	uss         UssFlags
+	searchspace SearchSpaceFlags
 	dldci       DlDciFlags
 	uldci       UlDciFlags
 	bwp         BwpFlags
@@ -125,27 +124,27 @@ type TddUlDlFlags struct {
 	patNumUlSlots []int    // The nrofUplinkSlots of TDD-UL-DL-Pattern, and max length is 2
 }
 
-// CORESET1
-type Coreset1Flags struct {
-	coreset1FreqRes string
-	// TODO: rename coreset1NumSymbs to coreset1Duration
-	// coreset1NumSymbs        int
-	coreset1Duration        int
-	coreset1CceRegMap       string
-	coreset1RegBundleSize   string
-	coreset1InterleaverSize string
-	coreset1ShiftInd        int
+// Search space
+type SearchSpaceFlags struct {
+	_coreset1FdRes            string // the frequencyDomainResources of ControlResourceSet, the length of which is 45 bits
+	coreset1StartCrb          int    // the starting CRB, which must fulfill coreset1StartCrb % 6 == 0
+	coreset1NumRbs            int    // number of RBs, which must fulfill coreset1NumRbs % 6 == 0
+	coreset1Duration          int    // the duration of ControlResourceSet, which can be 1/2/3
+	coreset1CceRegMappingType string // the cce-REG-MappingType of ControlResourceSet, which can abe interleaved or nonInterleaved
+	coreset1RegBundleSize     string // the reg-BundleSize of ControlResourceSet when coreset1CceRegMappingType is interleaved, which can be n2/n3/n6
+	coreset1InterleaverSize   string // the interleaverSize of ControlResourceSet when coreset1CceRegMappingType is interleaved, which can be n2/n3/n6
+	_coreset1ShiftIndex       int    // the shiftIndex of ControlResourceSet when coreset1CceRegMappingType is interleaved
 	// coreset1PrecoderGranularity string
-}
 
-// USS
-type UssFlags struct {
-	ussPeriod        string
-	ussOffset        int
-	ussDuration      int
-	ussFirstSymbs    string
-	ussAggLevel      int
-	ussNumCandidates string
+	_ssId                         []int    // the searchSpaceId of SearchSpace
+	_ssType                       []string // the type of search space, which can be type0a/type1/type2/type3/uss
+	_ssCoresetId                  []int    // the controlResourceSetId of SearchSpace
+	_ssDuration                   []int    // the duration of SearchSpace
+	_ssMonitoringSymbolWithinSlot []string // the monitoringSymbolsWithinSlot of SearchSpace, which can be symb_0, symb_0_1 or symb_0_1_2
+	ssAggregationLevel            []string // the aggregationLevel of SearchSpace, which can be AL1/AL2/AL4/AL8/AL16
+	ssNumOfPdcchCandidates        []string // the nrofCandidates of SearchSpace, which can be n0/n1/n2/n3/n4/n5/n6/n8
+	_ssPeriodicity                []string // the monitoringSlotPeriodicityAndOffset of SearchSpace
+	_ssSlotOffset                 []int    // the monitoringSlotPeriodicityAndOffset of SearchSpace
 }
 
 // DL DCI 1_0/1_1 for PDSCH scheduling
@@ -435,25 +434,25 @@ type CsiReportFlags struct {
 
 // SRS resource
 type SrsFlags struct {
-	_resId           []int
-	srsNumPorts      []string
-	srsNonCbPtrsPort []string
-	srsNumCombs      []string
-	srsCombOff       []int
-	srsCs            []int
-	srsStartPos      []int
-	srsNumSymbs      []string
-	srsRepetition    []string
-	srsFreqPos       []int
-	srsFreqShift     []int
-	srsCSrs          []int
-	srsBSrs          []int
-	srsBHop          []int
-	_resType         []string
-	srsPeriod        []string
-	srsOffset        []int
-	_mSRSb           []string
-	_Nb              []string
+	_resId            []int
+	srsNumPorts       []string
+	_srsNonCbPtrsPort []string
+	srsNumCombs       []string
+	srsCombOff        []int
+	srsCs             []int
+	srsStartPos       []int
+	srsNumSymbs       []string
+	srsRepetition     []string
+	srsFreqPos        []int
+	srsFreqShift      []int
+	srsCSrs           []int
+	srsBSrs           []int
+	srsBHop           []int
+	_resType          []string
+	srsPeriod         []string
+	srsOffset         []int
+	_mSRSb            []string
+	_Nb               []string
 	// SRS resource set
 	_resSetId       []int
 	srsSetResIdList []string
@@ -791,20 +790,21 @@ var gridSettingCmd = &cobra.Command{
 			}
 		}
 
+		// process gridsetting.dmrsTypeAPos
 		if cmd.Flags().Lookup("dmrsTypeAPos").Changed {
 			regGreen.Printf("[INFO]: Processing gridSetting.dmrsTypeAPos...\n")
 
 			dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 
-			// validate CORESET duration
+			// validate CORESET coreset1Duration
 			// refer to 3GPP TS 38.211 vf80: 7.3.2.2	Control-resource set (CORESET)
 			// N_CORESET_symb = 3 is supported only if the higher-layer parameter dmrs-TypeA-Position equals 3;
 			if flags.gridsetting._coreset0NumSymbs == 3 && dmrsTypeAPos != "pos3" {
 				fmt.Printf("coreset0NumSymbs can be 3 only if dmrs-TypeA-Position is pos3! (corest0NumSymbs=%v,dmrsTypeAPos=%v)\n", flags.gridsetting._coreset0NumSymbs, flags.gridsetting.dmrsTypeAPos)
 				return
 			}
-			if flags.coreset1.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
-				fmt.Printf("coreset1Duration can be 3 only if dmrs-TypeA-Position is pos3! (coreset1Duration=%v,dmrsTypeAPos=%v)\n", flags.coreset1.coreset1Duration, flags.gridsetting.dmrsTypeAPos)
+			if flags.searchspace.coreset1Duration == 3 && dmrsTypeAPos != "pos3" {
+				fmt.Printf("coreset1Duration can be 3 only if dmrs-TypeA-Position is pos3! (coreset1Duration=%v,dmrsTypeAPos=%v)\n", flags.searchspace.coreset1Duration, flags.gridsetting.dmrsTypeAPos)
 				return
 			}
 
@@ -821,6 +821,11 @@ var gridSettingCmd = &cobra.Command{
 				regRed.Printf("[ERR]: " + err.Error())
 				return
 			}
+		}
+
+		// process gridsetting.pci
+		if cmd.Flags().Lookup("pci").Changed {
+			flags.searchspace._coreset1ShiftIndex = flags.gridsetting.pci
 		}
 
 		regGreen.Printf("[INFO]: Post-processing...\n")
@@ -1136,7 +1141,7 @@ func validateCoreset0() error {
 		flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
 	}
 
-	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
+	fmt.Printf("CORESET0: multiplexingPattern=%v, coreset1NumRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
 
 	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
 	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
@@ -1357,10 +1362,10 @@ func validateDci10PdschTdRa(i int) error {
 
 		// update DMRS info
 		// refer to 3GPP TS 38.214 vh40: 5.1.6.2	DM-RS reception procedure
-		// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
-		// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, ...the UE shall assume that the PDSCH is not present in any symbol carrying DM-RS except for PDSCH with allocation duration of 2 symbols with PDSCH mapping type B (described in clause 7.4.1.1.2 of [4, TS 38.211]), and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and that all the remaining orthogonal antenna ports are not associated with transmission of PDSCH to another UE and in addition:
-		// 	-For PDSCH with mapping type A and type B, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
-		//	-For PDSCH with allocation duration of 2 symbols with mapping type B, the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
+		// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, the UE shall assume the number of DM-RS CDM groups without data is 1 which corresponds to CDM group 0 for the case of PDSCH with allocation coreset1Duration of 2 symbols, and the UE shall assume that the number of DM-RS CDM groups without data is 2 which corresponds to CDM group {0,1} for all other cases.
+		// When receiving PDSCH scheduled by DCI format 1_0, 4_0, or 4_1, ...the UE shall assume that the PDSCH is not present in any symbol carrying DM-RS except for PDSCH with allocation coreset1Duration of 2 symbols with PDSCH mapping type B (described in clause 7.4.1.1.2 of [4, TS 38.211]), and a single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 1000 is transmitted, and that all the remaining orthogonal antenna ports are not associated with transmission of PDSCH to another UE and in addition:
+		// 	-For PDSCH with mapping type A and type B, the UE shall assume dmrs-AdditionalPosition='pos2' and up to two additional single-symbol DM-RS present in a slot according to the PDSCH coreset1Duration indicated in the DCI as defined in Clause 7.4.1.1 of [4, TS 38.211], and
+		//	-For PDSCH with allocation coreset1Duration of 2 symbols with mapping type B, the UE shall assume that the PDSCH is present in the symbol carrying DM-RS.
 		if p.L == 2 {
 			flags.dmrsCommon._cdmGroupsWoData[i] = 1
 		} else {
@@ -1400,8 +1405,8 @@ func updateDci10PdschTbs(i int) error {
 	fmt.Printf("PDSCH(tag=%v): RIV=%v, FDRA bits=%v\n", flags.dldci._tag[i], riv, flags.dldci._fdRa[i])
 
 	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+	// -for PDSCH mapping type A, ld is the coreset1Duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+	// -for PDSCH mapping type B, ld is the coreset1Duration of the scheduled PDSCH resources
 	if flags.dldci._tdMappingType[i] == "typeA" {
 		ld = flags.dldci._tdStartSymb[i] + flags.dldci._tdNumSymbs[i]
 	} else {
@@ -1423,7 +1428,7 @@ func updateDci10PdschTbs(i int) error {
 	//	- single-symbol DM-RS, l1=11 except if all of the following conditions are fulfilled in which case l1=12: (2023/2/22: DSS is not supported!)
 	// For PDSCH mapping type B,
 	// 	- if ... and the front-loaded DM-RS of the PDSCH allocation collides with resources reserved for a search space set associated with a CORESET...(2023/2/23: Assume no collision between PDSCH DMRS and CORESET!)
-	//  - if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
+	//  - if the PDSCH coreset1Duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
 	//	- if the higher-layer parameter lte-CRS-ToMatchAround, lte-CRS-PatternList1, or lte-CRS-PatternList2 is configured,...(2023/2/23: DSS is not supported!)
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	if flags.dldci._tdMappingType[i] == "typeA" {
@@ -1619,8 +1624,8 @@ func validateDci11PdschAntPorts() error {
 	dmrsAddPos := flags.pdsch.pdschDmrsAddPos
 
 	// refer to 3GPP TS 38.211 vh40: 7.4.1.1.2	Mapping to physical resources (DMRS for PDSCH)
-	// -for PDSCH mapping type A, ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
-	// -for PDSCH mapping type B, ld is the duration of the scheduled PDSCH resources
+	// -for PDSCH mapping type A, ld is the coreset1Duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PDSCH resources in the slot
+	// -for PDSCH mapping type B, ld is the coreset1Duration of the scheduled PDSCH resources
 	if tdMappingType == "typeA" {
 		ld = flags.dldci._tdStartSymb[DCI_11_PDSCH] + flags.dldci._tdNumSymbs[DCI_11_PDSCH]
 	} else {
@@ -1646,7 +1651,7 @@ func validateDci11PdschAntPorts() error {
 	//	- single-symbol DM-RS, l1=11 except if all of the following conditions are fulfilled in which case l1=12: (2023/2/22: DSS is not supported!)
 	// For PDSCH mapping type B,
 	// 	- if ... and the front-loaded DM-RS of the PDSCH allocation collides with resources reserved for a search space set associated with a CORESET...(2023/2/23: Assume no collision between PDSCH DMRS and CORESET!)
-	//  - if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
+	//  - if the PDSCH coreset1Duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.
 	//	- if the higher-layer parameter lte-CRS-ToMatchAround, lte-CRS-PatternList1, or lte-CRS-PatternList2 is configured,...(2023/2/23: DSS is not supported!)
 	dmrsTypeAPos := flags.gridsetting.dmrsTypeAPos
 	if tdMappingType == "typeA" && dmrsAddPos == "pos3" && dmrsTypeAPos != "pos2" {
@@ -1658,7 +1663,7 @@ func validateDci11PdschAntPorts() error {
 		}
 	}
 	if tdMappingType == "typeB" && (ld <= 4) && flags.pdsch._numFrontLoadSymbs != 1 {
-		return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.pdsch._numFrontLoadSymbs))
+		return errors.New(fmt.Sprintf("For PDSCH mapping type B, if the PDSCH coreset1Duration ld is less than or equal to 4 OFDM symbols, only single-symbol DM-RS is supported.\n tdMappingType=%v, ld=%v, numFrontLoadSymbs=%v\n", tdMappingType, ld, flags.pdsch._numFrontLoadSymbs))
 	}
 
 	dmrsOh := (2 * flags.pdsch._cdmGroupsWoData) * len(dmrs)
@@ -1813,11 +1818,11 @@ func updateRarUlMsg3PuschTbs() error {
 	flags.dmrsCommon._numFrontLoadSymbs[DMRS_RAR_UL_MSG3] = 1
 
 	// refer to 3GPP TS 38.214 vh40: 6.2.2	UE DM-RS transmission procedure
-	// When transmitted PUSCH is neither scheduled by DCI format 0_1/0_2 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, nor being a PUSCH for Type-2 random access procedure, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and the remaining REs not used for DM-RS in the symbols are not used for any PUSCH transmission except for PUSCH with allocation duration of 2 or less OFDM symbols with transform precoding disabled, additional DM-RS can be transmitted according to the scheduling type and the PUSCH duration as specified in Table 6.4.1.1.3-3 of [4, TS38.211] for frequency hopping disabled and as specified in Table 6.4.1.1.3-6 of [4, TS38.211] for frequency hopping enabled, and
+	// When transmitted PUSCH is neither scheduled by DCI format 0_1/0_2 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, nor being a PUSCH for Type-2 random access procedure, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and the remaining REs not used for DM-RS in the symbols are not used for any PUSCH transmission except for PUSCH with allocation coreset1Duration of 2 or less OFDM symbols with transform precoding disabled, additional DM-RS can be transmitted according to the scheduling type and the PUSCH coreset1Duration as specified in Table 6.4.1.1.3-3 of [4, TS38.211] for frequency hopping disabled and as specified in Table 6.4.1.1.3-6 of [4, TS38.211] for frequency hopping enabled, and
 	// If frequency hopping is disabled:
-	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH duration, or
+	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH coreset1Duration, or
 	// If frequency hopping is enabled:
-	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos1' and up to one additional DM-RS can be transmitted according to PUSCH duration.
+	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos1' and up to one additional DM-RS can be transmitted according to PUSCH coreset1Duration.
 	if flags.uldci.fdFreqHop[RAR_UL_MSG3] == "intra-slot" {
 		flags.dmrsCommon._dmrsAddPos[DMRS_RAR_UL_MSG3] = "pos1"
 	} else {
@@ -1843,7 +1848,7 @@ func updateRarUlMsg3PuschTbs() error {
 	var key1, key2, key string
 	if freqHop == "intra-slot" {
 		// refer to 3GPP 38.211 vh40 6.4.1.1.3
-		// ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
+		// ld is the coreset1Duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
 		// refer to 3GPP 38.214 vf30 6.3
 		// In case of intra-slot frequency hopping, ... The number of symbols in the first hop is given by floor(N_PUSCH_symb/2) , the number of symbols in the second hop is given by N_PUSCH_symb - floor(N_PUSCH_symb/2) , where N_PUSCH_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
 		ld1 := utils.FloorInt(float64(td) / 2)
@@ -1880,8 +1885,8 @@ func updateRarUlMsg3PuschTbs() error {
 		}
 	} else {
 		// refer to 38.211 vh40 6.4.1.1.3
-		// ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
-		// ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
+		// ld is the coreset1Duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// ld is the coreset1Duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
 		var ld int
 		if tdMappingType == "typeA" {
 			ld = flags.uldci._tdStartSymb[RAR_UL_MSG3] + td
@@ -2223,9 +2228,15 @@ func validateDci01PuschAntPorts() error {
 				}
 			}
 		} else {
+			var nonCbSrsResIds []int
+			for _, v := range strings.Split(flags.srs.srsSetResIdList[1], "_") {
+				vi, _ := strconv.Atoi(v)
+				nonCbSrsResIds = append(nonCbSrsResIds, vi)
+			}
+
 			ptrsDmrsMapping := map[int][]int{0: {}, 1: {}}
 			for i, sri := range flags.pusch._nonCbSri {
-				if flags.srs.srsNonCbPtrsPort[sri] == "n0" {
+				if flags.srs._srsNonCbPtrsPort[nonCbSrsResIds[sri]] == "n0" {
 					ptrsDmrsMapping[0] = append(ptrsDmrsMapping[0], flags.pusch._dmrsPorts[i])
 				} else {
 					ptrsDmrsMapping[1] = append(ptrsDmrsMapping[1], flags.pusch._dmrsPorts[i])
@@ -2350,7 +2361,7 @@ func validateDci01PuschAntPorts() error {
 	freqHop := flags.uldci.fdFreqHop[DCI_01_PUSCH]
 	if freqHop == "intra-slot" {
 		// refer to 3GPP 38.211 vh40 6.4.1.1.3
-		// ld is the duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
+		// ld is the coreset1Duration per hop according to Table 6.4.1.1.3-6 if intra-slot frequency hopping is used
 		// refer to 3GPP 38.214 vf30 6.3
 		// In case of intra-slot frequency hopping, ... The number of symbols in the first hop is given by floor(N_PUSCH_symb/2) , the number of symbols in the second hop is given by N_PUSCH_symb - floor(N_PUSCH_symb/2) , where N_PUSCH_symb is the length of the PUSCH transmission in OFDM symbols in one slot.
 		ld1 := utils.FloorInt(float64(td) / 2)
@@ -2393,8 +2404,8 @@ func validateDci01PuschAntPorts() error {
 		}
 	} else {
 		// refer to 38.211 vh40 6.4.1.1.3
-		// ld is the duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
-		// ld is the duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
+		// ld is the coreset1Duration between the first OFDM symbol of the slot and the last OFDM symbol of the scheduled PUSCH resources in the slot for PUSCH mapping type A according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used, or
+		// ld is the coreset1Duration of scheduled PUSCH resources for PUSCH mapping type B according to Tables 6.4.1.1.3-3 and 6.4.1.1.3-4 if intra-slot frequency hopping is not used
 		if tdMappingType == "typeA" {
 			ld = flags.uldci._tdStartSymb[DCI_01_PUSCH] + td
 		} else {
@@ -2761,26 +2772,11 @@ var tddUlDlCmd = &cobra.Command{
 	},
 }
 
-// confCoreset1Cmd represents the nrrg conf coreset1 command
-var confCoreset1Cmd = &cobra.Command{
-	Use:   "coreset1",
+// searchSpaceCmd represents the "nrrg searchspace" command
+var searchSpaceCmd = &cobra.Command{
+	Use:   "searchspace",
 	Short: "",
-	Long:  `nrrg conf coreset1 can be used to get/set CORESET1 related network configurations.`,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		loadNrrgFlags()
-	},
-	Run: func(cmd *cobra.Command, args []string) {
-		viper.WatchConfig()
-		laPrint(cmd, args)
-		viper.WriteConfig()
-	},
-}
-
-// confUssCmd represents the nrrg uss command
-var confUssCmd = &cobra.Command{
-	Use:   "uss",
-	Short: "",
-	Long:  `CMD "nrrg uss" can be used to get/set UE-specific search space related network configurations.`,
+	Long:  `CMD "nrrg searchspace" can be used to get/set search space related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -3089,8 +3085,7 @@ var nrrgSimCmd = &cobra.Command{
 func init() {
 	nrrgCmd.AddCommand(gridSettingCmd)
 	nrrgCmd.AddCommand(tddUlDlCmd)
-	nrrgCmd.AddCommand(confCoreset1Cmd)
-	nrrgCmd.AddCommand(confUssCmd)
+	nrrgCmd.AddCommand(searchSpaceCmd)
 	nrrgCmd.AddCommand(dlDciCmd)
 	nrrgCmd.AddCommand(ulDciCmd)
 	nrrgCmd.AddCommand(bwpCmd)
@@ -3123,9 +3118,8 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	initGridSettingCmd()
-	initCommonSettingCmd()
-	initCoreset1Cmd()
-	initUssCmd()
+	initTddUlDlCmd()
+	initSearchSpaceCmd()
 	initDlDciCmd()
 	initUlDciCmd()
 	initBwpCmd()
@@ -3250,7 +3244,7 @@ func initGridSettingCmd() {
 	gridSettingCmd.Flags().MarkHidden("_hrf")
 }
 
-func initCommonSettingCmd() {
+func initTddUlDlCmd() {
 	tddUlDlCmd.Flags().StringVar(&flags.tdduldl._refScs, "_refScs", "30KHz", "referenceSubcarrierSpacing of TDD-UL-DL-ConfigCommon")
 	tddUlDlCmd.Flags().StringSliceVar(&flags.tdduldl.patPeriod, "patPeriod", []string{"5ms"}, "dl-UL-TransmissionPeriodicity of TDD-UL-DL-ConfigCommon[0.5ms,0.625ms,1ms,1.25ms,2ms,2.5ms,3ms,4ms,5ms,10ms]")
 	tddUlDlCmd.Flags().IntSliceVar(&flags.tdduldl.patNumDlSlots, "patNumDlSlots", []int{7}, "nrofDownlinkSlot of TDD-UL-DL-ConfigCommon[0..80]")
@@ -3267,37 +3261,51 @@ func initCommonSettingCmd() {
 	tddUlDlCmd.Flags().MarkHidden("_refScs")
 }
 
-func initCoreset1Cmd() {
-	confCoreset1Cmd.Flags().StringVar(&flags.coreset1.coreset1FreqRes, "coreset1FreqRes", "111111111111111111111111111111111111111111111", "frequencyDomainResources of ControlResourceSet")
-	// confCoreset1Cmd.Flags().IntVar(&flags.coreset1.coreset1NumSymbs, "coreset1Duration", 1, "duration of ControlResourceSet[1..3]")
-	confCoreset1Cmd.Flags().IntVar(&flags.coreset1.coreset1Duration, "coreset1Duration", 1, "duration of ControlResourceSet[1..3]")
-	confCoreset1Cmd.Flags().StringVar(&flags.coreset1.coreset1CceRegMap, "coreset1CceRegMap", "interleaved", "cce-REG-MappingType of ControlResourceSet[1..3]")
-	confCoreset1Cmd.Flags().StringVar(&flags.coreset1.coreset1RegBundleSize, "coreset1RegBundleSize", "n2", "reg-BundleSize of ControlResourceSet[n2,n6]")
-	confCoreset1Cmd.Flags().StringVar(&flags.coreset1.coreset1InterleaverSize, "coreset1InterleaverSize", "n2", "interleaverSize of ControlResourceSet[n2,n3,n6]")
-	confCoreset1Cmd.Flags().IntVar(&flags.coreset1.coreset1ShiftInd, "coreset1ShiftInd", 0, "shiftIndex of ControlResourceSet[0..274]")
-	confCoreset1Cmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.coreset1.coreset1FreqRes", confCoreset1Cmd.Flags().Lookup("coreset1FreqRes"))
-	viper.BindPFlag("nrrg.coreset1.coreset1Duration", confCoreset1Cmd.Flags().Lookup("coreset1Duration"))
-	viper.BindPFlag("nrrg.coreset1.coreset1CceRegMap", confCoreset1Cmd.Flags().Lookup("coreset1CceRegMap"))
-	viper.BindPFlag("nrrg.coreset1.coreset1RegBundleSize", confCoreset1Cmd.Flags().Lookup("coreset1RegBundleSize"))
-	viper.BindPFlag("nrrg.coreset1.coreset1InterleaverSize", confCoreset1Cmd.Flags().Lookup("coreset1InterleaverSize"))
-	viper.BindPFlag("nrrg.coreset1.coreset1ShiftInd", confCoreset1Cmd.Flags().Lookup("coreset1ShiftInd"))
-}
-
-func initUssCmd() {
-	confUssCmd.Flags().StringVar(&flags.uss.ussPeriod, "ussPeriod", "sl1", "monitoringSlotPeriodicity of SearchSpace[sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl40,sl80,sl160,sl320,sl640,sl1280,sl2560]")
-	confUssCmd.Flags().IntVar(&flags.uss.ussOffset, "ussOffset", 0, "monitoringSlotOffset of SearchSpace[0..ussPeriod-1]")
-	confUssCmd.Flags().IntVar(&flags.uss.ussDuration, "ussDuration", 1, "duration of SearchSpace[1 or 2..ussPeriod-1]")
-	confUssCmd.Flags().StringVar(&flags.uss.ussFirstSymbs, "ussFirstSymbs", "10101010101010", "monitoringSymbolsWithinSlot of SearchSpace")
-	confUssCmd.Flags().IntVar(&flags.uss.ussAggLevel, "ussAggLevel", 4, "aggregationLevel of SearchSpace[1,2,4,8,16]")
-	confUssCmd.Flags().StringVar(&flags.uss.ussNumCandidates, "ussNumCandidates", "n1", "nrofCandidates of SearchSpace[n1,n2,n3,n4,n5,n6,n8]")
-	confUssCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.uss.ussPeriod", confUssCmd.Flags().Lookup("ussPeriod"))
-	viper.BindPFlag("nrrg.uss.ussOffset", confUssCmd.Flags().Lookup("ussOffset"))
-	viper.BindPFlag("nrrg.uss.ussDuration", confUssCmd.Flags().Lookup("ussDuration"))
-	viper.BindPFlag("nrrg.uss.ussFirstSymbs", confUssCmd.Flags().Lookup("ussFirstSymbs"))
-	viper.BindPFlag("nrrg.uss.ussAggLevel", confUssCmd.Flags().Lookup("ussAggLevel"))
-	viper.BindPFlag("nrrg.uss.ussNumCandidates", confUssCmd.Flags().Lookup("ussNumCandidates"))
+func initSearchSpaceCmd() {
+	searchSpaceCmd.Flags().StringVar(&flags.searchspace._coreset1FdRes, "_coreset1FdRes", "111111111111111111111111111111111111111111111", "frequencyDomainResources of ControlResourceSet")
+	searchSpaceCmd.Flags().IntVar(&flags.searchspace.coreset1StartCrb, "coreset1StartCrb", 0, "starting CRB of CORESET1")
+	searchSpaceCmd.Flags().IntVar(&flags.searchspace.coreset1NumRbs, "coreset1NumRbs", 120, "number of RBs of CORESET1")
+	searchSpaceCmd.Flags().IntVar(&flags.searchspace.coreset1Duration, "coreset1Duration", 1, "coreset1Duration of ControlResourceSet[1..3]")
+	searchSpaceCmd.Flags().StringVar(&flags.searchspace.coreset1CceRegMappingType, "coreset1CceRegMappingType", "interleaved", "cce-REG-MappingType of ControlResourceSet[1..3]")
+	searchSpaceCmd.Flags().StringVar(&flags.searchspace.coreset1RegBundleSize, "coreset1RegBundleSize", "n2", "reg-BundleSize of ControlResourceSet[n2,n6]")
+	searchSpaceCmd.Flags().StringVar(&flags.searchspace.coreset1InterleaverSize, "coreset1InterleaverSize", "n2", "coreset1InterleaverSize of ControlResourceSet[n2,n3,n6]")
+	searchSpaceCmd.Flags().IntVar(&flags.searchspace._coreset1ShiftIndex, "_coreset1ShiftIndex", 0, "shiftIndex of ControlResourceSet[0..274]")
+	searchSpaceCmd.Flags().IntSliceVar(&flags.searchspace._ssId, "_ssId", []int{1, 2, 3, 4, 5}, "search space id")
+	searchSpaceCmd.Flags().StringSliceVar(&flags.searchspace._ssType, "_ssType", []string{"type0a", "type1", "type2", "type3", "uss"}, "search space type")
+	searchSpaceCmd.Flags().IntSliceVar(&flags.searchspace._ssCoresetId, "_ssCoresetId", []int{0, 0, 0, 1, 1}, "associated CORESET id")
+	searchSpaceCmd.Flags().IntSliceVar(&flags.searchspace._ssDuration, "_ssDuration", []int{1, 1, 1, 1, 1}, "search space duration in slot(s)")
+	searchSpaceCmd.Flags().StringSliceVar(&flags.searchspace._ssMonitoringSymbolWithinSlot, "_ssMonitoringSymbolWithinSlot", []string{"symb_0", "symb_0_1", "symb_0", "symb_0_1", "symb_0_1"}, "the MonitoringSymbolWithinSlot")
+	searchSpaceCmd.Flags().StringSliceVar(&flags.searchspace.ssAggregationLevel, "ssAggregationLevel", []string{"AL4", "AL4", "AL4", "AL4", "AL4"}, "aggregation level")
+	searchSpaceCmd.Flags().StringSliceVar(&flags.searchspace.ssNumOfPdcchCandidates, "ssNumOfPdcchCandidates", []string{"n2", "n2", "n2", "n5", "n5"}, "number of PDCCH candidates")
+	searchSpaceCmd.Flags().StringSliceVar(&flags.searchspace._ssPeriodicity, "_ssPeriodicity", []string{"sl1", "sl1", "sl1", "sl1", "sl1"}, "search space periodicity")
+	searchSpaceCmd.Flags().IntSliceVar(&flags.searchspace._ssSlotOffset, "_ssSlotOffset", []int{0, 0, 0, 0, 0}, "search space slot offset")
+	searchSpaceCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.searchspace._coreset1FdRes", searchSpaceCmd.Flags().Lookup("_coreset1FdRes"))
+	viper.BindPFlag("nrrg.searchspace.coreset1StartCrb", searchSpaceCmd.Flags().Lookup("coreset1StartCrb"))
+	viper.BindPFlag("nrrg.searchspace.coreset1NumRbs", searchSpaceCmd.Flags().Lookup("coreset1NumRbs"))
+	viper.BindPFlag("nrrg.searchspace.coreset1Duration", searchSpaceCmd.Flags().Lookup("coreset1Duration"))
+	viper.BindPFlag("nrrg.searchspace.coreset1CceRegMappingType", searchSpaceCmd.Flags().Lookup("coreset1CceRegMappingType"))
+	viper.BindPFlag("nrrg.searchspace.coreset1RegBundleSize", searchSpaceCmd.Flags().Lookup("coreset1RegBundleSize"))
+	viper.BindPFlag("nrrg.searchspace.coreset1InterleaverSize", searchSpaceCmd.Flags().Lookup("coreset1InterleaverSize"))
+	viper.BindPFlag("nrrg.searchspace._coreset1ShiftIndex", searchSpaceCmd.Flags().Lookup("_coreset1ShiftIndex"))
+	viper.BindPFlag("nrrg.searchspace._ssId", searchSpaceCmd.Flags().Lookup("_ssId"))
+	viper.BindPFlag("nrrg.searchspace._ssType", searchSpaceCmd.Flags().Lookup("_ssType"))
+	viper.BindPFlag("nrrg.searchspace._ssCoresetId", searchSpaceCmd.Flags().Lookup("_ssCoresetId"))
+	viper.BindPFlag("nrrg.searchspace._ssDuration", searchSpaceCmd.Flags().Lookup("_ssDuration"))
+	viper.BindPFlag("nrrg.searchspace._ssMonitoringSymbolWithinSlot", searchSpaceCmd.Flags().Lookup("_ssMonitoringSymbolWithinSlot"))
+	viper.BindPFlag("nrrg.searchspace.ssAggregationLevel", searchSpaceCmd.Flags().Lookup("ssAggregationLevel"))
+	viper.BindPFlag("nrrg.searchspace.ssNumOfPdcchCandidates", searchSpaceCmd.Flags().Lookup("ssNumOfPdcchCandidates"))
+	viper.BindPFlag("nrrg.searchspace._ssPeriodicity", searchSpaceCmd.Flags().Lookup("_ssPeriodicity"))
+	viper.BindPFlag("nrrg.searchspace._ssSlotOffset", searchSpaceCmd.Flags().Lookup("_ssSlotOffset"))
+	searchSpaceCmd.Flags().MarkHidden("_coreset1FdRes")
+	searchSpaceCmd.Flags().MarkHidden("_coreset1ShiftIndex")
+	searchSpaceCmd.Flags().MarkHidden("_ssId")
+	searchSpaceCmd.Flags().MarkHidden("_ssType")
+	searchSpaceCmd.Flags().MarkHidden("_ssCoresetId")
+	searchSpaceCmd.Flags().MarkHidden("_ssDuration")
+	searchSpaceCmd.Flags().MarkHidden("_ssMonitoringSymbolWithinSlot")
+	searchSpaceCmd.Flags().MarkHidden("_ssPeriodicity")
+	searchSpaceCmd.Flags().MarkHidden("_ssSlotOffset")
 }
 
 func initDlDciCmd() {
@@ -3482,7 +3490,7 @@ func initRachCmd() {
 	rachCmd.Flags().IntVar(&flags.rach._raStartingSymb, "_raStartingSymb", 0, "The Starting-symbol in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
 	rachCmd.Flags().IntVar(&flags.rach._raNumSlotsPerSubfFr1Per60KSlotFr2, "_raNumSlotsPerSubfFr1Per60KSlotFr2", 1, "The Number-of-PRACH-slots-within-a-subframe in 3GPP TS 38.211 Table 6.3.3.2-2 and Table 6.3.3.2-3, or the Number-of-PRACH-slots-within-a-60-kHz-slot in Table 6.3.3.2-4")
 	rachCmd.Flags().IntVar(&flags.rach._raNumOccasionsPerSlot, "_raNumOccasionsPerSlot", 1, "The Number-of-time-domain-PRACH-occasions-within-a-PRACH-slot in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
-	rachCmd.Flags().IntVar(&flags.rach._raDuration, "_raDuration", 12, "The PRACH-duration in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
+	rachCmd.Flags().IntVar(&flags.rach._raDuration, "_raDuration", 12, "The PRACH-coreset1Duration in 3GPP TS 38.211 Table 6.3.3.2-2, Table 6.3.3.2-3 and Table 6.3.3.2-4")
 	rachCmd.Flags().StringVar(&flags.rach._msg1Scs, "_msg1Scs", "30KHz", "msg1-SubcarrierSpacing of RACH-ConfigCommon")
 	rachCmd.Flags().IntVar(&flags.rach.msg1Fdm, "msg1Fdm", 1, "msg1-FDM of RACH-ConfigGeneric[1,2,4,8]")
 	rachCmd.Flags().IntVar(&flags.rach.msg1FreqStart, "msg1FreqStart", 0, "msg1-FrequencyStart of RACH-ConfigGeneric[0..274]")
@@ -3852,7 +3860,7 @@ func initCsiReportCmd() {
 func initSrsCmd() {
 	srsCmd.Flags().IntSliceVar(&flags.srs._resId, "_resId", []int{0, 1, 2, 3, 4}, "srs-ResourceId of SRS-Resource")
 	srsCmd.Flags().StringSliceVar(&flags.srs.srsNumPorts, "srsNumPorts", []string{"ports2", "port1", "port1", "port1", "port1"}, "nrofSRS-Ports of SRS-Resource[port1,ports2,ports4]")
-	srsCmd.Flags().StringSliceVar(&flags.srs.srsNonCbPtrsPort, "srsNonCbPtrsPort", []string{"-", "n0", "n0", "n1", "n1"}, "ptrs-PortIndex of SRS-Resource[n0,n1]")
+	srsCmd.Flags().StringSliceVar(&flags.srs._srsNonCbPtrsPort, "_srsNonCbPtrsPort", []string{"-", "n0", "n0", "n1", "n1"}, "ptrs-PortIndex of SRS-Resource[n0,n1]")
 	srsCmd.Flags().StringSliceVar(&flags.srs.srsNumCombs, "srsNumCombs", []string{"n4", "n2", "n2", "n2", "n2"}, "transmissionComb of SRS-Resource[n2,n4]")
 	srsCmd.Flags().IntSliceVar(&flags.srs.srsCombOff, "srsCombOff", []int{0, 0, 0, 0, 0}, "combOffset of SRS-Resource")
 	srsCmd.Flags().IntSliceVar(&flags.srs.srsCs, "srsCs", []int{11, 0, 0, 0, 0}, "cyclicShift of SRS-Resource")
@@ -3876,7 +3884,7 @@ func initSrsCmd() {
 	srsCmd.Flags().SortFlags = false
 	viper.BindPFlag("nrrg.srs._resId", srsCmd.Flags().Lookup("_resId"))
 	viper.BindPFlag("nrrg.srs.srsNumPorts", srsCmd.Flags().Lookup("srsNumPorts"))
-	viper.BindPFlag("nrrg.srs.srsNonCbPtrsPort", srsCmd.Flags().Lookup("srsNonCbPtrsPort"))
+	viper.BindPFlag("nrrg.srs._srsNonCbPtrsPort", srsCmd.Flags().Lookup("_srsNonCbPtrsPort"))
 	viper.BindPFlag("nrrg.srs.srsNumCombs", srsCmd.Flags().Lookup("srsNumCombs"))
 	viper.BindPFlag("nrrg.srs.srsCombOff", srsCmd.Flags().Lookup("srsCombOff"))
 	viper.BindPFlag("nrrg.srs.srsCs", srsCmd.Flags().Lookup("srsCs"))
@@ -3898,6 +3906,7 @@ func initSrsCmd() {
 	viper.BindPFlag("nrrg.srs._resSetType", srsCmd.Flags().Lookup("_resSetType"))
 	viper.BindPFlag("nrrg.srs._usage", srsCmd.Flags().Lookup("_usage"))
 	srsCmd.Flags().MarkHidden("_resId")
+	srsCmd.Flags().MarkHidden("_srsNonCbPtrsPort")
 	srsCmd.Flags().MarkHidden("_resType")
 	srsCmd.Flags().MarkHidden("_mSRSb")
 	srsCmd.Flags().MarkHidden("_Nb")
@@ -4014,19 +4023,23 @@ func loadNrrgFlags() {
 	flags.tdduldl.patNumUlSymbs = viper.GetIntSlice("nrrg.tdduldl.patNumUlSymbs")
 	flags.tdduldl.patNumUlSlots = viper.GetIntSlice("nrrg.tdduldl.patNumUlSlots")
 
-	flags.coreset1.coreset1FreqRes = viper.GetString("nrrg.coreset1.coreset1FreqRes")
-	flags.coreset1.coreset1Duration = viper.GetInt("nrrg.coreset1.coreset1Duration")
-	flags.coreset1.coreset1CceRegMap = viper.GetString("nrrg.coreset1.coreset1CceRegMap")
-	flags.coreset1.coreset1RegBundleSize = viper.GetString("nrrg.coreset1.coreset1RegBundleSize")
-	flags.coreset1.coreset1InterleaverSize = viper.GetString("nrrg.coreset1.coreset1InterleaverSize")
-	flags.coreset1.coreset1ShiftInd = viper.GetInt("nrrg.coreset1.coreset1ShiftInd")
-
-	flags.uss.ussPeriod = viper.GetString("nrrg.uss.ussPeriod")
-	flags.uss.ussOffset = viper.GetInt("nrrg.uss.ussOffset")
-	flags.uss.ussDuration = viper.GetInt("nrrg.uss.ussDuration")
-	flags.uss.ussFirstSymbs = viper.GetString("nrrg.uss.ussFirstSymbs")
-	flags.uss.ussAggLevel = viper.GetInt("nrrg.uss.ussAggLevel")
-	flags.uss.ussNumCandidates = viper.GetString("nrrg.uss.ussNumCandidates")
+	flags.searchspace._coreset1FdRes = viper.GetString("nrrg.searchspace._coreset1FdRes")
+	flags.searchspace.coreset1StartCrb = viper.GetInt("nrrg.searchspace.coreset1StartCrb")
+	flags.searchspace.coreset1NumRbs = viper.GetInt("nrrg.searchspace.coreset1NumRbs")
+	flags.searchspace.coreset1Duration = viper.GetInt("nrrg.searchspace.coreset1Duration")
+	flags.searchspace.coreset1CceRegMappingType = viper.GetString("nrrg.searchspace.coreset1CceRegMappingType")
+	flags.searchspace.coreset1RegBundleSize = viper.GetString("nrrg.searchspace.coreset1RegBundleSize")
+	flags.searchspace.coreset1InterleaverSize = viper.GetString("nrrg.searchspace.coreset1InterleaverSize")
+	flags.searchspace._coreset1ShiftIndex = viper.GetInt("nrrg.searchspace._coreset1ShiftIndex")
+	flags.searchspace._ssId = viper.GetIntSlice("nrrg.searchspace._ssId")
+	flags.searchspace._ssType = viper.GetStringSlice("nrrg.searchspace._ssType")
+	flags.searchspace._ssCoresetId = viper.GetIntSlice("nrrg.searchspace._ssCoresetId")
+	flags.searchspace._ssDuration = viper.GetIntSlice("nrrg.searchspace._ssDuration")
+	flags.searchspace._ssMonitoringSymbolWithinSlot = viper.GetStringSlice("nrrg.searchspace._ssMonitoringSymbolWithinSlot")
+	flags.searchspace.ssAggregationLevel = viper.GetStringSlice("nrrg.searchspace.ssAggregationLevel")
+	flags.searchspace.ssNumOfPdcchCandidates = viper.GetStringSlice("nrrg.searchspace.ssNumOfPdcchCandidates")
+	flags.searchspace._ssPeriodicity = viper.GetStringSlice("nrrg.searchspace._ssPeriodicity")
+	flags.searchspace._ssSlotOffset = viper.GetIntSlice("nrrg.searchspace._ssSlotOffset")
 
 	flags.dldci._tag = viper.GetStringSlice("nrrg.dldci._tag")
 	flags.dldci._rnti = viper.GetStringSlice("nrrg.dldci._rnti")
@@ -4240,7 +4253,7 @@ func loadNrrgFlags() {
 
 	flags.srs._resId = viper.GetIntSlice("nrrg.srs._resId")
 	flags.srs.srsNumPorts = viper.GetStringSlice("nrrg.srs.srsNumPorts")
-	flags.srs.srsNonCbPtrsPort = viper.GetStringSlice("nrrg.srs.srsNonCbPtrsPort")
+	flags.srs._srsNonCbPtrsPort = viper.GetStringSlice("nrrg.srs._srsNonCbPtrsPort")
 	flags.srs.srsNumCombs = viper.GetStringSlice("nrrg.srs.srsNumCombs")
 	flags.srs.srsCombOff = viper.GetIntSlice("nrrg.srs.srsCombOff")
 	flags.srs.srsCs = viper.GetIntSlice("nrrg.srs.srsCs")

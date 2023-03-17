@@ -117,13 +117,6 @@ nrrg:
     - dedDlBwp
     - iniUlBwp
     - dedUlBwp
-  coreset1:
-    coreset1cceregmap: interleaved
-    coreset1duration: 1
-    coreset1freqres: "111111111111111111111111111111111111111111111"
-    coreset1interleaversize: n2
-    coreset1regbundlesize: n2
-    coreset1shiftind: 0
   csiim:
     _resid: 0
     _ressetid: 0
@@ -525,6 +518,69 @@ nrrg:
     rarespwin: sl20
     ssbperrachoccasion: one
     totnumpreambs: 64
+  searchspace:
+    _coreset1fdres: "111111111111111111111111111111111111111111111"
+    _coreset1shiftindex: 0
+    _sscoresetid:
+    - 0
+    - 0
+    - 0
+    - 1
+    - 1
+    _ssduration:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    _ssid:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    _ssmonitoringsymbolwithinslot:
+    - symb_0
+    - symb_0_1
+    - symb_0
+    - symb_0_1
+    - symb_0_1
+    _ssperiodicity:
+    - sl1
+    - sl1
+    - sl1
+    - sl1
+    - sl1
+    _ssslotoffset:
+    - 0
+    - 0
+    - 0
+    - 0
+    - 0
+    _sstype:
+    - type0a
+    - type1
+    - type2
+    - type3
+    - uss
+    coreset1cceregmappingtype: interleaved
+    coreset1duration: 1
+    coreset1interleaversize: n2
+    coreset1numrbs: 120
+    coreset1regbundlesize: n2
+    coreset1startcrb: 0
+    ssaggregationlevel:
+    - AL4
+    - AL4
+    - AL4
+    - AL4
+    - AL4
+    ssnumofpdcchcandidates:
+    - n2
+    - n2
+    - n2
+    - n5
+    - n5
   srs:
     _msrsb:
     - "48_16_8_4"
@@ -558,6 +614,12 @@ nrrg:
     - periodic
     - periodic
     - periodic
+    _srsnoncbptrsport:
+    - '-'
+    - n0
+    - n0
+    - n1
+    - n1
     _usage:
     - codebook
     - nonCodebook
@@ -604,12 +666,6 @@ nrrg:
     - 0
     - 0
     - 0
-    srsnoncbptrsport:
-    - '-'
-    - n0
-    - n0
-    - n1
-    - n1
     srsnumcombs:
     - n4
     - n2
@@ -773,13 +829,6 @@ nrrg:
     tdra:
     - 7
     - 7
-  uss:
-    ussagglevel: 4
-    ussduration: 1
-    ussfirstsymbs: "10101010101010"
-    ussnumcandidates: n1
-    ussoffset: 0
-    ussperiod: sl1
 pm:
   debug: false
   maxgo: 3
