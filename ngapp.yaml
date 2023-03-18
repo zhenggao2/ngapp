@@ -519,6 +519,7 @@ nrrg:
     ssbperrachoccasion: one
     totnumpreambs: 64
   searchspace:
+    _coreset1duration: 1
     _coreset1fdres: "111111111111111111111111111111111111111111111"
     _coreset1shiftindex: 0
     _sscoresetid:
@@ -540,11 +541,11 @@ nrrg:
     - 4
     - 5
     _ssmonitoringsymbolwithinslot:
-    - symb_0
-    - symb_0_1
-    - symb_0
-    - symb_0_1
-    - symb_0_1
+    - "100"
+    - "110"
+    - "100"
+    - "110"
+    - "110"
     _ssperiodicity:
     - sl1
     - sl1
@@ -564,7 +565,6 @@ nrrg:
     - type3
     - uss
     coreset1cceregmappingtype: interleaved
-    coreset1duration: 1
     coreset1interleaversize: n2
     coreset1numrbs: 120
     coreset1regbundlesize: n2
