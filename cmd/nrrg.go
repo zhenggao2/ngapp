@@ -1141,7 +1141,7 @@ func validateCoreset0() error {
 		flags.gridsetting._coreset0Offset = flags.gridsetting._coreset0OffsetList[0]
 	}
 
-	fmt.Printf("CORESET0: multiplexingPattern=%v, coreset1NumRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
+	fmt.Printf("CORESET0: multiplexingPattern=%v, numRbs=%v, numSymbs=%v, offset=%v\n", flags.gridsetting._coreset0MultiplexingPat, flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, flags.gridsetting._coreset0Offset)
 
 	// Basic assumptions: If offset >= 0, then 1st RB of CORESET0 aligns with the carrier edge; if offset < 0, then 1st RB of SSB aligns with the carrier edge.
 	// if offset >= 0, min bw = max(coreset0NumRbs, offset + 20 * scsSsb / scsRmsi), and n_CRB_SSB needs update w.r.t to offset
@@ -1818,7 +1818,7 @@ func updateRarUlMsg3PuschTbs() error {
 	flags.dmrsCommon._numFrontLoadSymbs[DMRS_RAR_UL_MSG3] = 1
 
 	// refer to 3GPP TS 38.214 vh40: 6.2.2	UE DM-RS transmission procedure
-	// When transmitted PUSCH is neither scheduled by DCI format 0_1/0_2 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, nor being a PUSCH for Type-2 random access procedure, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and the remaining REs not used for DM-RS in the symbols are not used for any PUSCH transmission except for PUSCH with allocation _coreset1Duration of 2 or less OFDM symbols with transform precoding disabled, additional DM-RS can be transmitted according to the scheduling type and the PUSCH _coreset1Duration as specified in Table 6.4.1.1.3-3 of [4, TS38.211] for frequency hopping disabled and as specified in Table 6.4.1.1.3-6 of [4, TS38.211] for frequency hopping enabled, and
+	// When transmitted PUSCH is neither scheduled by DCI format 0_1/0_2 with CRC scrambled by C-RNTI, CS-RNTI, SP-CSI-RNTI or MCS-C-RNTI, nor corresponding to a configured grant, nor being a PUSCH for Type-2 random access procedure, the UE shall use single symbol front-loaded DM-RS of configuration type 1 on DM-RS port 0 and the remaining REs not used for DM-RS in the symbols are not used for any PUSCH transmission except for PUSCH with allocation duration of 2 or less OFDM symbols with transform precoding disabled, additional DM-RS can be transmitted according to the scheduling type and the PUSCH duration as specified in Table 6.4.1.1.3-3 of [4, TS38.211] for frequency hopping disabled and as specified in Table 6.4.1.1.3-6 of [4, TS38.211] for frequency hopping enabled, and
 	// If frequency hopping is disabled:
 	// -	The UE shall assume dmrs-AdditionalPosition equals to 'pos2' and up to two additional DM-RS can be transmitted according to PUSCH duration, or
 	// If frequency hopping is enabled:
