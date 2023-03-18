@@ -60,12 +60,12 @@ type NrrgFlags struct {
 	dmrsCommon  DmrsCommonFlags
 	pdsch       PdschFlags
 	pusch       PuschFlags
+	pucch       PucchFlags
 	nzpCsiRs    NzpCsiRsFlags
 	trs         TrsFlags
 	csiIm       CsiImFlags
 	csiReport   CsiReportFlags
 	srs         SrsFlags
-	pucch       PucchFlags
 	advanced    AdvancedFlags
 }
 
@@ -124,6 +124,47 @@ type TddUlDlFlags struct {
 	patNumUlSlots []int    // The nrofUplinkSlots of TDD-UL-DL-Pattern, and max length is 2
 }
 
+// initial/dedicated UL/DL BWP
+type BwpFlags struct {
+	_bwpType     []string
+	_bwpId       []int
+	_bwpScs      []string
+	_bwpCp       []string
+	_bwpLocAndBw []int
+	_bwpStartRb  []int
+	_bwpNumRbs   []int
+}
+
+const (
+	// BWP tags, not the BWP-Id
+
+	INI_DL_BWP int = 0
+	DED_DL_BWP int = 1
+	INI_UL_BWP int = 2
+	DED_UL_BWP int = 3
+
+	// DL DCI tags
+
+	DCI_10_SIB1  int = 0 // rnti = SI-RNTI
+	DCI_10_MSG2  int = 1 // rnti = RA-RNTI
+	DCI_10_MSG4  int = 2 // rnti = TC-RNTI
+	DCI_11_PDSCH int = 3 // rnti = C-RNTI
+	DCI_10_MSGB  int = 4 // rnti = MSGB-RNTI (two-steps CBRA)
+
+	// UL DCI tags
+
+	RAR_UL_MSG3   int = 0 // rnti = RA-RNTI (for RAR UL grant)
+	DCI_01_PUSCH  int = 1 // rnti = C-RNTI
+	RA_UL_MSGA    int = 2 // rnti = RA-RNTI, together with RAPID (two-steps CBRA)
+	FBRAR_UL_MSG3 int = 3 // rnti = TC-RNTI (two-steps CBRA)
+
+	// Common DMRS tags
+	DMRS_DCI_10_SIB1 int = 0
+	DMRS_DCI_10_MSG2 int = 1
+	DMRS_DCI_10_MSG4 int = 2
+	DMRS_RAR_UL_MSG3 int = 3
+)
+
 // Search space
 type SearchSpaceFlags struct {
 	_coreset1FdRes            string // the frequencyDomainResources of ControlResourceSet, the length of which is 45 bits
@@ -173,9 +214,9 @@ type DlDciFlags struct {
 	mcsCw1              int      // the "Modulation and coding scheme" field for transport block 2 of DCI 1_1
 	_tbsCw1             int      // the calculated TBS of transport block 2
 	tbScalingFactor     float64  // the TB scaling factor S (38.214 Table 5.1.3.2-2: Scaling factor of Ninfo for P-RNTI, RA-RNTI and MSGB-RNTI)
-	deltaPri            int      // the "PUCCH resource indicator" field of DCI 1_0/1_1 (TODO: may need separate values for different tags)
-	tdK1                int      // the "PDSCH-to-HARQ_feedback timing indicator" field of DCI 1_0/1_1 (TODO: may need separate values for different tags)
-	antennaPorts        int      // the "Antenna port(s)" field of DCI 1_1 (TODO: may need separate values for different tags)
+	deltaPri            int      // the "PUCCH resource indicator" field of DCI 1_0/1_1
+	tdK1                int      // the "PDSCH-to-HARQ_feedback timing indicator" field of DCI 1_0/1_1
+	antennaPorts        int      // the "Antenna port(s)" field of DCI 1_1
 }
 
 // UL DCI 0_1 or RAR UL grant for PUSCH scheduling
@@ -207,47 +248,6 @@ type UlDciFlags struct {
 	antennaPorts           int      // the "Antenna ports" field of DCI 0_1
 	ptrsDmrsAssociation    int      // the "PTRS-DMRS association" field of DCI 0_1
 }
-
-// initial/dedicated UL/DL BWP
-type BwpFlags struct {
-	_bwpType     []string
-	_bwpId       []int
-	_bwpScs      []string
-	_bwpCp       []string
-	_bwpLocAndBw []int
-	_bwpStartRb  []int
-	_bwpNumRbs   []int
-}
-
-const (
-	// BWP tags, not the BWP-Id
-
-	INI_DL_BWP int = 0
-	DED_DL_BWP int = 1
-	INI_UL_BWP int = 2
-	DED_UL_BWP int = 3
-
-	// DL DCI tags
-
-	DCI_10_SIB1  int = 0 // rnti = SI-RNTI
-	DCI_10_MSG2  int = 1 // rnti = RA-RNTI
-	DCI_10_MSG4  int = 2 // rnti = TC-RNTI
-	DCI_11_PDSCH int = 3 // rnti = C-RNTI
-	DCI_10_MSGB  int = 4 // rnti = MSGB-RNTI (two-steps CBRA)
-
-	// UL DCI tags
-
-	RAR_UL_MSG3   int = 0 // rnti = RA-RNTI (for RAR UL grant)
-	DCI_01_PUSCH  int = 1 // rnti = C-RNTI
-	RA_UL_MSGA    int = 2 // rnti = RA-RNTI, together with RAPID (two-steps CBRA)
-	FBRAR_UL_MSG3 int = 3 // rnti = TC-RNTI (two-steps CBRA)
-
-	// Common DMRS tags
-	DMRS_DCI_10_SIB1 int = 0
-	DMRS_DCI_10_MSG2 int = 1
-	DMRS_DCI_10_MSG4 int = 2
-	DMRS_RAR_UL_MSG3 int = 3
-)
 
 // random access
 type RachFlags struct {
@@ -349,6 +349,29 @@ type PuschFlags struct {
 	_numGrpsTp             int
 	_samplesPerGrpTp       int
 	_ptrsDmrsPorts         []int
+}
+
+// PUCCH-Config
+type PucchFlags struct {
+	_numSlots         string // the nrofSlots of PUCCH-FormatConfig, which can be n1/n2/n4/n8
+	_interSlotFreqHop string // the interslotFrequencyHopping of PUSCH-FormatConfig, which can be enabled or disabled
+	_addDmrs          bool   // the additionalDMRS of PUSCH-FormatConfig
+	_simHarqAckCsi    bool   // the simultaneousHARQ-ACK-CSI of PUSCH-FormatConfig
+
+	_pucchResId  []int    // the pucch-ResourceId of PUCCH-Resource
+	_pucchFormat []string // the format of PUCCH-Resource, which can be format1/format3
+	//_pucchResSetId        []int
+	_pucchStartRb          []int    // the startingPRB of PUCCH-Resource
+	_pucchIntraSlotFreqHop []string // the intraSlotFrequencyHopping of PUCCH-Resource, which can be enabled or disabled
+	_pucchSecondHopPrb     []int    // the secondHopPRB of PUCCH-Resource
+	_pucchNumRbs           []int    // the nrofPRBs of PUCCH-format1 and PUCCH-format3
+	_pucchStartSymb        []int    // the startingSymbolIndex of PUCCH-format1 and PUCCH-format3
+	_pucchNumSymbs         []int    // the nrofSymbols of PUCCH-format1 and PUCCH-format3
+
+	//_dsrResId    []int
+	dsrPeriod    string // the periodicityAndOffset of SchedulingRequestResourceConfig
+	dsrOffset    int    // the periodicityAndOffset of SchedulingRequestResourceConfig
+	_dsrPucchRes int    // the resource of SchedulingRequestResourceConfig
 }
 
 // NZP-CSI-RS resource
@@ -458,32 +481,6 @@ type SrsFlags struct {
 	srsSetResIdList []string
 	_resSetType     []string
 	_usage          []string
-}
-
-// PUCCH-FormatConfig, PUCCH resource and DSR resource
-type PucchFlags struct {
-	// PUCCH-FormatConfig
-	pucchFmtCfgNumSlots         string
-	pucchFmtCfgInterSlotFreqHop string
-	pucchFmtCfgAddDmrs          bool
-	pucchFmtCfgSimAckCsi        bool
-
-	// PUCCH resource
-	_pucchResId           []int
-	_pucchFormat          []string
-	_pucchResSetId        []int
-	pucchStartRb          []int
-	pucchIntraSlotFreqHop []string
-	pucchSecondHopPrb     []int
-	pucchNumRbs           []int
-	pucchStartSymb        []int
-	pucchNumSymbs         []int
-
-	// DSR resource
-	_dsrResId    []int
-	_dsrPucchRes []int
-	dsrPeriod    []string
-	dsrOffset    []int
 }
 
 // Advanced settings
@@ -687,7 +684,6 @@ var gridSettingCmd = &cobra.Command{
 			flags.bwp._bwpScs[DED_UL_BWP] = flags.gridsetting._carrierScs
 			// get SR periodicity and offset(38.331 vh30 periodicityAndOffset and periodicityAndOffset-r17 of SchedulingRequestResourceConfig)
 			fmt.Printf("Available SR periodicity: %v\n", nrgrid.SrPeriodSet[flags.gridsetting._carrierScs])
-			// TODO: validate USS first symbols
 			// update TRS periodicity (2023/2/20: For simplicity, TRS is not supported!)
 			fmt.Printf("Available TRS periodicity: %v\n", []string{"slots10", "slots20", "slots40", "slots80", "slots160", "slots320", "slots640"}[u:u+4])
 
@@ -861,6 +857,20 @@ var gridSettingCmd = &cobra.Command{
 		fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> iscSsbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, iscSsbSc0Rb0)
 		fmt.Printf("coreset0Offset=%v -> nscCoreset0Offset=%v\n", flags.gridsetting._coreset0Offset, nscCoreset0Offset)
 		fmt.Printf("iscCoreset0Sc0Rb0=%v\n", iscCoreset0Sc0Rb0)
+
+		// validate search space
+		err = validateSearchSpace()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		// validate PUCCH
+		err = validatePucch()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
 
 		laPrint(cmd, args)
 		viper.WriteConfig()
@@ -1200,6 +1210,46 @@ func validateCss0() error {
 	return nil
 }
 
+func validateSearchSpace() error {
+	regYellow.Printf("-->calling validateSearchSpace\n")
+
+	// validate CORESET1
+	cceRegMapping := flags.searchspace.coreset1CceRegMappingType
+	duration := flags.searchspace._coreset1Duration
+	L, _ := strconv.Atoi(flags.searchspace.coreset1RegBundleSize[1:])
+
+	if cceRegMapping == "nonInterleaved" {
+		flags.searchspace.coreset1RegBundleSize = "n6"
+	} else {
+		if (duration == 1 && !utils.ContainsInt([]int{2, 6}, L)) || (utils.ContainsInt([]int{2, 3}, duration) && !utils.ContainsInt([]int{duration, 6}, L)) {
+			return errors.New(fmt.Sprintf("For interleaved CCE-to-REG mapping, L = 2/6 for coreset1Duration=1 and L = duration/6 for coreset1Duration=2/3.(cceRegMapping=%v, duration=%v, L=%v)\n", cceRegMapping, duration, L))
+		}
+	}
+
+	// TODO: validate type3 CSS/USS MonitoringSymbolWithinSlot
+	// refer to 38.213 vh40
+	// 10.1	UE procedure for determining physical downlink control channel assignment
+	// If the monitoringSymbolsWithinSlot indicates to a UE to monitor PDCCH in a subset of up to three consecutive symbols that are same in every slot where the UE monitors PDCCH for all search space sets, the UE does not expect to be configured with a PDCCH SCS other than 15 kHz if the subset includes at least one symbol after the third symbol.
+	// A UE does not expect to be provided a first symbol and a number of consecutive symbols for a CORESET that results to a PDCCH candidate mapping to symbols of different slots.
+	// A UE does not expect any two PDCCH monitoring occasions on an active DL BWP, for a same search space set or for different search space sets, in a same CORESET to be separated by a non-zero number of symbols that is smaller than the CORESET duration.
+
+	return nil
+}
+
+func validatePucch() error {
+	regYellow.Printf("-->calling validatePucch\n")
+
+	if flags.pucch._interSlotFreqHop == "enabled" {
+		for _, v := range flags.pucch._pucchIntraSlotFreqHop {
+			if v == "enabled" {
+				return errors.New(fmt.Sprintf("For long PUCCH over multiple slots, the intra and inter slot frequency hopping cannot be enabled at the same time for a UE."))
+			}
+		}
+	}
+
+	return nil
+}
+
 // calculate RIV (refer to 38.214 vh40)
 //  5.1.2.2.2	Downlink resource allocation type 1
 func makeRiv(L_RBs, RB_start, N_BWP_size int) (int, error) {
@@ -1234,23 +1284,6 @@ func parseRiv(riv, N_BWP_size int) ([]int, error) {
 		return []int{-1, -1}, errors.New(fmt.Sprintf("Fail to parse RIV, where RIV=%v, N_BWP_size=%v.\n", riv, N_BWP_size))
 	}
 }
-
-/*
-def parseRiv(self, riv, N_BWP_size):
-	div = riv // N_BWP_size
-	rem = riv % N_BWP_size
-
-	L_RBs = [div + 1, N_BWP_size + 1 - div]
-	RB_start = [rem, N_BWP_size - 1 - rem]
-	# self.ngwin.logEdit.append('Info:RIV = %d, L_RBs = [%d, %d], RB_start = [%d, %d], N_BWP_size = %d.' % (riv, L_RBs[0], L_RBs[1], RB_start[0], RB_start[1], N_BWP_size))
-	if L_RBs[0] >= 1 and L_RBs[0] <= (N_BWP_size - RB_start[0]) and L_RBs[0] <= math.floor(N_BWP_size / 2):
-		return (L_RBs[0], RB_start[0])
-	elif L_RBs[1] >= 1 and L_RBs[1] <= (N_BWP_size - RB_start[1]) and L_RBs[1] > math.floor(N_BWP_size / 2):
-		return (L_RBs[1], RB_start[1])
-	else:
-		# invalid RIV
-		return (None, None)
-*/
 
 // validatePdsch validates the "Time domain resource assignment" field of DCI 1_0/1_1, updates associated DMRS, and calculate TBS.
 func validatePdsch() error {
@@ -3006,15 +3039,16 @@ var srsCmd = &cobra.Command{
 	},
 }
 
-// confPucchcmd represents the nrrg conf pucch command
-var confPucchCmd = &cobra.Command{
+// pucchCmd represents the "nrrg pucch" command
+var pucchCmd = &cobra.Command{
 	Use:   "pucch",
 	Short: "",
-	Long:  `nrrg conf pucch can be used to get/set PUCCH-FormatConfig/PUCCH-Resource/SchedulingRequestResourceConfig related network configurations.`,
+	Long:  `CMD "nrrg pucch" can be used to get/set PUCCH-Config related network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		laPrint(cmd, args)
 		viper.WriteConfig()
 	},
@@ -3100,7 +3134,7 @@ func init() {
 	nrrgCmd.AddCommand(confCsiImCmd)
 	nrrgCmd.AddCommand(confCsiReportCmd)
 	nrrgCmd.AddCommand(srsCmd)
-	nrrgCmd.AddCommand(confPucchCmd)
+	nrrgCmd.AddCommand(pucchCmd)
 	nrrgCmd.AddCommand(confAdvancedCmd)
 
 	nrrgCmd.AddCommand(nrrgSimCmd)
@@ -3917,46 +3951,56 @@ func initSrsCmd() {
 }
 
 func initPucchCmd() {
-	confPucchCmd.Flags().StringVar(&flags.pucch.pucchFmtCfgNumSlots, "pucchFmtCfgNumSlots", "n2", "nrofSlots of PUCCH-FormatConfig for PUCCH format 1/3/4[n1,n2,n4,n8]")
-	confPucchCmd.Flags().StringVar(&flags.pucch.pucchFmtCfgInterSlotFreqHop, "pucchFmtCfgInterSlotFreqHop", "disabled", "interslotFrequencyHopping of PUCCH-FormatConfig for PUCCH format 1/3/4[disabled,enabled]")
-	confPucchCmd.Flags().BoolVar(&flags.pucch.pucchFmtCfgAddDmrs, "pucchFmtCfgAddDmrs", true, "additionalDMRS of PUCCH-FormatConfig for PUCCH format 3/4")
-	confPucchCmd.Flags().BoolVar(&flags.pucch.pucchFmtCfgSimAckCsi, "pucchFmtCfgSimAckCsi", true, "simultaneousHARQ-ACK-CSI of PUCCH-FormatConfig for PUCCH format 2/3/4")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResId, "_pucchResId", []int{0, 1, 2, 3, 4}, "pucch-ResourceId of PUCCH-Resource")
-	confPucchCmd.Flags().StringSliceVar(&flags.pucch._pucchFormat, "_pucchFormat", []string{"format0", "format1", "format2", "format3", "format4"}, "format of PUCCH-Resource")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResSetId, "_pucchResSetId", []int{0, 0, 1, 1, 1}, "pucch-ResourceSetId of PUCCH-ResourceSet")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchStartRb, "pucchStartRb", []int{0, 0, 0, 0, 0}, "startingPRB of PUCCH-ResourceSet[0..274]")
-	confPucchCmd.Flags().StringSliceVar(&flags.pucch.pucchIntraSlotFreqHop, "pucchIntraSlotFreqHop", []string{"enabled", "enabled", "disabled", "disabled", "disabled"}, "intraSlotFrequencyHopping of PUCCH-Resource[disabled,enabled]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchSecondHopPrb, "pucchSecondHopPrb", []int{272, 272, -1, -1, -1}, "secondHopPRB of PUCCH-Resource[0..274]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchNumRbs, "pucchNumRbs", []int{1, 1, 1, 1, 1}, "nrofPRBs of PUCCH-Resource, fixed to 1 for PUCCH format 0/1/4[1..16]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchStartSymb, "pucchStartSymb", []int{0, 0, 0, 0, 0}, "startingSymbolIndex of PUCCH-Resource[0..13(format 0/2) or 0..10(format 1/3/4)]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.pucchNumSymbs, "pucchNumSymbs", []int{2, 4, 1, 4, 4}, "nrofSymbols of PUCCH-Resource[1..2(format 0/2) or 4..14(format 1/3/4)]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch._dsrResId, "_dsrResId", []int{0, 1}, "schedulingRequestResourceId of SchedulingRequestResourceConfig")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch._dsrPucchRes, "_dsrPucchRes", []int{0, 1}, "resource of SchedulingRequestResourceConfig")
-	confPucchCmd.Flags().StringSliceVar(&flags.pucch.dsrPeriod, "dsrPeriod", []string{"sl10", "sym6or7"}, "periodicityAndOffset of SchedulingRequestResourceConfig[sym2,sym6or7,sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl40,sl80,sl160,sl320,sl640]")
-	confPucchCmd.Flags().IntSliceVar(&flags.pucch.dsrOffset, "dsrOffset", []int{8, 0}, "periodicityAndOffset of SchedulingRequestResourceConfig[0..period-1]")
-	confPucchCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.pucch.pucchFmtCfgNumSlots", confPucchCmd.Flags().Lookup("pucchFmtCfgNumSlots"))
-	viper.BindPFlag("nrrg.pucch.pucchFmtCfgInterSlotFreqHop", confPucchCmd.Flags().Lookup("pucchFmtCfgInterSlotFreqHop"))
-	viper.BindPFlag("nrrg.pucch.pucchFmtCfgAddDmrs", confPucchCmd.Flags().Lookup("pucchFmtCfgAddDmrs"))
-	viper.BindPFlag("nrrg.pucch.pucchFmtCfgSimAckCsi", confPucchCmd.Flags().Lookup("pucchFmtCfgSimAckCsi"))
-	viper.BindPFlag("nrrg.pucch._pucchResId", confPucchCmd.Flags().Lookup("_pucchResId"))
-	viper.BindPFlag("nrrg.pucch._pucchFormat", confPucchCmd.Flags().Lookup("_pucchFormat"))
-	viper.BindPFlag("nrrg.pucch._pucchResSetId", confPucchCmd.Flags().Lookup("_pucchResSetId"))
-	viper.BindPFlag("nrrg.pucch.pucchStartRb", confPucchCmd.Flags().Lookup("pucchStartRb"))
-	viper.BindPFlag("nrrg.pucch.pucchIntraSlotFreqHop", confPucchCmd.Flags().Lookup("pucchIntraSlotFreqHop"))
-	viper.BindPFlag("nrrg.pucch.pucchSecondHopPrb", confPucchCmd.Flags().Lookup("pucchSecondHopPrb"))
-	viper.BindPFlag("nrrg.pucch.pucchNumRbs", confPucchCmd.Flags().Lookup("pucchNumRbs"))
-	viper.BindPFlag("nrrg.pucch.pucchStartSymb", confPucchCmd.Flags().Lookup("pucchStartSymb"))
-	viper.BindPFlag("nrrg.pucch.pucchNumSymbs", confPucchCmd.Flags().Lookup("pucchNumSymbs"))
-	viper.BindPFlag("nrrg.pucch._dsrResId", confPucchCmd.Flags().Lookup("_dsrResId"))
-	viper.BindPFlag("nrrg.pucch._dsrPucchRes", confPucchCmd.Flags().Lookup("_dsrPucchRes"))
-	viper.BindPFlag("nrrg.pucch.dsrPeriod", confPucchCmd.Flags().Lookup("dsrPeriod"))
-	viper.BindPFlag("nrrg.pucch.dsrOffset", confPucchCmd.Flags().Lookup("dsrOffset"))
-	confPucchCmd.Flags().MarkHidden("_pucchResId")
-	confPucchCmd.Flags().MarkHidden("_pucchFormat")
-	confPucchCmd.Flags().MarkHidden("_pucchResSetId")
-	confPucchCmd.Flags().MarkHidden("_dsrResId")
-	confPucchCmd.Flags().MarkHidden("_dsrPucchRes")
+	pucchCmd.Flags().StringVar(&flags.pucch._numSlots, "_numSlots", "n1", "nrofSlots of PUCCH-FormatConfig for PUCCH format 1/3/4[n1,n2,n4,n8]")
+	pucchCmd.Flags().StringVar(&flags.pucch._interSlotFreqHop, "_interSlotFreqHop", "disabled", "interslotFrequencyHopping of PUCCH-FormatConfig for PUCCH format 1/3/4[disabled,enabled]")
+	pucchCmd.Flags().BoolVar(&flags.pucch._addDmrs, "_addDmrs", true, "additionalDMRS of PUCCH-FormatConfig for PUCCH format 3/4")
+	pucchCmd.Flags().BoolVar(&flags.pucch._simHarqAckCsi, "_simHarqAckCsi", true, "simultaneousHARQ-ACK-CSI of PUCCH-FormatConfig for PUCCH format 2/3/4")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResId, "_pucchResId", []int{0, 1, 2}, "pucch-ResourceId of PUCCH-Resource")
+	pucchCmd.Flags().StringSliceVar(&flags.pucch._pucchFormat, "_pucchFormat", []string{"format1", "format3", "format1"}, "format of PUCCH-Resource")
+	//pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchResSetId, "_pucchResSetId", []int{0, 0, 1, 1, 1}, "pucch-ResourceSetId of PUCCH-ResourceSet")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchStartRb, "_pucchStartRb", []int{1, 2, 0}, "startingPRB of PUCCH-ResourceSet[0..274]")
+	pucchCmd.Flags().StringSliceVar(&flags.pucch._pucchIntraSlotFreqHop, "_pucchIntraSlotFreqHop", []string{"enabled", "enabled", "enabled"}, "intraSlotFrequencyHopping of PUCCH-Resource[disabled,enabled]")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchSecondHopPrb, "_pucchSecondHopPrb", []int{158, 157, 159}, "secondHopPRB of PUCCH-Resource[0..274]")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchNumRbs, "_pucchNumRbs", []int{1, 1, 1}, "nrofPRBs of PUCCH-Resource, fixed to 1 for PUCCH format 0/1/4[1..16]")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchStartSymb, "_pucchStartSymb", []int{0, 0, 0}, "startingSymbolIndex of PUCCH-Resource[0..13(format 0/2) or 0..10(format 1/3/4)]")
+	pucchCmd.Flags().IntSliceVar(&flags.pucch._pucchNumSymbs, "_pucchNumSymbs", []int{14, 14, 14}, "nrofSymbols of PUCCH-Resource[1..2(format 0/2) or 4..14(format 1/3/4)]")
+	//pucchCmd.Flags().IntSliceVar(&flags.pucch._dsrResId, "_dsrResId", []int{0, 1}, "schedulingRequestResourceId of SchedulingRequestResourceConfig")
+	pucchCmd.Flags().StringVar(&flags.pucch.dsrPeriod, "dsrPeriod", "sl20", "periodicityAndOffset of SchedulingRequestResourceConfig[sym2,sym6or7,sl1,sl2,sl4,sl5,sl8,sl10,sl16,sl20,sl40,sl80,sl160,sl320,sl640]")
+	pucchCmd.Flags().IntVar(&flags.pucch.dsrOffset, "dsrOffset", 2, "periodicityAndOffset of SchedulingRequestResourceConfig[0..period-1]")
+	pucchCmd.Flags().IntVar(&flags.pucch._dsrPucchRes, "_dsrPucchRes", 2, "resource of SchedulingRequestResourceConfig")
+	pucchCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.pucch._numSlots", pucchCmd.Flags().Lookup("_numSlots"))
+	viper.BindPFlag("nrrg.pucch._interSlotFreqHop", pucchCmd.Flags().Lookup("_interSlotFreqHop"))
+	viper.BindPFlag("nrrg.pucch._addDmrs", pucchCmd.Flags().Lookup("_addDmrs"))
+	viper.BindPFlag("nrrg.pucch._simHarqAckCsi", pucchCmd.Flags().Lookup("_simHarqAckCsi"))
+	viper.BindPFlag("nrrg.pucch._pucchResId", pucchCmd.Flags().Lookup("_pucchResId"))
+	viper.BindPFlag("nrrg.pucch._pucchFormat", pucchCmd.Flags().Lookup("_pucchFormat"))
+	//viper.BindPFlag("nrrg.pucch._pucchResSetId", pucchCmd.Flags().Lookup("_pucchResSetId"))
+	viper.BindPFlag("nrrg.pucch._pucchStartRb", pucchCmd.Flags().Lookup("_pucchStartRb"))
+	viper.BindPFlag("nrrg.pucch._pucchIntraSlotFreqHop", pucchCmd.Flags().Lookup("_pucchIntraSlotFreqHop"))
+	viper.BindPFlag("nrrg.pucch._pucchSecondHopPrb", pucchCmd.Flags().Lookup("_pucchSecondHopPrb"))
+	viper.BindPFlag("nrrg.pucch._pucchNumRbs", pucchCmd.Flags().Lookup("_pucchNumRbs"))
+	viper.BindPFlag("nrrg.pucch._pucchStartSymb", pucchCmd.Flags().Lookup("_pucchStartSymb"))
+	viper.BindPFlag("nrrg.pucch._pucchNumSymbs", pucchCmd.Flags().Lookup("_pucchNumSymbs"))
+	//viper.BindPFlag("nrrg.pucch._dsrResId", pucchCmd.Flags().Lookup("_dsrResId"))
+	viper.BindPFlag("nrrg.pucch.dsrPeriod", pucchCmd.Flags().Lookup("dsrPeriod"))
+	viper.BindPFlag("nrrg.pucch.dsrOffset", pucchCmd.Flags().Lookup("dsrOffset"))
+	viper.BindPFlag("nrrg.pucch._dsrPucchRes", pucchCmd.Flags().Lookup("_dsrPucchRes"))
+	pucchCmd.Flags().MarkHidden("_numSlots")
+	pucchCmd.Flags().MarkHidden("_interSlotFreqHop")
+	pucchCmd.Flags().MarkHidden("_addDmrs")
+	pucchCmd.Flags().MarkHidden("_simHarqAckCsi")
+	pucchCmd.Flags().MarkHidden("_pucchResId")
+	pucchCmd.Flags().MarkHidden("_pucchFormat")
+	//pucchCmd.Flags().MarkHidden("_pucchResSetId")
+	pucchCmd.Flags().MarkHidden("_pucchStartRb")
+	pucchCmd.Flags().MarkHidden("_pucchIntraSlotFreqHop")
+	pucchCmd.Flags().MarkHidden("_pucchSecondHopPrb")
+	pucchCmd.Flags().MarkHidden("_pucchNumRbs")
+	pucchCmd.Flags().MarkHidden("_pucchStartSymb")
+	pucchCmd.Flags().MarkHidden("_pucchNumSymbs")
+	//pucchCmd.Flags().MarkHidden("_dsrResId")
+	pucchCmd.Flags().MarkHidden("_dsrPucchRes")
 }
 
 func initAdvancedCmd() {
@@ -4276,23 +4320,23 @@ func loadNrrgFlags() {
 	flags.srs._resSetType = viper.GetStringSlice("nrrg.srs._resSetType")
 	flags.srs._usage = viper.GetStringSlice("nrrg.srs._usage")
 
-	flags.pucch.pucchFmtCfgNumSlots = viper.GetString("nrrg.pucch.pucchFmtCfgNumSlots")
-	flags.pucch.pucchFmtCfgInterSlotFreqHop = viper.GetString("nrrg.pucch.pucchFmtCfgInterSlotFreqHop")
-	flags.pucch.pucchFmtCfgAddDmrs = viper.GetBool("nrrg.pucch.pucchFmtCfgAddDmrs")
-	flags.pucch.pucchFmtCfgSimAckCsi = viper.GetBool("nrrg.pucch.pucchFmtCfgSimAckCsi")
+	flags.pucch._numSlots = viper.GetString("nrrg.pucch._numSlots")
+	flags.pucch._interSlotFreqHop = viper.GetString("nrrg.pucch._interSlotFreqHop")
+	flags.pucch._addDmrs = viper.GetBool("nrrg.pucch._addDmrs")
+	flags.pucch._simHarqAckCsi = viper.GetBool("nrrg.pucch._simHarqAckCsi")
 	flags.pucch._pucchResId = viper.GetIntSlice("nrrg.pucch._pucchResId")
 	flags.pucch._pucchFormat = viper.GetStringSlice("nrrg.pucch._pucchFormat")
-	flags.pucch._pucchResSetId = viper.GetIntSlice("nrrg.pucch._pucchResSetId")
-	flags.pucch.pucchStartRb = viper.GetIntSlice("nrrg.pucch.pucchStartRb")
-	flags.pucch.pucchIntraSlotFreqHop = viper.GetStringSlice("nrrg.pucch.pucchIntraSlotFreqHop")
-	flags.pucch.pucchSecondHopPrb = viper.GetIntSlice("nrrg.pucch.pucchSecondHopPrb")
-	flags.pucch.pucchNumRbs = viper.GetIntSlice("nrrg.pucch.pucchNumRbs")
-	flags.pucch.pucchStartSymb = viper.GetIntSlice("nrrg.pucch.pucchStartSymb")
-	flags.pucch.pucchNumSymbs = viper.GetIntSlice("nrrg.pucch.pucchNumSymbs")
-	flags.pucch._dsrResId = viper.GetIntSlice("nrrg.pucch._dsrResId")
-	flags.pucch._dsrPucchRes = viper.GetIntSlice("nrrg.pucch._dsrPucchRes")
-	flags.pucch.dsrPeriod = viper.GetStringSlice("nrrg.pucch.dsrPeriod")
-	flags.pucch.dsrOffset = viper.GetIntSlice("nrrg.pucch.dsrOffset")
+	//flags.pucch._pucchResSetId = viper.GetIntSlice("nrrg.pucch._pucchResSetId")
+	flags.pucch._pucchStartRb = viper.GetIntSlice("nrrg.pucch._pucchStartRb")
+	flags.pucch._pucchIntraSlotFreqHop = viper.GetStringSlice("nrrg.pucch._pucchIntraSlotFreqHop")
+	flags.pucch._pucchSecondHopPrb = viper.GetIntSlice("nrrg.pucch._pucchSecondHopPrb")
+	flags.pucch._pucchNumRbs = viper.GetIntSlice("nrrg.pucch._pucchNumRbs")
+	flags.pucch._pucchStartSymb = viper.GetIntSlice("nrrg.pucch._pucchStartSymb")
+	flags.pucch._pucchNumSymbs = viper.GetIntSlice("nrrg.pucch._pucchNumSymbs")
+	//flags.pucch._dsrResId = viper.GetIntSlice("nrrg.pucch._dsrResId")
+	flags.pucch.dsrPeriod = viper.GetString("nrrg.pucch.dsrPeriod")
+	flags.pucch.dsrOffset = viper.GetInt("nrrg.pucch.dsrOffset")
+	flags.pucch._dsrPucchRes = viper.GetInt("nrrg.pucch._dsrPucchRes")
 
 	flags.advanced.bestSsb = viper.GetInt("nrrg.advanced.bestSsb")
 	flags.advanced.pdcchSlotSib1 = viper.GetInt("nrrg.advanced.pdcchSlotSib1")
