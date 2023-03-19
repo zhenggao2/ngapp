@@ -117,46 +117,59 @@ nrrg:
     - dedDlBwp
     - iniUlBwp
     - dedUlBwp
-  csiim:
-    _resid: 0
-    _ressetid: 0
-    csiimnumrbs: 276
-    csiimoffset: 10
-    csiimperiod: slots20
-    csiimrepattern: pattern0
-    csiimscloc: s8
-    csiimstartrb: 0
-    csiimsymbloc: 1
-  csireport:
+  csi:
+    _cdmtype:
+    - fd-CDM2
+    - noCDM
+    _csiimnumrbs: 160
+    _csiimoffset: 6
+    _csiimperiod: slots20
+    _csiimrepattern: pattern1
+    _csiimscloc: s4
+    _csiimstartrb: 0
+    _csiimsymbloc: 0
+    _csireppucchres: 1
+    _density:
+    - one
+    - three
+    _firstsymb:
+    - 13
+    - 6
+    _numports:
+    - p4
+    - p1
+    _numrbs:
+    - 160
+    - 160
     _quantity: cri-RI-PMI-CQI
-    _repcfgid: 0
     _repcfgtype: periodic
-    _resbwpid:
-    - 1
-    - 1
-    - 1
-    _rescfgid:
+    _resid:
     - 0
-    - 10
-    - 20
-    _rescfgidchnmeas: 0
-    _rescfgidcsiimintf: 10
-    _rescfgtype:
-    - NZP-CSI-RS
-    - CSI-IM
-    - TRS
+    - 1
     _ressetid:
     - 0
-    - 0
     - 1
-    _restype:
-    - periodic
-    - periodic
-    - periodic
-    _ulbwpid: 1
-    csirepoffset: 7
-    csirepperiod: slots320
-    csireppucchres: 2
+    _restype: periodic
+    _startrb:
+    - 0
+    - 0
+    _trsinfo:
+    - "false"
+    - "true"
+    csirepoffset: 8
+    csirepperiod: slots40
+    freqallocbits:
+    - "001"
+    - "0001"
+    freqallocrow:
+    - row4
+    - row1
+    offset:
+    - 6
+    - 0
+    period:
+    - slots20
+    - slots10
   dldci:
     _fdbitsratype0: 10
     _fdbitsratype1:
@@ -340,39 +353,6 @@ nrrg:
     rmsicss0: 4
     scs: 15KHz
     ssbperiod: 20ms
-  nzpcsirs:
-    _cdmgrpindj:
-    - 0
-    - 1
-    _kap:
-    - 0
-    - 1
-    _kbarlbar:
-    - "0_0"
-    - "2_0"
-    _ki:
-    - 0
-    - 0
-    _lap:
-    - 0
-    _li:
-    - 0
-    - 0
-    _resid: 0
-    _ressetid: 0
-    _row: 4
-    _trsinfo: false
-    nzpcsirscdmtype: fd-CDM2
-    nzpcsirsdensity: one
-    nzpcsirsfirstsymb: 1
-    nzpcsirsfirstsymb2: -1
-    nzpcsirsfreqallocbits: "001"
-    nzpcsirsfreqallocrow: row4
-    nzpcsirsnumports: p4
-    nzpcsirsnumrbs: 276
-    nzpcsirsoffset: 10
-    nzpcsirsperiod: slots20
-    nzpcsirsstartrb: 0
   pdsch:
     _cdmgroupswodata: 2
     _dmrsports:
@@ -693,44 +673,6 @@ nrrg:
     - 4
     patperiod:
     - 5ms
-  trs:
-    _cdmgrpindj:
-    - 0
-    - 0
-    - 0
-    _cdmtype: noCDM
-    _density: three
-    _firstresid: 100
-    _freqallocrow: row1
-    _kap:
-    - 0
-    _kbarlbar:
-    - "0_0"
-    - "4_0"
-    - "8_0"
-    _ki:
-    - 0
-    - 0
-    - 0
-    _lap:
-    - 0
-    _li:
-    - 0
-    - 0
-    - 0
-    _numports: p1
-    _ressetid: 1
-    _row: 1
-    _trsinfo: true
-    trsfirstsymbs:
-    - 5
-    - 9
-    trsfreqallocbits: "0001"
-    trsnumrbs: 276
-    trsoffset:
-    - 10
-    trsperiod: slots40
-    trsstartrb: 0
   uldci:
     _fdbitsratype0: 10
     _fdbitsratype1:
