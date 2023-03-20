@@ -18,7 +18,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/Knetic/govaluate"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -441,7 +440,7 @@ type AdvancedFlags struct {
 	prachOccMsg1  int
 	pdcchOccMsg2  int
 	pdcchOccMsg4  int
-	dsrRes        int
+	//dsrRes        int
 }
 
 // nrrgCmd represents the "nrrg" command
@@ -3038,11 +3037,11 @@ var pucchCmd = &cobra.Command{
 	},
 }
 
-// confAdvancedCmd represents the nrrg conf advanced command
-var confAdvancedCmd = &cobra.Command{
+// advancedCmd represents the "nrrg advanced" command
+var advancedCmd = &cobra.Command{
 	Use:   "advanced",
 	Short: "",
-	Long:  `nrrg conf advanced can be used to get/set advanced-settings related network configurations.`,
+	Long:  `CMD "nrrg advanced" can be used to get/set advanced network configurations.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		loadNrrgFlags()
 	},
@@ -3055,48 +3054,50 @@ var confAdvancedCmd = &cobra.Command{
 
 // TODO: add more subcmd here!!!
 
-// nrrgSimCmd represents the nrrg sim command
-var nrrgSimCmd = &cobra.Command{
+// simCmd represents the "nrrg sim" command
+var simCmd = &cobra.Command{
 	Use:   "sim",
 	Short: "",
-	Long:  `nrrg sim can be used to perform NR-Uu simulation.`,
+	Long:  `CMD "nrrg sim" can be used to perform static NR-Uu simulation.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		viper.WatchConfig()
 		fmt.Println("nrrg sim called")
 		viper.WriteConfig()
 
-		// Examples of 'expression evaluation'
-		// KPI = Formula
-		expression, err := govaluate.NewEvaluableExpression("(f1+f2-f3)/f4*f5/(f6+f7)/100")
-		fmt.Println(expression.Vars())
-		fmt.Println(expression.Tokens())
-		fmt.Println(expression.String())
-		sql, _ := expression.ToSQLQuery()
-		fmt.Println(sql)
+		/*
+			// Examples of 'expression evaluation'
+			expression, err := govaluate.NewEvaluableExpression("(f1+f2-f3)/f4*f5/(f6+f7)/100")
+			fmt.Println(expression.Vars())
+			fmt.Println(expression.Tokens())
+			fmt.Println(expression.String())
+			sql, _ := expression.ToSQLQuery()
+			fmt.Println(sql)
 
-		parameters := make(map[string]interface{})
-		parameters["f1"] = 2
-		parameters["f2"] = 2
-		parameters["f3"] = 3
-		parameters["f4"] = 1
-		parameters["f5"] = 2
-		parameters["f6"] = 2
-		parameters["f7"] = 2
+			parameters := make(map[string]interface{})
+			parameters["f1"] = 2
+			parameters["f2"] = 2
+			parameters["f3"] = 3
+			parameters["f4"] = 1
+			parameters["f5"] = 2
+			parameters["f6"] = 2
+			parameters["f7"] = 2
 
-		result, err := expression.Evaluate(parameters)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			if math.IsNaN(result.(float64)) {
-				fmt.Println("NaN")
-			} else if math.IsInf(result.(float64), 0) {
-				fmt.Println("Inf")
+			result, err := expression.Evaluate(parameters)
+			if err != nil {
+				fmt.Println(err.Error())
 			} else {
-				fmt.Println(result)
+				if math.IsNaN(result.(float64)) {
+					fmt.Println("NaN")
+				} else if math.IsInf(result.(float64), 0) {
+					fmt.Println("Inf")
+				} else {
+					fmt.Println(result)
+				}
 			}
-		}
+		*/
 	},
 }
 
@@ -3111,14 +3112,10 @@ func init() {
 	nrrgCmd.AddCommand(dmrsCommonCmd)
 	nrrgCmd.AddCommand(pdschCmd)
 	nrrgCmd.AddCommand(puschCmd)
-	nrrgCmd.AddCommand(pdschCmd)
-	nrrgCmd.AddCommand(puschCmd)
+	nrrgCmd.AddCommand(pucchCmd)
 	nrrgCmd.AddCommand(csiCmd)
 	nrrgCmd.AddCommand(srsCmd)
-	nrrgCmd.AddCommand(pucchCmd)
-	nrrgCmd.AddCommand(confAdvancedCmd)
-
-	nrrgCmd.AddCommand(nrrgSimCmd)
+	nrrgCmd.AddCommand(advancedCmd)
 
 	if cmdFlags&CMD_FLAG_NRRG != 0 {
 		rootCmd.AddCommand(nrrgCmd)
@@ -3880,19 +3877,19 @@ func initPucchCmd() {
 }
 
 func initAdvancedCmd() {
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.bestSsb, "bestSsb", 0, "Best SSB index")
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchSlotSib1, "pdcchSlotSib1", -1, "PDCCH slot for SIB1")
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.prachOccMsg1, "prachOccMsg1", -1, "PRACH occasion for Msg1")
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg2, "pdcchOccMsg2", 4, "PDCCH occasion for Msg2")
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg4, "pdcchOccMsg4", 0, "PDCCH occasion for Msg4")
-	confAdvancedCmd.Flags().IntVar(&flags.advanced.dsrRes, "dsrRes", 0, "DSR resource index")
-	confAdvancedCmd.Flags().SortFlags = false
-	viper.BindPFlag("nrrg.advanced.bestSsb", confAdvancedCmd.Flags().Lookup("bestSsb"))
-	viper.BindPFlag("nrrg.advanced.pdcchSlotSib1", confAdvancedCmd.Flags().Lookup("pdcchSlotSib1"))
-	viper.BindPFlag("nrrg.advanced.prachOccMsg1", confAdvancedCmd.Flags().Lookup("prachOccMsg1"))
-	viper.BindPFlag("nrrg.advanced.pdcchOccMsg2", confAdvancedCmd.Flags().Lookup("pdcchOccMsg2"))
-	viper.BindPFlag("nrrg.advanced.pdcchOccMsg4", confAdvancedCmd.Flags().Lookup("pdcchOccMsg4"))
-	viper.BindPFlag("nrrg.advanced.dsrRes", confAdvancedCmd.Flags().Lookup("dsrRes"))
+	advancedCmd.Flags().IntVar(&flags.advanced.bestSsb, "bestSsb", 0, "Best SSB index")
+	advancedCmd.Flags().IntVar(&flags.advanced.pdcchSlotSib1, "pdcchSlotSib1", -1, "PDCCH slot for SIB1")
+	advancedCmd.Flags().IntVar(&flags.advanced.prachOccMsg1, "prachOccMsg1", -1, "PRACH occasion for Msg1")
+	advancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg2, "pdcchOccMsg2", 4, "PDCCH occasion for Msg2")
+	advancedCmd.Flags().IntVar(&flags.advanced.pdcchOccMsg4, "pdcchOccMsg4", 0, "PDCCH occasion for Msg4")
+	//advancedCmd.Flags().IntVar(&flags.advanced.dsrRes, "dsrRes", 0, "DSR resource index")
+	advancedCmd.Flags().SortFlags = false
+	viper.BindPFlag("nrrg.advanced.bestSsb", advancedCmd.Flags().Lookup("bestSsb"))
+	viper.BindPFlag("nrrg.advanced.pdcchSlotSib1", advancedCmd.Flags().Lookup("pdcchSlotSib1"))
+	viper.BindPFlag("nrrg.advanced.prachOccMsg1", advancedCmd.Flags().Lookup("prachOccMsg1"))
+	viper.BindPFlag("nrrg.advanced.pdcchOccMsg2", advancedCmd.Flags().Lookup("pdcchOccMsg2"))
+	viper.BindPFlag("nrrg.advanced.pdcchOccMsg4", advancedCmd.Flags().Lookup("pdcchOccMsg4"))
+	//viper.BindPFlag("nrrg.advanced.dsrRes", advancedCmd.Flags().Lookup("dsrRes"))
 }
 
 func loadNrrgFlags() {
@@ -4181,7 +4178,7 @@ func loadNrrgFlags() {
 	flags.advanced.prachOccMsg1 = viper.GetInt("nrrg.advanced.prachOccMsg1")
 	flags.advanced.pdcchOccMsg2 = viper.GetInt("nrrg.advanced.pdcchOccMsg2")
 	flags.advanced.pdcchOccMsg4 = viper.GetInt("nrrg.advanced.pdcchOccMsg4")
-	flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
+	//flags.advanced.dsrRes = viper.GetInt("nrrg.advanced.dsrRes")
 }
 
 var w = []int{len("Flag"), len("Type"), len("Current Value"), len("Default Value")}
