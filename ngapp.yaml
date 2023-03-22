@@ -468,7 +468,7 @@ nrrg:
     totnumpreambs: 64
   searchspace:
     _coreset1duration: 1
-    _coreset1fdres: "111111111111111111111111111111111111111111111"
+    _coreset1fdres: "111111111111111111110000000000000000000000000"
     _coreset1shiftindex: 0
     _sscoresetid:
     - 0

@@ -1171,9 +1171,27 @@ func validateSearchSpace() error {
 	regYellow.Printf("-->calling validateSearchSpace\n")
 
 	// validate CORESET1
+	crbStart := flags.searchspace.coreset1StartCrb
+	numRbs := flags.searchspace.coreset1NumRbs
 	cceRegMapping := flags.searchspace.coreset1CceRegMappingType
 	duration := flags.searchspace._coreset1Duration
 	L, _ := strconv.Atoi(flags.searchspace.coreset1RegBundleSize[1:])
+
+	if crbStart%6 == 0 && numRbs%6 == 0 {
+		fdres := []byte(fmt.Sprintf("%045b", 0))
+		// refer to 38.213 vh40
+		// 10.1	UE procedure for determining physical downlink control channel assignment
+		// ...if a CORESET is not associated with any search space set configured with freqMonitorLocations, the bits of the bitmap have a one-to-one mapping with non-overlapping groups of 6 consecutive PRBs, in ascending order of the PRB index in the DL BWP bandwidth of N_BWP_RB PRBs with starting common RB position N_start_BWP, where the first common RB of the first group of 6 PRBs has common RB index 6*ceil(N_start_BWP/6) if rb-Offset is not provided...
+		rb0grp0 := utils.CeilInt(6 * float64(flags.bwp._bwpStartRb[DED_DL_BWP]) / 6)
+		bit0 := (crbStart - rb0grp0) / 6
+		nbits := numRbs / 6
+		for i := 0; i < nbits; i++ {
+			fdres[bit0+i] = '1'
+		}
+		flags.searchspace._coreset1FdRes = string(fdres)
+	} else {
+		return errors.New(fmt.Sprintf("Both coreset1StartCrb and coreset1NumRbs must be multiples of 6!"))
+	}
 
 	if cceRegMapping == "nonInterleaved" {
 		flags.searchspace.coreset1RegBundleSize = "n6"
