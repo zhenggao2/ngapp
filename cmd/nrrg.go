@@ -831,7 +831,125 @@ var gridSettingCmd = &cobra.Command{
 
 		laPrint(cmd, args)
 		viper.WriteConfig()
+
+		// trigger NRRG simulation
+		regGreen.Printf("[5GNR SIM]: Start 5GNR simulation...\n")
+
+		hsfn := 0
+		sfn := flags.gridsetting._sfn
+		slot := 0
+		regYellow.Printf("[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [HSFN=%v, SFN=%v, Slot=%v]", hsfn, sfn, slot)
+		err = initAlwaysOnTr(hsfn, sfn, slot)
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		/*
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Start 5GNR simulation</b></font>')
+			nrGrid = NgNrGrid(self.ngwin, self.args)
+			hsfn = 0
+			sfn = int(self.args['mib']['sfn'])
+
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, 0))
+			nrGrid.alwaysOnTr(hsfn, sfn, 0)
+
+			# receiving SIB1
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv SSB/SIB1 @ [HSFN=%d, SFN=%d]</b></font>' % (hsfn, sfn))
+			hsfn, sfn, slot = nrGrid.recvSib1(hsfn, sfn)
+
+			# sending Msg1(PRACH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send PRACH(Msg1) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendMsg1(hsfn, sfn, slot)
+
+			# monitoring PDCCH for Msg2
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv PDCCH(DCI 1_0, RA-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci10', rnti='ra-rnti')
+
+			# receiving Msg2(RAR)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv RAR(Msg2) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.recvMsg2(hsfn, sfn, slot)
+
+			# sending Msg3(PUSCH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send Msg3 @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendMsg3(hsfn, sfn, slot)
+
+			# monitoring PDCCH for Msg4
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv PDCCH(DCI 1_0, TC-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci10', rnti='tc-rnti')
+
+			# receiving Msg4
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv Msg4 @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.recvMsg4(hsfn, sfn, slot)
+
+			# sending Msg4 HARQ feedback(PUCCH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send PUCCH(Msg4 HARQ) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendPucch(hsfn, sfn, slot, harq=True, sr=False, csi=False, pucchResSet='common')
+
+			# triggering always-on-transmission of periodic CSI-RS/SRS
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Init always-on-transmission(periodic CSI-RS/SRS) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				nrGrid.alwaysOnTr(hsfn, sfn, slot)
+
+			# sending PUCCH for DSR
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send DSR @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+			retry = 0  # retry 16 frames at most, which is 160ms while max DSR period is 80slots
+			while True:
+				_hsfn, _sfn, _slot = nrGrid.sendPucch(hsfn, sfn, slot, harq=False, sr=True, csi=False, pucchResSet='dedicated')
+				retry += 1
+				if _slot is None and retry < 16:
+					hsfn, sfn = nrGrid.incSfn(hsfn, sfn, 1)
+					slot = 0
+					nrGrid.alwaysOnTr(hsfn, sfn, 0)
+					if nrGrid.error:
+						break
+				else:
+					hsfn, sfn, slot = _hsfn, _sfn, _slot
+					break
+
+			# monitoring PDCCH for PUSCH(Msg5)
+			# start pdcch monitoring at next slot since last slot of DSR is 'U' or 'S'
+			slotsPerRf = 10 * 2 ** {'15KHz':0, '30KHz':1, '60KHz':2, '120KHz':3, '240KHz':4}[self.args['dedUlBwp']['scs']]
+			hsfn, sfn, slot = nrGrid.incSlot(hsfn, sfn, slot, slotsPerRf, 1)
+			hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci01', rnti='c-rnti')
+
+			# sending PUSCH(Msg5)
+			# hsfn, sfn = nrGrid.sendPusch(hsfn, sfn)
+
+			# monitoring PDCCH for normal PDSCH
+			# if hsfn is not None and sfn is not None and slot is not None:
+			#     hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, dci='dci11', rnti='c-rnti')
+
+			# receiving PDSCH
+			# hsfn, sfn = nrGrid.recvPdsch(hsfn, sfn)
+
+			# sending PDSCH HARQ feedback(PUCCH), together with CSI
+			# hsfn, sfn = nrGrid.sendPucch(hsfn, sfn)
+
+			# export grid to excel
+			if not nrGrid.error:
+				if self.ngwin.enableDebug:
+					# Don't waste time for waiting exportToExcel to finish!
+					self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Exporting to excel skipped</b></font>')
+					pass
+				else:
+					self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Exporting to excel, please wait</b></font>')
+					nrGrid.exportToExcel()
+		*/
+
 	},
+}
+
+func initAlwaysOnTr(hsfn, sfn, slot int) error {
+
+	return nil
 }
 
 func updateRach() error {
