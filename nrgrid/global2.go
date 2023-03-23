@@ -833,11 +833,6 @@ var PdschToSliv, PdschFromSliv = initPdschSliv()
 var PuschToSlivRepTypeA, PuschFromSlivRepTypeA = initPuschSlivRepTypeA()
 var PuschToSlivRepTypeB, PuschFromSlivRepTypeB = initPuschSlivRepTypeB()
 
-// constants
-const (
-	NumScPerPrb = 12
-)
-
 // refer to 3GPP 38.214 vh40
 //  Table 5.1.2.1-1: Valid S and L combinations
 func initPdschSliv() (map[string]int, map[string][]int) {

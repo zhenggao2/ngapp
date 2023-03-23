@@ -18,6 +18,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -32,6 +33,7 @@ import (
 
 var (
 	flags   NrrgFlags
+	rgd     NrrgData
 	minChBw int
 
 	//boldRed    = color.New(color.FgHiRed).Add(color.Bold).SprintFunc()
@@ -443,6 +445,37 @@ type AdvancedFlags struct {
 	//dsrRes        int
 }
 
+type DataPerSlot struct {
+	res  []int      // REs in a slot, ordering: subcarrier per symbol, then symbol per slot
+	tags mapset.Set // Physical signals/channels mapped in a slot
+}
+
+//
+type NrrgData struct {
+	subfPerRf   int
+	slotPerSubf int
+	slotPerRf   int
+	symbPerSlot int
+	symbPerSubf int
+	symbPerRf   int
+	scPerRb     int
+	scPerSlot   int
+	scPerSubf   int
+	scPerRf     int
+
+	gridTdd   map[string][]DataPerSlot
+	gridFddUl map[string][]DataPerSlot
+	gridFddDl map[string][]DataPerSlot
+
+	ssbFirstSymbs  []int
+	ssbSc0Rb0      int
+	coreset0Sc0Rb0 int
+
+	coreset0NumCces    int
+	coreset0RegBundles []int
+	coreset0Cces       []int
+}
+
 // nrrgCmd represents the "nrrg" command
 var nrrgCmd = &cobra.Command{
 	Use:   "nrrg",
@@ -799,15 +832,6 @@ var gridSettingCmd = &cobra.Command{
 			return
 		}
 
-		// determine SC#0RB#0 of CORESET0 based on coreset0Offset
-		rmsiScsVal, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
-		iscSsbSc0Rb0 := (flags.gridsetting._nCrbSsb*12*int(flags.gridsetting._nCrbSsbScs)+flags.gridsetting._kSsb*int(flags.gridsetting._kSsbScs))/rmsiScsVal - flags.gridsetting._offsetToCarrier*12
-		nscCoreset0Offset := flags.gridsetting._coreset0Offset * 12
-		iscCoreset0Sc0Rb0 := iscSsbSc0Rb0 - nscCoreset0Offset
-		fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> iscSsbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, iscSsbSc0Rb0)
-		fmt.Printf("coreset0Offset=%v -> nscCoreset0Offset=%v\n", flags.gridsetting._coreset0Offset, nscCoreset0Offset)
-		fmt.Printf("iscCoreset0Sc0Rb0=%v\n", iscCoreset0Sc0Rb0)
-
 		// validate search space
 		err = validateSearchSpace()
 		if err != nil {
@@ -831,7 +855,305 @@ var gridSettingCmd = &cobra.Command{
 
 		laPrint(cmd, args)
 		viper.WriteConfig()
+
+		// trigger NRRG simulation
+		regGreen.Printf("[INFO]: Init NRRG data...\n")
+		err = initNrrgData()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		// trigger NRRG simulation
+		regGreen.Printf("[INFO]: Start 5GNR simulation...\n")
+
+		hsfn := 0
+		sfn := flags.gridsetting._sfn
+		slot := 0
+
+		// DL always-on transmission
+		regYellow.Printf("[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+		err = alwaysOnTr(hsfn, sfn, slot)
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		/*
+			// receiving SIB1
+			regYellow.Printf("[5GNR SIM]UE recv SSB/SIB1 @ [HSFN=%d, SFN=%d]\n", hsfn, sfn)
+			hsfn, sfn, slot, err = recvSib1(hsfn, sfn)
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// sending Msg1(PRACH)
+			regYellow.Printf("[5GNR SIM]UE send PRACH(Msg1) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = sendMsg1(hsfn, sfn, slot)
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// monitoring PDCCH for Msg2(RAR)
+			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, RA-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = monitorPdcch(hsfn, sfn, slot, "dci10", "RA-RNTI")
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// receiving Msg2(RAR)
+			regYellow.Printf("[5GNR SIM]UE recv RAR(Msg2) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = recvMsg2(hsfn, sfn, slot)
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// sending Msg3 PUSCH
+			regYellow.Printf("[5GNR SIM]UE send Msg3 @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = sendMsg3(hsfn, sfn, slot)
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// monitoring PDCCH for Msg4
+			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, TC-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = monitorPdcch(hsfn, sfn, slot, "dci10", "TC-RNTI")
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// receiving Msg4
+			regYellow.Printf("[5GNR SIM]UE recv Msg4 @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = recvMsg4(hsfn, sfn, slot)
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+
+			// sending HARQ-AN of Msg4(PUCCH)
+			regYellow.Printf("[5GNR SIM]UE send PUCCH(Msg4 HARQ) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+			hsfn, sfn, slot, err = sendPucch(hsfn, sfn, slot, true, false, false, "common") //harq=True, sr=False, csi=False, pucchResSet='common'
+			if err != nil {
+				regRed.Printf("[ERR]: %s\n", err.Error())
+				return
+			}
+		*/
+
+		// UL always-on transmission (pCSI/SRS)
+		regYellow.Printf("[5GNR SIM]Init always-on-transmission(periodic CSI-RS/SRS) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
+		err = alwaysOnTr(hsfn, sfn, slot)
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
+		/*
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Start 5GNR simulation</b></font>')
+			nrGrid = NgNrGrid(self.ngwin, self.args)
+			hsfn = 0
+			sfn = int(self.args['mib']['sfn'])
+
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, 0))
+			nrGrid.alwaysOnTr(hsfn, sfn, 0)
+
+			# receiving SIB1
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv SSB/SIB1 @ [HSFN=%d, SFN=%d]</b></font>' % (hsfn, sfn))
+			hsfn, sfn, slot = nrGrid.recvSib1(hsfn, sfn)
+
+			# sending Msg1(PRACH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send PRACH(Msg1) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendMsg1(hsfn, sfn, slot)
+
+			# monitoring PDCCH for Msg2
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv PDCCH(DCI 1_0, RA-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci10', rnti='ra-rnti')
+
+			# receiving Msg2(RAR)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv RAR(Msg2) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.recvMsg2(hsfn, sfn, slot)
+
+			# sending Msg3(PUSCH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send Msg3 @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendMsg3(hsfn, sfn, slot)
+
+			# monitoring PDCCH for Msg4
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv PDCCH(DCI 1_0, TC-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci10', rnti='tc-rnti')
+
+			# receiving Msg4
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE recv Msg4 @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.recvMsg4(hsfn, sfn, slot)
+
+			# sending Msg4 HARQ feedback(PUCCH)
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send PUCCH(Msg4 HARQ) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				hsfn, sfn, slot = nrGrid.sendPucch(hsfn, sfn, slot, harq=True, sr=False, csi=False, pucchResSet='common')
+
+			# triggering always-on-transmission of periodic CSI-RS/SRS
+			if hsfn is not None and sfn is not None and slot is not None:
+				self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Init always-on-transmission(periodic CSI-RS/SRS) @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+				nrGrid.alwaysOnTr(hsfn, sfn, slot)
+
+			# sending PUCCH for DSR
+			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]UE send DSR @ [HSFN=%d, SFN=%d, Slot=%d]</b></font>' % (hsfn, sfn, slot))
+			retry = 0  # retry 16 frames at most, which is 160ms while max DSR period is 80slots
+			while True:
+				_hsfn, _sfn, _slot = nrGrid.sendPucch(hsfn, sfn, slot, harq=False, sr=True, csi=False, pucchResSet='dedicated')
+				retry += 1
+				if _slot is None and retry < 16:
+					hsfn, sfn = nrGrid.incSfn(hsfn, sfn, 1)
+					slot = 0
+					nrGrid.alwaysOnTr(hsfn, sfn, 0)
+					if nrGrid.error:
+						break
+				else:
+					hsfn, sfn, slot = _hsfn, _sfn, _slot
+					break
+
+			# monitoring PDCCH for PUSCH(Msg5)
+			# start pdcch monitoring at next slot since last slot of DSR is 'U' or 'S'
+			slotsPerRf = 10 * 2 ** {'15KHz':0, '30KHz':1, '60KHz':2, '120KHz':3, '240KHz':4}[self.args['dedUlBwp']['scs']]
+			hsfn, sfn, slot = nrGrid.incSlot(hsfn, sfn, slot, slotsPerRf, 1)
+			hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, slot, dci='dci01', rnti='c-rnti')
+
+			# sending PUSCH(Msg5)
+			# hsfn, sfn = nrGrid.sendPusch(hsfn, sfn)
+
+			# monitoring PDCCH for normal PDSCH
+			# if hsfn is not None and sfn is not None and slot is not None:
+			#     hsfn, sfn, slot = nrGrid.monitorPdcch(hsfn, sfn, dci='dci11', rnti='c-rnti')
+
+			# receiving PDSCH
+			# hsfn, sfn = nrGrid.recvPdsch(hsfn, sfn)
+
+			# sending PDSCH HARQ feedback(PUCCH), together with CSI
+			# hsfn, sfn = nrGrid.sendPucch(hsfn, sfn)
+
+			# export grid to excel
+			if not nrGrid.error:
+				if self.ngwin.enableDebug:
+					# Don't waste time for waiting exportToExcel to finish!
+					self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Exporting to excel skipped</b></font>')
+					pass
+				else:
+					self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Exporting to excel, please wait</b></font>')
+					nrGrid.exportToExcel()
+		*/
 	},
+}
+
+func initNrrgData() error {
+	rgd.subfPerRf = 10
+	rgd.slotPerSubf = int(math.Exp2(float64(nrgrid.Scs2Mu[flags.gridsetting.scs])))
+	rgd.slotPerRf = rgd.slotPerSubf * rgd.subfPerRf
+	rgd.symbPerSlot = 14
+	rgd.symbPerSubf = rgd.symbPerSlot * rgd.slotPerSubf
+	rgd.symbPerRf = rgd.symbPerSlot * rgd.slotPerRf
+	rgd.scPerRb = 12
+	rgd.scPerSlot = rgd.scPerRb * rgd.symbPerSlot
+	rgd.scPerSubf = rgd.scPerSlot * rgd.slotPerSubf
+	rgd.scPerRf = rgd.scPerSlot * rgd.slotPerRf
+
+	if flags.gridsetting._duplexMode == "TDD" {
+		rgd.gridTdd = make(map[string][]DataPerSlot)
+	} else {
+		rgd.gridFddUl = make(map[string][]DataPerSlot)
+		rgd.gridFddDl = make(map[string][]DataPerSlot)
+	}
+
+	var s1, s3 []int
+	var s2 int
+	if flags.gridsetting._ssbPattern == "Case A" && flags.gridsetting._ssbScs == "15KHz" {
+		s1 = []int{2, 8}
+		s2 = 14
+		if !flags.gridsetting._unlicensed {
+			if flags.gridsetting._maxDlFreq <= 3000 {
+				s3 = []int{0, 1}
+			} else {
+				s3 = []int{0, 1, 2, 3}
+			}
+		} else {
+			s3 = []int{0, 1, 2, 3, 4}
+		}
+	} else if flags.gridsetting._ssbPattern == "Case B" && flags.gridsetting._ssbScs == "30KHz" {
+		s1 = []int{4, 8, 16, 20}
+		s2 = 28
+		if flags.gridsetting._maxDlFreq <= 3000 {
+			s3 = []int{0}
+		} else {
+			s3 = []int{0, 1}
+		}
+	} else if flags.gridsetting._ssbPattern == "Case C" && flags.gridsetting._ssbScs == "30KHz" {
+		s1 = []int{2, 8}
+		s2 = 14
+		if !flags.gridsetting._unlicensed {
+			if flags.gridsetting._duplexMode == "FDD" {
+				if flags.gridsetting._maxDlFreq <= 3000 {
+					s3 = []int{0, 1}
+				} else {
+					s3 = []int{0, 1, 2, 3}
+				}
+			} else if flags.gridsetting._duplexMode == "TDD" {
+				if flags.gridsetting._maxDlFreq < 1880 {
+					s3 = []int{0, 1}
+				} else {
+					s3 = []int{0, 1, 2, 3}
+				}
+			}
+		} else {
+			s3 = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+		}
+	} else if flags.gridsetting._ssbPattern == "Case D" && flags.gridsetting._ssbScs == "120KHz" {
+		s1 = []int{4, 8, 16, 20}
+		s2 = 28
+		s3 = []int{0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18}
+	} else if flags.gridsetting._ssbPattern == "Case E" && flags.gridsetting._ssbScs == "240KHz" {
+		s1 = []int{8, 12, 16, 20, 32, 36, 40, 44}
+		s2 = 56
+		s3 = []int{0, 1, 2, 3, 5, 6, 7, 8}
+	} else if ((flags.gridsetting._ssbPattern == "Case F" && flags.gridsetting._ssbScs == "480KHz") || (flags.gridsetting._ssbPattern == "Case G" && flags.gridsetting._ssbScs == "960KHz")) && flags.gridsetting._freqRange == "FR2-2" {
+		s1 = []int{2, 9}
+		s2 = 14
+		s3 = utils.PyRange(0, 32, 1)
+	}
+
+	for _, i := range s1 {
+		for _, j := range s3 {
+			rgd.ssbFirstSymbs = append(rgd.ssbFirstSymbs, i+s2*j)
+		}
+	}
+	sort.Ints(rgd.ssbFirstSymbs)
+
+	rmsiScs, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
+	rgd.ssbSc0Rb0 = (flags.gridsetting._nCrbSsb*12*int(flags.gridsetting._nCrbSsbScs)+flags.gridsetting._kSsb*int(flags.gridsetting._kSsbScs))/rmsiScs - flags.gridsetting._offsetToCarrier*12
+	rgd.coreset0Sc0Rb0 = rgd.ssbSc0Rb0 - flags.gridsetting._coreset0Offset*12
+	fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> ssbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, rgd.ssbSc0Rb0)
+	fmt.Printf("coreset0Offset=%v -> coreset0Sc0Rb0=%v\n", flags.gridsetting._coreset0Offset, rgd.coreset0Sc0Rb0)
+
+	rgd.coreset0NumCces = flags.gridsetting._coreset0NumSymbs * flags.gridsetting._coreset0NumRbs / 6
+	if flags.gridsetting._css0AggLevel > rgd.coreset0NumCces {
+		return errors.New(fmt.Sprintf("Invalid configurations of CSS0/CORESET0: aggregation level=%v while total number of CCEs=%v!", flags.gridsetting._css0AggLevel, rgd.coreset0NumCces))
+	}
+	//TODO
+
+	return nil
+}
+
+func alwaysOnTr(hsfn, sfn, slot int) error {
+
+	return nil
 }
 
 func updateRach() error {
@@ -2621,7 +2943,7 @@ func getTbs(sch string, tp bool, rnti string, mcsTab string, td int, fd int, mcs
 	}
 
 	// 2nd step: get N_RE
-	N_RE_ap := nrgrid.NumScPerPrb*td - dmrs - xoh
+	N_RE_ap := 12*td - dmrs - xoh
 	min := utils.MinInt([]int{156, N_RE_ap})
 	N_RE := min * fd
 
@@ -2715,7 +3037,7 @@ func getDmrsPdschTdFdPattern(dmrsType string, tdMappingType string, slivS int, s
 		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
 	}
 
-	fdK := make([]int, nrgrid.NumScPerPrb)
+	fdK := make([]int, 12)
 	for _, i := range fdN {
 		for _, j := range fdKap {
 			for _, k := range fdDelta {
@@ -2818,7 +3140,7 @@ func getDmrsPuschTdFdPattern(dmrsType string, tdMappingType string, slivS int, s
 		fdDelta = []int{0, 2, 4}[:cdmGroupsWoData]
 	}
 
-	fdK := make([]int, nrgrid.NumScPerPrb)
+	fdK := make([]int, 12)
 	for _, i := range fdN {
 		for _, j := range fdKap {
 			for _, k := range fdDelta {
