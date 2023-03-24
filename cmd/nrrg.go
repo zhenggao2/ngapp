@@ -157,10 +157,83 @@ const (
 	FBRAR_UL_MSG3 int = 3 // rnti = TC-RNTI (two-steps CBRA)
 
 	// Common DMRS tags
+
 	DMRS_DCI_10_SIB1 int = 0
 	DMRS_DCI_10_MSG2 int = 1
 	DMRS_DCI_10_MSG4 int = 2
 	DMRS_RAR_UL_MSG3 int = 3
+
+	// NR resource tags
+
+	NR_RES_PSS    int = 0
+	NR_RES_SSS    int = 1
+	NR_RES_PBCH   int = 2
+	NR_RES_SIB1   int = 3
+	NR_RES_PDCCH  int = 4
+	NR_RES_PDSCH  int = 5
+	NR_RES_CSI_RS int = 6
+	NR_RES_MSG2   int = 7
+	NR_RES_MSG4   int = 8
+
+	NR_RES_PRACH int = 10
+	// NR_RES_PUCCH int = 11
+	NR_RES_PUCCH_SR      int = 90
+	NR_RES_PUCCH_ACK     int = 91
+	NR_RES_PUCCH_CSI     int = 92
+	NR_RES_PUCCH_SR_CSI  int = 93
+	NR_RES_PUCCH_ACK_CSI int = 94
+	NR_RES_PUSCH         int = 12
+	NR_RES_MSG3          int = 13
+	NR_RES_SRS0          int = 14
+	NR_RES_SRS0_2        int = 15
+	NR_RES_SRS1_3        int = 16
+	NR_RES_SRS0_1        int = 17
+	NR_RES_SRS0_1_2_3    int = 18
+
+	NR_RES_DMRS_PBCH  int = 20
+	NR_RES_DMRS_SIB1  int = 21
+	NR_RES_DMRS_PDCCH int = 22
+	NR_RES_DMRS_PDSCH int = 23
+	NR_RES_DMRS_MSG2  int = 24
+	NR_RES_DMRS_MSG4  int = 25
+
+	NR_RES_DMRS_PUCCH int = 30
+	NR_RES_DMRS_PUSCH int = 31
+	NR_RES_DMRS_MSG3  int = 32
+
+	NR_RES_PTRS_PDSCH int = 40
+	NR_RES_PTRS_PUSCH int = 41
+
+	NR_RES_DTX int = 50
+
+	NR_RES_D  int = 60
+	NR_RES_F  int = 61
+	NR_RES_U  int = 62
+	NR_RES_GB int = 63
+
+	NR_RES_CORESET0 int = 70
+	NR_RES_CORESET1 int = 71
+
+	NR_RES_CSI_IM            int = 80
+	NR_RES_TRS               int = 81
+	NR_RES_CSI_RS_CDM_GRP_0  int = 82
+	NR_RES_CSI_RS_CDM_GRP_1  int = 83
+	NR_RES_CSI_RS_CDM_GRP_2  int = 84
+	NR_RES_CSI_RS_CDM_GRP_3  int = 85
+	NR_RES_CSI_RS_CDM_GRP_4  int = 86
+	NR_RES_CSI_RS_CDM_GRP_5  int = 87
+	NR_RES_CSI_RS_CDM_GRP_6  int = 88
+	NR_RES_CSI_RS_CDM_GRP_7  int = 89
+	NR_RES_CSI_RS_CDM_GRP_8  int = 90
+	NR_RES_CSI_RS_CDM_GRP_9  int = 91
+	NR_RES_CSI_RS_CDM_GRP_10 int = 92
+	NR_RES_CSI_RS_CDM_GRP_11 int = 93
+	NR_RES_CSI_RS_CDM_GRP_12 int = 94
+	NR_RES_CSI_RS_CDM_GRP_13 int = 95
+	NR_RES_CSI_RS_CDM_GRP_14 int = 96
+	NR_RES_CSI_RS_CDM_GRP_15 int = 97
+
+	NR_RES_BUTT int = 999
 )
 
 // Search space
@@ -445,9 +518,9 @@ type AdvancedFlags struct {
 	//dsrRes        int
 }
 
-type DataPerSlot struct {
-	res  []int      // REs in a slot, ordering: subcarrier per symbol, then symbol per slot
-	tags mapset.Set // Physical signals/channels mapped in a slot
+type DataPerRf struct {
+	res  []int        // REs in a slot, ordering: subcarriers per symbol, then symbols per radio frame
+	tags []mapset.Set // physical signals/channels mapped per slot
 }
 
 //
@@ -459,21 +532,37 @@ type NrrgData struct {
 	symbPerSubf int
 	symbPerRf   int
 	scPerRb     int
+	scPerSymb   int
 	scPerSlot   int
 	scPerSubf   int
 	scPerRf     int
 
-	gridTdd   map[string][]DataPerSlot
-	gridFddUl map[string][]DataPerSlot
-	gridFddDl map[string][]DataPerSlot
+	gridTdd      map[int]DataPerRf // TDD only (key=SFN, val=data per radio frame)
+	tddPatEvenRf []string
+	tddPatOddRf  []string
+	gridFddUl    map[int]DataPerRf // FDD UL only (key=SFN, val=data per radio frame)
+	gridFddDl    map[int]DataPerRf // FDD DL only (key=SFN, val=data per radio frame)
 
 	ssbFirstSymbs  []int
+	trSsb          map[int]bool  // whether SSB is transmitted in certain SFN?
+	ssbSymbs       map[int][]int // SSB symbols per radio frame
 	ssbSc0Rb0      int
 	coreset0Sc0Rb0 int
 
 	coreset0NumCces    int
 	coreset0RegBundles []int
 	coreset0Cces       []int
+
+	coreset1NumCces    int
+	coreset1RegBundles []int
+	coreset1Cces       []int
+
+	dci10Sib1Prbs []int
+	dci10Msg2Prbs []int
+	dci10Msg4Prbs []int
+	dci11Prbs     []int
+
+	msg4Recved bool
 }
 
 // nrrgCmd represents the "nrrg" command
@@ -867,13 +956,12 @@ var gridSettingCmd = &cobra.Command{
 		// trigger NRRG simulation
 		regGreen.Printf("[INFO]: Start 5GNR simulation...\n")
 
-		hsfn := 0
 		sfn := flags.gridsetting._sfn
 		slot := 0
 
 		// DL always-on transmission
-		regYellow.Printf("[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-		err = alwaysOnTr(hsfn, sfn, slot)
+		regYellow.Printf("[5GNR SIM]Init always-on-transmission(SSB/PDCCH/SIB1) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+		err = alwaysOnTr(sfn, slot)
 		if err != nil {
 			regRed.Printf("[ERR]: %s\n", err.Error())
 			return
@@ -881,64 +969,64 @@ var gridSettingCmd = &cobra.Command{
 
 		/*
 			// receiving SIB1
-			regYellow.Printf("[5GNR SIM]UE recv SSB/SIB1 @ [HSFN=%d, SFN=%d]\n", hsfn, sfn)
-			hsfn, sfn, slot, err = recvSib1(hsfn, sfn)
+			regYellow.Printf("[5GNR SIM]UE recv SSB/SIB1 @ [SFN=%d]\n", sfn)
+			sfn, slot, err = recvSib1(sfn)
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// sending Msg1(PRACH)
-			regYellow.Printf("[5GNR SIM]UE send PRACH(Msg1) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = sendMsg1(hsfn, sfn, slot)
+			regYellow.Printf("[5GNR SIM]UE send PRACH(Msg1) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = sendMsg1(sfn, slot)
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// monitoring PDCCH for Msg2(RAR)
-			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, RA-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = monitorPdcch(hsfn, sfn, slot, "dci10", "RA-RNTI")
+			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, RA-RNTI) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = monitorPdcch(sfn, slot, "dci10", "RA-RNTI")
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// receiving Msg2(RAR)
-			regYellow.Printf("[5GNR SIM]UE recv RAR(Msg2) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = recvMsg2(hsfn, sfn, slot)
+			regYellow.Printf("[5GNR SIM]UE recv RAR(Msg2) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = recvMsg2(sfn, slot)
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// sending Msg3 PUSCH
-			regYellow.Printf("[5GNR SIM]UE send Msg3 @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = sendMsg3(hsfn, sfn, slot)
+			regYellow.Printf("[5GNR SIM]UE send Msg3 @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = sendMsg3(sfn, slot)
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// monitoring PDCCH for Msg4
-			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, TC-RNTI) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = monitorPdcch(hsfn, sfn, slot, "dci10", "TC-RNTI")
+			regYellow.Printf("[5GNR SIM]UE recv PDCCH(DCI 1_0, TC-RNTI) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = monitorPdcch(sfn, slot, "dci10", "TC-RNTI")
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// receiving Msg4
-			regYellow.Printf("[5GNR SIM]UE recv Msg4 @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = recvMsg4(hsfn, sfn, slot)
+			regYellow.Printf("[5GNR SIM]UE recv Msg4 @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = recvMsg4(sfn, slot)
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
 			}
 
 			// sending HARQ-AN of Msg4(PUCCH)
-			regYellow.Printf("[5GNR SIM]UE send PUCCH(Msg4 HARQ) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-			hsfn, sfn, slot, err = sendPucch(hsfn, sfn, slot, true, false, false, "common") //harq=True, sr=False, csi=False, pucchResSet='common'
+			regYellow.Printf("[5GNR SIM]UE send PUCCH(Msg4 HARQ) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+			sfn, slot, err = sendPucch(sfn, slot, true, false, false, "common") //harq=True, sr=False, csi=False, pucchResSet='common'
 			if err != nil {
 				regRed.Printf("[ERR]: %s\n", err.Error())
 				return
@@ -946,8 +1034,8 @@ var gridSettingCmd = &cobra.Command{
 		*/
 
 		// UL always-on transmission (pCSI/SRS)
-		regYellow.Printf("[5GNR SIM]Init always-on-transmission(periodic CSI-RS/SRS) @ [HSFN=%d, SFN=%d, Slot=%d]\n", hsfn, sfn, slot)
-		err = alwaysOnTr(hsfn, sfn, slot)
+		regYellow.Printf("[5GNR SIM]Init always-on-transmission(periodic CSI-RS/SRS) @ [SFN=%d, Slot=%d]\n", sfn, slot)
+		err = alwaysOnTr(sfn, slot)
 		if err != nil {
 			regRed.Printf("[ERR]: %s\n", err.Error())
 			return
@@ -1055,6 +1143,7 @@ var gridSettingCmd = &cobra.Command{
 }
 
 func initNrrgData() error {
+	// constants
 	rgd.subfPerRf = 10
 	rgd.slotPerSubf = int(math.Exp2(float64(nrgrid.Scs2Mu[flags.gridsetting.scs])))
 	rgd.slotPerRf = rgd.slotPerSubf * rgd.subfPerRf
@@ -1062,17 +1151,60 @@ func initNrrgData() error {
 	rgd.symbPerSubf = rgd.symbPerSlot * rgd.slotPerSubf
 	rgd.symbPerRf = rgd.symbPerSlot * rgd.slotPerRf
 	rgd.scPerRb = 12
-	rgd.scPerSlot = rgd.scPerRb * rgd.symbPerSlot
+	rgd.scPerSymb = rgd.scPerRb * flags.gridsetting._carrierNumRbs
+	rgd.scPerSlot = rgd.scPerSymb * rgd.symbPerSlot
 	rgd.scPerSubf = rgd.scPerSlot * rgd.slotPerSubf
 	rgd.scPerRf = rgd.scPerSlot * rgd.slotPerRf
 
+	// resource grid
 	if flags.gridsetting._duplexMode == "TDD" {
-		rgd.gridTdd = make(map[string][]DataPerSlot)
+		if len(flags.tdduldl.patPeriod) == 1 || len(flags.tdduldl.patPeriod) == 2 {
+			period := 0.0
+			for _, p := range flags.tdduldl.patPeriod {
+				v, _ := strconv.ParseFloat(p[:len(p)-2], 64)
+				period += v
+			}
+			if math.Mod(20, period) == 0 {
+				periodsPer20ms := int(20 / period)
+				var patPerPeriod []string
+				for i := range flags.tdduldl.patPeriod {
+					for j := 0; j < flags.tdduldl.patNumDlSlots[i]*rgd.symbPerSlot+flags.tdduldl.patNumDlSymbs[i]; j++ {
+						patPerPeriod = append(patPerPeriod, "D")
+					}
+					for j := 0; j < rgd.symbPerSlot-flags.tdduldl.patNumDlSymbs[i]-flags.tdduldl.patNumUlSymbs[i]; j++ {
+						patPerPeriod = append(patPerPeriod, "GB")
+					}
+					for j := 0; j < flags.tdduldl.patNumUlSymbs[i]+flags.tdduldl.patNumUlSlots[i]*rgd.symbPerSlot; j++ {
+						patPerPeriod = append(patPerPeriod, "U")
+					}
+				}
+
+				var patPer20ms []string
+				for i := 0; i < periodsPer20ms; i++ {
+					patPer20ms = append(patPer20ms, patPerPeriod...)
+				}
+
+				rgd.tddPatEvenRf = patPer20ms[:rgd.symbPerRf]
+				rgd.tddPatOddRf = patPer20ms[rgd.symbPerRf:]
+				fmt.Printf("tddPatEvenRf=%v\n", rgd.tddPatEvenRf)
+				fmt.Printf("tddPatOddRf =%v\n", rgd.tddPatOddRf)
+			} else {
+				return errors.New(fmt.Sprintf("Invalid TDD-UL-DL-Config periodicity(=%v), which should divide 20m.", flags.tdduldl.patPeriod))
+			}
+		} else {
+			return errors.New(fmt.Sprintf("Invalid TDD-UL-DL-Config: tdduldl.patPeriod=%v.", flags.tdduldl.patPeriod))
+		}
+
+		rgd.gridTdd = make(map[int]DataPerRf)
 	} else {
-		rgd.gridFddUl = make(map[string][]DataPerSlot)
-		rgd.gridFddDl = make(map[string][]DataPerSlot)
+		rgd.gridFddUl = make(map[int]DataPerRf)
+		rgd.gridFddDl = make(map[int]DataPerRf)
 	}
 
+	rgd.trSsb = make(map[int]bool)
+	rgd.ssbSymbs = make(map[int][]int)
+
+	// first symbols of SSB
 	var s1, s3 []int
 	var s2 int
 	if flags.gridsetting._ssbPattern == "Case A" && flags.gridsetting._ssbScs == "15KHz" {
@@ -1135,23 +1267,396 @@ func initNrrgData() error {
 		}
 	}
 	sort.Ints(rgd.ssbFirstSymbs)
+	fmt.Printf("ssbFirstSymbs: %v\n", rgd.ssbFirstSymbs)
 
+	// first subcarrier of SSB/CORESET0
 	rmsiScs, _ := strconv.Atoi(flags.gridsetting._mibCommonScs[:len(flags.gridsetting._mibCommonScs)-3])
 	rgd.ssbSc0Rb0 = (flags.gridsetting._nCrbSsb*12*int(flags.gridsetting._nCrbSsbScs)+flags.gridsetting._kSsb*int(flags.gridsetting._kSsbScs))/rmsiScs - flags.gridsetting._offsetToCarrier*12
 	rgd.coreset0Sc0Rb0 = rgd.ssbSc0Rb0 - flags.gridsetting._coreset0Offset*12
 	fmt.Printf("offsetToCarrier=%v, nCrbSsb=%v(SCS=%.0fKHz), kSsb=%v(SCS=%.0fKHz) -> ssbSc0Rb0=%v\n", flags.gridsetting._offsetToCarrier, flags.gridsetting._nCrbSsb, flags.gridsetting._nCrbSsbScs, flags.gridsetting._kSsb, flags.gridsetting._kSsbScs, rgd.ssbSc0Rb0)
 	fmt.Printf("coreset0Offset=%v -> coreset0Sc0Rb0=%v\n", flags.gridsetting._coreset0Offset, rgd.coreset0Sc0Rb0)
 
+	// CORESET0
 	rgd.coreset0NumCces = flags.gridsetting._coreset0NumSymbs * flags.gridsetting._coreset0NumRbs / 6
 	if flags.gridsetting._css0AggLevel > rgd.coreset0NumCces {
 		return errors.New(fmt.Sprintf("Invalid configurations of CSS0/CORESET0: aggregation level=%v while total number of CCEs=%v!", flags.gridsetting._css0AggLevel, rgd.coreset0NumCces))
 	}
-	//TODO
+
+	var err error
+	rgd.coreset0RegBundles, rgd.coreset0Cces, err = coresetCceRegMapping("CORESET0", flags.gridsetting._coreset0NumRbs, flags.gridsetting._coreset0NumSymbs, true, 6, 2, flags.gridsetting.pci)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("CORESET0 CCE-to-REG mapping:\nregBundles=%v\ncces      =%v\n", rgd.coreset0RegBundles, rgd.coreset0Cces)
+
+	// CORESET1
+	rgd.coreset1NumCces = flags.searchspace._coreset1Duration * flags.searchspace.coreset1NumRbs / 6
+	L, _ := strconv.Atoi(flags.searchspace.coreset1RegBundleSize[1:])
+	R, _ := strconv.Atoi(flags.searchspace.coreset1InterleaverSize[1:])
+	rgd.coreset1RegBundles, rgd.coreset1Cces, err = coresetCceRegMapping("CORESET1", flags.searchspace.coreset1NumRbs, flags.searchspace._coreset1Duration, flags.searchspace.coreset1CceRegMappingType == "interleaved", L, R, flags.searchspace._coreset1ShiftIndex)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("CORESET1 CCE-to-REG mapping:\nregBundles=%v\ncces      =%v\n", rgd.coreset1RegBundles, rgd.coreset1Cces)
+
+	var vrbBundles, prbBundles []int
+	// interleaved VRB-to-PRB mapping for DCI 1_0 with SI-RNTI in Type0 CSS
+	L, _ = strconv.Atoi(flags.dldci.fdBundleSize[DCI_10_SIB1][1:])
+	vrbBundles, prbBundles, rgd.dci10Sib1Prbs = pdschVrbPrbMapping(flags.gridsetting._coreset0NumRbs, 0, 0, L)
+	fmt.Printf("DCI_10_SIB1 VRB-to-PRB mapping:\nvrbBundles=%v\nprbBundles=%v\nprbs=%v\n", vrbBundles, prbBundles, rgd.dci10Sib1Prbs)
+
+	// interleaved VRB-to-PRB mapping for DCI 1_0 other than Type0 CSS
+	L, _ = strconv.Atoi(flags.dldci.fdBundleSize[DCI_10_MSG2][1:])
+	vrbBundles, prbBundles, rgd.dci10Msg2Prbs = pdschVrbPrbMapping(flags.gridsetting._coreset0NumRbs, 0, 0, L)
+	fmt.Printf("DCI_10_MSG2 VRB-to-PRB mapping:\nvrbBundles=%v\nprbBundles=%v\nprbs=%v\n", vrbBundles, prbBundles, rgd.dci10Msg2Prbs)
+
+	L, _ = strconv.Atoi(flags.dldci.fdBundleSize[DCI_10_MSG4][1:])
+	vrbBundles, prbBundles, rgd.dci10Msg4Prbs = pdschVrbPrbMapping(flags.gridsetting._coreset0NumRbs, 0, 0, L)
+	fmt.Printf("DCI_10_MSG4 VRB-to-PRB mapping:\nvrbBundles=%v\nprbBundles=%v\nprbs=%v\n", vrbBundles, prbBundles, rgd.dci10Msg4Prbs)
+
+	// interleaved VRB-to-PRB mapping for DCI 1_1
+	L, _ = strconv.Atoi(flags.dldci.fdBundleSize[DCI_11_PDSCH][1:])
+	vrbBundles, prbBundles, rgd.dci11Prbs = pdschVrbPrbMapping(flags.bwp._bwpNumRbs[DED_DL_BWP], flags.bwp._bwpStartRb[DED_DL_BWP], 0, L)
+	fmt.Printf("DCI_11_PDSCSH VRB-to-PRB mapping:\nvrbBundles=%v\nprbBundles=%v\nprbs=%v\n", vrbBundles, prbBundles, rgd.dci11Prbs)
+
+	//TODO RACH duration of long PRACH
+	/*
+		if self.nrRachCfgFormat in ('0', '1', '2', '3'):
+			self.nrRachCfgDuration = {'0':14, '1':42, '2':49, '3':14}[self.nrRachCfgFormat]
+	*/
+
+	//TODO SSB-PRACH association
+	/*
+		self.numTxSsb = len([c for c in self.ssbSet if c == '1'])
+		self.minNumValidPrachOccasionPerAssociationPeriod = math.ceil(self.numTxSsb / self.nrRachSsbPerRachOccasionM8 * 8)
+	*/
+
+	rgd.msg4Recved = false
 
 	return nil
 }
 
-func alwaysOnTr(hsfn, sfn, slot int) error {
+// CCE-to-REG mapping of CORESET
+func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved bool, L int, R int, nShift int) ([]int, []int, error) {
+	if !utils.ContainsStr([]string{"CORESET0", "CORESET1"}, coreset) {
+		return nil, nil, errors.New(fmt.Sprintf("coresetCceRegMapping: Only CORESET0 and CORESET1 are supported."))
+	}
+
+	if !interlaved && L != 6 {
+		return nil, nil, errors.New(fmt.Sprintf("coresetCceRegMapping: L should equal 6 for non-interleaved mapping."))
+	}
+
+	if interlaved {
+		if (numSymbs == 1 && !utils.ContainsInt([]int{2, 6}, L)) || (utils.ContainsInt([]int{2, 3}, numSymbs) && !utils.ContainsInt([]int{numSymbs, 6}, L)) {
+			return nil, nil, errors.New(fmt.Sprintf("coresetCceRegMapping: For interleaved CCE-to-REG mapping, L = 2/6 for N_CORESTE_symb=1 and L=N_CORESET_symb/6 for N_CORESET_symb=2/3."))
+		}
+		if (numRbs*numSymbs)%(L*R) != 0 {
+			return nil, nil, errors.New(fmt.Sprintf("coresetCceRegMapping: N_CORESET_REG should be multiples of L*R."))
+		}
+	}
+
+	// indexing REGs
+	// refer to 3GPP 38.211 vh40
+	// 7.3.2.2	Control-resource set (CORESET)
+	// Resource-element groups within a control-resource set are numbered in increasing order in a time-first manner, starting with 0 for the first OFDM symbol and the lowest-numbered resource block in the control resource set.
+	numRegs := numRbs * numSymbs
+	regBundles := make([]int, numRegs)
+	count := 0
+	for i := 0; i < numRbs; i++ {
+		for j := 0; j < numSymbs; j++ {
+			regBundles[i*numSymbs+j] = count
+			count++
+		}
+	}
+
+	// indexing REG bundles
+	numRegBundles := numRegs / L
+	for i := 0; i < numRbs; i++ {
+		for j := 0; j < numSymbs; j++ {
+			regBundles[i*numSymbs+j] /= L
+		}
+	}
+
+	// indexing CCEs
+	numCces := numRegs / 6
+	numRegBundlesPerCce := 6 / L
+	cces := make([]int, numRegs)
+	for i := 0; i < numCces; i++ {
+		var regBundlesSet []int
+		for j := 0; j < numRegBundlesPerCce; j++ {
+			regBundlesSet = append(regBundlesSet, numRegBundlesPerCce*i+j)
+		}
+
+		if interlaved {
+			C := numRegs / (L * R)
+			for j := range regBundlesSet {
+				x := regBundlesSet[j]
+				c := x / R
+				r := x % R
+				regBundlesSet[j] = (r*C + c + nShift) % numRegBundles
+			}
+		}
+
+		for j := 0; j < numRbs; j++ {
+			for k := 0; k < numSymbs; k++ {
+				if utils.ContainsInt(regBundlesSet, regBundles[j*numSymbs+k]) {
+					cces[j*numSymbs+k] = i
+				}
+			}
+		}
+	}
+
+	return regBundles, cces, nil
+}
+
+// DL VRB-to-PRB mapping
+//  - For PDSCH transmissions scheduled with DCI format 1_0 with the CRC scrambled by SI-RNTI in Type0-PDCCH common search space in CORESET 0: bwpStart=0 and coresetStart=0
+//  - For PDSCH transmissions scheduled with DCI format 1_0 in any common search space in bandwidth part i with starting position N_start_BWP,i, other than Type0-PDCCH common search space in CORESET 0
+//  - For all other PDSCH transmissions: coresetStart=0
+func pdschVrbPrbMapping(bwpSize int, bwpStart int, coresetStart int, L int) ([]int, []int, []int) {
+	numBundles := utils.CeilInt(float64(bwpSize+(bwpStart+coresetStart)%L) / float64(L))
+	var rbBundleSize []int
+	for i := 0; i < numBundles; i++ {
+		if i == 0 {
+			rbBundleSize = append(rbBundleSize, L-(bwpStart+coresetStart)%L)
+		} else if i == numBundles-1 {
+			if (bwpSize+bwpStart+coresetStart)%L > 0 {
+				rbBundleSize = append(rbBundleSize, (bwpSize+bwpStart+coresetStart)%L)
+			} else {
+				rbBundleSize = append(rbBundleSize, L)
+			}
+		} else {
+			rbBundleSize = append(rbBundleSize, L)
+		}
+	}
+
+	vrbBundles := utils.PyRange(0, numBundles, 1)
+	var prbBundles []int
+	for j := 0; j < numBundles; j++ {
+		if j == numBundles-1 {
+			prbBundles = append(prbBundles, j)
+		} else {
+			R := 2
+			C := utils.FloorInt(float64(numBundles) / float64(R))
+			c := j / R
+			r := j % R
+			prbBundles = append(prbBundles, r*C+c)
+		}
+	}
+
+	// indexing VRBs and PRBs
+	var prbs []int
+	for j := 0; j < numBundles; j++ {
+		for k := 0; k < rbBundleSize[j]; k++ {
+			prbs = append(prbs, utils.SumInt(rbBundleSize[:prbBundles[j]])+k)
+		}
+	}
+
+	return vrbBundles, prbBundles, prbs
+}
+
+func alwaysOnTr(sfn, slot int) error {
+	// init gridTdd or gridFddDl/gridFddUl if necessary
+	if flags.gridsetting._duplexMode == "TDD" {
+		initTddGrid(sfn)
+	} else {
+		initFddGrid(sfn)
+	}
+
+	err := aotSsb(sfn)
+	if err != nil {
+		return err
+	}
+
+	//fmt.Printf("gridFddDl SFN=0,symbol=2:%v\n", rgd.gridFddDl[sfn].res[2*rgd.scPerSymb:3*rgd.scPerSymb])
+	//fmt.Printf("gridFddDl SFN=0,symbol=3:%v\n", rgd.gridFddDl[sfn].res[3*rgd.scPerSymb:4*rgd.scPerSymb])
+	//fmt.Printf("gridFddDl SFN=0,symbol=4:%v\n", rgd.gridFddDl[sfn].res[4*rgd.scPerSymb:5*rgd.scPerSymb])
+	//fmt.Printf("gridFddDl SFN=0,symbol=5:%v\n", rgd.gridFddDl[sfn].res[5*rgd.scPerSymb:6*rgd.scPerSymb])
+
+	err = aotPdcchSib1(sfn)
+	if err != nil {
+		return err
+	}
+
+	err = aotSib1(sfn)
+	if err != nil {
+		return err
+	}
+
+	if rgd.msg4Recved {
+		err = aotCsi(sfn, slot)
+		if err != nil {
+			return err
+		}
+
+		err = aotSrs(sfn, slot)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func initTddGrid(sfn int) {
+	_, exist := rgd.gridTdd[sfn]
+	if !exist {
+		rgd.gridTdd[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
+		for i := 0; i < rgd.scPerRf; i++ {
+			if sfn%2 == 0 {
+				rgd.gridTdd[sfn].res[i] = map[string]int{"D": NR_RES_D, "U": NR_RES_U, "GB": NR_RES_GB}[rgd.tddPatEvenRf[i/rgd.scPerSymb]]
+			} else {
+				rgd.gridTdd[sfn].res[i] = map[string]int{"D": NR_RES_D, "U": NR_RES_U, "GB": NR_RES_GB}[rgd.tddPatOddRf[i/rgd.scPerSymb]]
+			}
+		}
+
+		rgd.trSsb[sfn] = false
+	}
+}
+
+func initFddGrid(sfn int) {
+	_, exist := rgd.gridFddDl[sfn]
+	if !exist {
+		rgd.gridFddDl[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
+		rgd.gridFddUl[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
+		for i := 0; i < rgd.scPerRf; i++ {
+			rgd.gridFddDl[sfn].res[i] = NR_RES_D
+			rgd.gridFddUl[sfn].res[i] = NR_RES_U
+		}
+
+		rgd.trSsb[sfn] = false
+	}
+}
+
+func aotSsb(sfn int) error {
+	ssbPeriod, _ := strconv.Atoi(flags.gridsetting.ssbPeriod[:len(flags.gridsetting.ssbPeriod)-2])
+	if ssbPeriod >= 10 && (sfn-flags.gridsetting._sfn)%(ssbPeriod/10) != 0 {
+		fmt.Printf("No SSB transmission in current frame(sfn=%d)\n", sfn)
+		return nil
+	}
+
+	if rgd.trSsb[sfn] {
+		return nil
+	}
+
+	var ssbHrfSet []int
+	if ssbPeriod < 10 {
+		ssbHrfSet = []int{0, 1}
+	} else {
+		ssbHrfSet = []int{flags.gridsetting._hrf}
+	}
+	v := flags.gridsetting.pci % 4
+
+	for _, hrf := range ssbHrfSet {
+		for _, issb := range flags.gridsetting.candSsbIndex {
+			ssbFirstSymb := hrf*(rgd.symbPerRf/2) + rgd.ssbFirstSymbs[issb]
+			fmt.Printf("[AOT @ SFN=%d] hrf=%d, issb=%d, ssbSc0Rb0=%d, v=%d, ssbFirstSymb=%d\n", hrf, sfn, issb, rgd.ssbSc0Rb0, v, ssbFirstSymb)
+
+			if flags.gridsetting._duplexMode == "TDD" {
+				// refer to 3GPP 38.213 vh40
+				// 11.1 Slot configurations
+				// For operation on a single carrier in unpaired spectrum, for a set of symbols of a slot indicated to a UE for reception of SS/PBCH blocks by ssb-PositionsInBurst in SIB1 or by ssb-PositionsInBurst in ServingCellConfigCommon or..., the UE does not transmit PUSCH, PUCCH, PRACH in the slot if a transmission would overlap with any symbol from the set of symbols and the UE does not transmit SRS in the set of symbols of the slot. The UE does not expect the set of symbols of the slot to be indicated as uplink by tdd-UL-DL-ConfigurationCommon, or tdd-UL-DL-ConfigurationDedicated, when provided to the UE.
+				for i := 0; i < 4; i++ {
+					if rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+i)+rgd.ssbSc0Rb0] != NR_RES_D {
+						return errors.New(fmt.Sprintf("The UE does not expect the set of symbols of the slot which are used for SSB transmission(ssb index=%d, first symbol=%d) to be indicated as uplink by TDD-UL-DL-ConfigurationCommon.", issb, ssbFirstSymb+i))
+					}
+				}
+
+				// symbol 0: PSS
+				for i := 0; i < 240; i++ {
+					if i >= 56 && i <= 182 {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*ssbFirstSymb+rgd.ssbSc0Rb0+i] = NR_RES_PSS
+					} else {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*ssbFirstSymb+rgd.ssbSc0Rb0+i] = NR_RES_DTX
+					}
+				}
+
+				// symbol 1/3: PBCH
+				for i := 0; i < 240; i++ {
+					if i >= v && (i-v)%4 == 0 {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+1)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+3)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+					} else {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+1)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+3)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+					}
+				}
+
+				// symbol 2: PBCH and SSS
+				for i := 0; i < 240; i++ {
+					if i >= 56 && i <= 182 {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_SSS
+					} else if i <= 47 || i >= 192 {
+						if i >= v && (i-v)%4 == 0 {
+							rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+						} else {
+							rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+						}
+					} else {
+						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DTX
+					}
+				}
+			} else {
+				// symbol 0: PSS
+				for i := 0; i < 240; i++ {
+					if i >= 56 && i <= 182 {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*ssbFirstSymb+rgd.ssbSc0Rb0+i] = NR_RES_PSS
+					} else {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*ssbFirstSymb+rgd.ssbSc0Rb0+i] = NR_RES_DTX
+					}
+				}
+
+				// symbol 1/3: PBCH
+				for i := 0; i < 240; i++ {
+					if i >= v && (i-v)%4 == 0 {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+1)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+3)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+					} else {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+1)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+3)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+					}
+				}
+
+				// symbol 2: PBCH and SSS
+				for i := 0; i < 240; i++ {
+					if i >= 56 && i <= 182 {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_SSS
+					} else if i <= 47 || i >= 192 {
+						if i >= v && (i-v)%4 == 0 {
+							rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DMRS_PBCH
+						} else {
+							rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_PBCH
+						}
+					} else {
+						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DTX
+					}
+				}
+			}
+
+			rgd.trSsb[sfn] = true
+			rgd.ssbSymbs[sfn] = append(rgd.ssbSymbs[sfn], []int{ssbFirstSymb, ssbFirstSymb + 1, ssbFirstSymb + 2, ssbFirstSymb + 3}...)
+		}
+	}
+
+	return nil
+}
+
+func aotPdcchSib1(sfn int) error {
+
+	return nil
+}
+
+func aotSib1(sfn int) error {
+
+	return nil
+}
+
+func aotCsi(sfn, slot int) error {
+
+	return nil
+}
+
+func aotSrs(sfn, slot int) error {
 
 	return nil
 }
@@ -4529,6 +5034,7 @@ var w = []int{len("Flag"), len("Type"), len("Current Value"), len("Default Value
 laPrint performs left-aligned printing.
 */
 func laPrint(cmd *cobra.Command, args []string) {
+	fmt.Println()
 	regGreen.Printf("[INFO]: List of [%v] parameters\n", cmd.Name())
 	cmd.Flags().VisitAll(
 		func(f *pflag.Flag) {

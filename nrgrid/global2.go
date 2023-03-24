@@ -699,6 +699,42 @@ var CommonPucchResSets = map[int]*CommonPucchResInfo{
 	15: {1, 0, 14, -1, []int{0, 3, 6, 9}},
 }
 
+// refer to 3GPP 38.211 vh40
+//  Table 6.3.2.4.1-1:Number of PUCCH symbols and the corresponding N_PUCCH,1_SF,m'
+//  Table 6.4.1.3.1.1-1:Number of DM-RS symbols and the corresponding N_PUCCH,1_SF,m'
+//  val={number of PUCCH symbols, number of DMRS symbols}
+var PucchFmt1WoIntraSlotFreqHop = map[int][]int{
+	4:  {2, 2},
+	5:  {2, 3},
+	6:  {3, 3},
+	7:  {3, 4},
+	8:  {4, 4},
+	9:  {4, 5},
+	10: {5, 5},
+	11: {5, 6},
+	12: {6, 6},
+	13: {6, 7},
+	14: {7, 7},
+}
+
+// refer to 3GPP 38.211 vh40
+//  Table 6.3.2.4.1-1:Number of PUCCH symbols and the corresponding N_PUCCH,1_SF,m'
+//  Table 6.4.1.3.1.1-1:Number of DM-RS symbols and the corresponding N_PUCCH,1_SF,m'
+//  val={{number of PUCCH symbols, number of DMRS symbols} of 1st hop, {number of PUCCH symbols, number of DMRS symbols} of 2nd hop}
+var PucchFmt1WithIntraSlotFreqHop = map[int][][]int{
+	4:  {{1, 1}, {1, 1}},
+	5:  {{1, 1}, {1, 2}},
+	6:  {{1, 2}, {2, 1}},
+	7:  {{1, 2}, {2, 2}},
+	8:  {{2, 2}, {2, 2}},
+	9:  {{2, 2}, {2, 3}},
+	10: {{2, 3}, {3, 2}},
+	11: {{2, 3}, {3, 3}},
+	12: {{3, 3}, {3, 3}},
+	13: {{3, 3}, {3, 4}},
+	14: {{3, 4}, {4, 3}},
+}
+
 // CsiRsLocInfo contains information on CSI-RS locations within a slot.
 type CsiRsLocInfo struct {
 	Row        int
