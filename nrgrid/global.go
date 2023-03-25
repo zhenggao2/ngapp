@@ -401,7 +401,7 @@ var SsbRasters = map[string][][]string{
 		{"480KHz", "Case F", "24162 + 24 * N – 12 * floor((N+4)/18), N=0:33"}}, // 2023/2/15: 960KHz SSB SCS for n263 is not supported!
 }
 
-// Coreste0Info contains information for CORESET0/CSS0 mapping.
+// Coreste0Info contains info of CORESET0 for CSS0
 type Coreset0Info struct {
 	MultiplexingPat int
 	NumRbs          int
@@ -409,11 +409,24 @@ type Coreset0Info struct {
 	OffsetLst       []int
 }
 
+// Css0OccasionPat1 contains info of PDCCH occasions for CSS0 with CORESET0 multiplexing pattern 1
+type Css0OccasionPat1 struct {
+	O8         int   // the O multiplied by 8
+	SsPerSlot  int   // the Number of search space sets per slot
+	M2         int   // the M multiplied by 2
+	FirstSymbs []int // the First symbol index
+}
+
+//Css0OccasionTd contains time-domain info of PDCCH occasions for CSS0
+type Css0OccasionTd struct {
+	Sfn       int
+	Slot      int
+	FirstSymb int
+}
+
 // refer to 3GPP 38.213 vf30/vh40
-//  Table 13-1: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
-//  Table 13-2: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
-//  vf30: Table 13-3: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
-//  vf30: Table 13-4: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
+//  vh40 Table 13-1: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
+//  vh40 Table 13-2: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
 //  vh40: Table 13-3: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz except for the frequency bands given in [8-1, TS 38.101-1]
 //  vh40: Table 13-4: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz except for the frequency bands given in [8-1, TS 38.101-1]
 //  Note: "...except for the frequency bands given in 38.101-1" are n79/n104.
@@ -486,8 +499,6 @@ var Coreset0Fr1MinChBw5m10m = map[string]*Coreset0Info{
 }
 
 // refer to 3GPP 38.213 vf30/vh40
-//  vf30: Table 13-5: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz
-//  vf30: Table 13-6: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz
 //  vh40: Table 13-5: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 15} kHz for frequency bands with minimum channel bandwidth 40MHz or for the frequency bands given in [8-1, TS 38.101-1]
 //  vh40: Table 13-6: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {30, 30} kHz for frequency bands with minimum channel bandwidth 40MHz or for the frequency bands given in [8-1, TS 38.101-1]
 //  Note: "...or for the frequency bands given in 38.101-1" are n79/n104.
@@ -598,6 +609,60 @@ var Coreset0Fr21 = map[string]*Coreset0Info{
 	"240_120_13": nil,
 	"240_120_14": nil,
 	"240_120_15": nil,
+}
+
+// refer to 3GPP 38.213 vh40
+//  Table 13-10A: Set of resource blocks and slot symbols of CORESET for Type0-PDCCH search space set when {SS/PBCH block, PDCCH} SCS is {120, 120} kHz, {480, 480} kHz, or {960, 960} kHz for FR2-2
+// Table for FR2-2
+var Coreset0Fr22 = map[string]*Coreset0Info{
+	"120_120_0":  {1, 24, 2, []int{0}},
+	"120_120_1":  {1, 24, 2, []int{4}},
+	"120_120_2":  {1, 48, 1, []int{0}},
+	"120_120_3":  {1, 48, 1, []int{14}},
+	"120_120_4":  {1, 48, 1, []int{28}},
+	"120_120_5":  {1, 48, 2, []int{0}},
+	"120_120_6":  {1, 48, 2, []int{14}},
+	"120_120_7":  {1, 48, 2, []int{28}},
+	"120_120_8":  {1, 96, 1, []int{0}},
+	"120_120_9":  {1, 96, 1, []int{76}},
+	"120_120_10": {1, 96, 2, []int{0}},
+	"120_120_11": {1, 96, 2, []int{76}},
+	"120_120_12": {3, 24, 2, []int{-20, -21}},
+	"120_120_13": {3, 24, 2, []int{24}},
+	"120_120_14": {3, 48, 2, []int{-20, -21}},
+	"120_120_15": {3, 48, 2, []int{48}},
+	"480_480_0":  {1, 24, 2, []int{0}},
+	"480_480_1":  {1, 24, 2, []int{4}},
+	"480_480_2":  {1, 48, 1, []int{0}},
+	"480_480_3":  {1, 48, 1, []int{14}},
+	"480_480_4":  {1, 48, 1, []int{28}},
+	"480_480_5":  {1, 48, 2, []int{0}},
+	"480_480_6":  {1, 48, 2, []int{14}},
+	"480_480_7":  {1, 48, 2, []int{28}},
+	"480_480_8":  {1, 96, 1, []int{0}},
+	"480_480_9":  {1, 96, 1, []int{76}},
+	"480_480_10": {1, 96, 2, []int{0}},
+	"480_480_11": {1, 96, 2, []int{76}},
+	"480_480_12": {3, 24, 2, []int{-20, -21}},
+	"480_480_13": {3, 24, 2, []int{24}},
+	"480_480_14": {3, 48, 2, []int{-20, -21}},
+	"480_480_15": {3, 48, 2, []int{48}},
+	"960_960_0":  {1, 24, 2, []int{0}},
+	"960_960_1":  {1, 24, 2, []int{4}},
+	"960_960_2":  {1, 48, 1, []int{0}},
+	"960_960_3":  {1, 48, 1, []int{14}},
+	"960_960_4":  {1, 48, 1, []int{28}},
+	"960_960_5":  {1, 48, 2, []int{0}},
+	"960_960_6":  {1, 48, 2, []int{14}},
+	"960_960_7":  {1, 48, 2, []int{28}},
+	"960_960_8":  {1, 96, 1, []int{0}},
+	"960_960_9":  {1, 96, 1, []int{76}},
+	"960_960_10": {1, 96, 2, []int{0}},
+	"960_960_11": {1, 96, 2, []int{76}},
+	"960_960_12": {3, 24, 2, []int{-20, -21}},
+	"960_960_13": {3, 24, 2, []int{24}},
+	"960_960_14": {3, 48, 2, []int{-20, -21}},
+	"960_960_15": {3, 48, 2, []int{48}},
 }
 
 // refer to 3GPP 38.211 vh40

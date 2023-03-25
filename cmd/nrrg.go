@@ -552,6 +552,8 @@ type NrrgData struct {
 	coreset0NumCces    int
 	coreset0RegBundles []int
 	coreset0Cces       []int
+	css0TdOccasions    map[string][]nrgrid.Css0OccasionTd
+	occCss0            map[int]bool // whether PDCCH occasions for CSS0 is determined in certain SFN?
 
 	coreset1NumCces    int
 	coreset1RegBundles []int
@@ -636,10 +638,10 @@ var gridSettingCmd = &cobra.Command{
 			}
 
 			// FR2-1 and FR2-2 are not supported!
-			if v > 256 {
-				regRed.Printf("[ERR]: FR2-1 and FR2-2 are not supported!\n")
-				return
-			}
+			//if v > 256 {
+			//	regRed.Printf("[ERR]: FR2-1 and FR2-2 are not supported!\n")
+			//	return
+			//}
 
 			// SDL and SUL are not supported!
 			if p.DuplexMode == "SDL" || p.DuplexMode == "SUL" {
@@ -683,7 +685,7 @@ var gridSettingCmd = &cobra.Command{
 			} else if flags.gridsetting._freqRange == "FR2-1" {
 				rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
 				carrierScsSet = append(carrierScsSet, []string{"60KHz", "120KHz"}...)
-			} else {
+			} else if flags.gridsetting._freqRange == "FR2-2" {
 				rmsiScsSet = ssbScsSet
 				carrierScsSet = append(carrierScsSet, []string{"120KHz", "480KHz", "960KHz"}...)
 			}
@@ -698,7 +700,14 @@ var gridSettingCmd = &cobra.Command{
 			// set SCS for SSB/RMSI/Carrier
 			flags.gridsetting._ssbScs = flags.gridsetting.scs
 			flags.gridsetting._carrierScs = flags.gridsetting.scs
-			flags.gridsetting._mibCommonScs = flags.gridsetting.scs
+			if flags.gridsetting._freqRange == "FR2-2" {
+				// refer to 38.311 vh30
+				// subCarrierSpacingCommon of MIB
+				// For operation with shared spectrum channel access in FR1 (see 37.213 [48]) and for operation in FR2-2, the subcarrier spacing for SIB1, Msg.2/4 and MsgB for initial access, paging and broadcast SI-messages is same as that for the corresponding SSB.
+				flags.gridsetting._mibCommonScs = flags.gridsetting._ssbScs
+			} else {
+				flags.gridsetting._mibCommonScs = flags.gridsetting.scs
+			}
 
 			// update SSB pattern
 			band := flags.gridsetting.band
@@ -797,7 +806,7 @@ var gridSettingCmd = &cobra.Command{
 				idx = utils.IndexStr(nrgrid.BwSetFr1, bw)
 			} else if fr == "FR2-1" {
 				idx = utils.IndexStr(nrgrid.BwSetFr21, bw)
-			} else {
+			} else if fr == "FR2-2" {
 				idx = utils.IndexStr(nrgrid.BwSetFr22, bw)
 			}
 			if idx < 0 {
@@ -1289,6 +1298,9 @@ func initNrrgData() error {
 	}
 	fmt.Printf("CORESET0 CCE-to-REG mapping:\nregBundles=%v\ncces      =%v\n", rgd.coreset0RegBundles, rgd.coreset0Cces)
 
+	rgd.css0TdOccasions = make(map[string][]nrgrid.Css0OccasionTd)
+	rgd.occCss0 = make(map[int]bool)
+
 	// CORESET1
 	rgd.coreset1NumCces = flags.searchspace._coreset1Duration * flags.searchspace.coreset1NumRbs / 6
 	L, _ := strconv.Atoi(flags.searchspace.coreset1RegBundleSize[1:])
@@ -1511,6 +1523,7 @@ func initTddGrid(sfn int) {
 		}
 
 		rgd.trSsb[sfn] = false
+		rgd.occCss0[sfn] = false
 	}
 }
 
@@ -1525,6 +1538,7 @@ func initFddGrid(sfn int) {
 		}
 
 		rgd.trSsb[sfn] = false
+		rgd.occCss0[sfn] = false
 	}
 }
 
@@ -1633,15 +1647,249 @@ func aotSsb(sfn int) error {
 				}
 			}
 
-			rgd.trSsb[sfn] = true
 			rgd.ssbSymbs[sfn] = append(rgd.ssbSymbs[sfn], []int{ssbFirstSymb, ssbFirstSymb + 1, ssbFirstSymb + 2, ssbFirstSymb + 3}...)
 		}
 	}
+
+	rgd.trSsb[sfn] = true
 
 	return nil
 }
 
 func aotPdcchSib1(sfn int) error {
+	// skip current SFN if no SSB is transmitted
+	if !rgd.trSsb[sfn] {
+		return nil
+	}
+
+	err := detCss0(sfn)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func detCss0(sfn int) error {
+	if rgd.occCss0[sfn] {
+		return nil
+	}
+
+	if flags.gridsetting._coreset0MultiplexingPat == 1 {
+		// refer to 3GPP 38.213 vh40
+		//  Table 13-11: Parameters for PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 1 and FR1
+		var css0OccasionsPat1Fr1 = map[int]*nrgrid.Css0OccasionPat1{
+			0:  {0, 1, 2, []int{0}},
+			1:  {0, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			2:  {16, 1, 2, []int{0}},
+			3:  {16, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			4:  {40, 1, 2, []int{0}},
+			5:  {40, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			6:  {56, 1, 2, []int{0}},
+			7:  {56, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			8:  {0, 1, 4, []int{0}},
+			9:  {40, 1, 4, []int{0}},
+			10: {0, 1, 2, []int{1}},
+			11: {0, 1, 2, []int{2}},
+			12: {16, 1, 2, []int{1}},
+			13: {16, 1, 2, []int{2}},
+			14: {40, 1, 2, []int{1}},
+			15: {40, 1, 2, []int{2}},
+		}
+
+		// refer to 3GPP 38.213 vh40
+		//  Table 13-12: Parameters for PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 1 and FR2-1, or SS/PBCH block and CORESET multiplexing pattern 1 and {SS/PBCH block, PDCCH} SCS {120, 120} kHz in FR2-2
+		var css0OccasionsPat1Fr21OrFr22Scs120 = map[int]*nrgrid.Css0OccasionPat1{
+			0:  {0, 1, 2, []int{0}},
+			1:  {0, 2, 1, []int{0, 7}},
+			2:  {20, 1, 2, []int{0}},
+			3:  {20, 2, 1, []int{0, 7}},
+			4:  {40, 1, 2, []int{0}},
+			5:  {40, 2, 1, []int{0, 7}},
+			6:  {0, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			7:  {20, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			8:  {40, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			9:  {60, 1, 2, []int{0}},
+			10: {60, 2, 1, []int{0, 7}},
+			11: {60, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			12: {0, 1, 4, []int{0}},
+			13: {40, 1, 4, []int{0}},
+			14: nil,
+			15: nil,
+		}
+
+		// refer to 3GPP 38.213 vh40
+		//  Table 13-12A: Parameters for PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 1 and {SS/PBCH block, PDCCH} SCS {480, 480} kHz or {960, 960} kHz in FR2-2
+		// For u=5(480KHz), X=1.25; For u=6(960KHz), X=0.625
+		var css0OccasionsPat1Fr22Scs480 = map[int]*nrgrid.Css0OccasionPat1{
+			0:  {0, 1, 2, []int{0}},
+			1:  {0, 2, 1, []int{0, 7}},
+			2:  {10, 1, 2, []int{0}},
+			3:  {10, 2, 1, []int{0, 7}},
+			4:  {40, 1, 2, []int{0}},
+			5:  {40, 2, 1, []int{0, 7}},
+			6:  {0, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			7:  {10, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			8:  {40, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			9:  {50, 1, 2, []int{0}},
+			10: {50, 2, 1, []int{0, 7}},
+			11: {50, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			12: {0, 1, 4, []int{0}},
+			13: {40, 1, 4, []int{0}},
+			14: nil,
+			15: nil,
+		}
+
+		// refer to 3GPP 38.213 vh40
+		//  Table 13-12A: Parameters for PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 1 and {SS/PBCH block, PDCCH} SCS {480, 480} kHz or {960, 960} kHz in FR2-2
+		// For u=5(480KHz), X=1.25; For u=6(960KHz), X=0.625
+		var css0OccasionsPat1Fr22Scs960 = map[int]*nrgrid.Css0OccasionPat1{
+			0:  {0, 1, 2, []int{0}},
+			1:  {0, 2, 1, []int{0, 7}},
+			2:  {5, 1, 2, []int{0}},
+			3:  {5, 2, 1, []int{0, 7}},
+			4:  {40, 1, 2, []int{0}},
+			5:  {40, 2, 1, []int{0, 7}},
+			6:  {0, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			7:  {10, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			8:  {40, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			9:  {45, 1, 2, []int{0}},
+			10: {45, 2, 1, []int{0, 7}},
+			11: {45, 2, 1, []int{0, flags.gridsetting._coreset0NumSymbs}},
+			12: {0, 1, 4, []int{0}},
+			13: {40, 1, 4, []int{0}},
+			14: nil,
+			15: nil,
+		}
+
+		var p *nrgrid.Css0OccasionPat1
+		var exist bool
+		if flags.gridsetting._freqRange == "FR1" {
+			p, exist = css0OccasionsPat1Fr1[flags.gridsetting.rmsiCss0]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring css0OccasionsPat1Fr1.", flags.gridsetting.rmsiCss0))
+			}
+		} else if flags.gridsetting._freqRange == "FR2-1" || (flags.gridsetting._freqRange == "FR2-2" && flags.gridsetting._ssbScs == "120KHz") {
+			// refer to 38.214 vh40
+			// 13	UE procedure for monitoring Type0-PDCCH CSS sets
+			// The SCS of the CORESET for Type0-PDCCH CSS set is provided by subCarrierSpacingCommon for FR1 and FR2-1 and same as the SCS of the corresponding SS/PBCH block for FR2-2.
+			p, exist = css0OccasionsPat1Fr21OrFr22Scs120[flags.gridsetting.rmsiCss0]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring css0OccasionsPat1Fr21OrFr22Scs120.", flags.gridsetting.rmsiCss0))
+			}
+		} else if flags.gridsetting._freqRange == "FR2-2" && flags.gridsetting._ssbScs == "480KHz" {
+			p, exist = css0OccasionsPat1Fr22Scs480[flags.gridsetting.rmsiCss0]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring css0OccasionsPat1Fr22Scs480.", flags.gridsetting.rmsiCss0))
+			}
+		} else if flags.gridsetting._freqRange == "FR2-2" && flags.gridsetting._ssbScs == "960KHz" {
+			p, exist = css0OccasionsPat1Fr22Scs960[flags.gridsetting.rmsiCss0]
+			if !exist || p == nil {
+				return errors.New(fmt.Sprintf("Invalid key(=%v) when referring css0OccasionsPat1Fr22Scs960.", flags.gridsetting.rmsiCss0))
+			}
+		}
+
+		O := float64(p.O8) / 8
+		M := float64(p.M2) / 2
+		var u int
+		if flags.gridsetting._freqRange == "FR1" || flags.gridsetting._freqRange == "FR2-1" {
+			u = nrgrid.Scs2Mu[flags.gridsetting._mibCommonScs]
+		} else if flags.gridsetting._freqRange == "FR2-2" {
+			u = nrgrid.Scs2Mu[flags.gridsetting._ssbScs]
+		}
+
+		for _, issb := range flags.gridsetting.candSsbIndex {
+			v := O*math.Exp2(float64(u)) + math.Floor(float64(issb)*M)
+			n0 := int(v) % rgd.slotPerRf
+
+			v2 := utils.FloorInt(v / float64(rgd.slotPerRf))
+			sfnc := sfn
+			if !((v2%2 == 0 && sfnc%2 == 0) || (v2%2 == 1 && sfnc%2 == 1)) {
+				sfnc++
+				err := alwaysOnTr(sfnc, 0)
+				if err != nil {
+					return err
+				}
+			}
+
+			var firstSymb int
+			if len(p.FirstSymbs) == 2 {
+				firstSymb = p.FirstSymbs[issb%2]
+			} else {
+				firstSymb = p.FirstSymbs[0]
+			}
+
+			key := fmt.Sprintf("%v_%v", sfn, issb)
+			_, exist := rgd.css0TdOccasions[key]
+			if !exist {
+				rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, n0, firstSymb})
+				if u < 4 {
+					rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, n0 + 1, firstSymb})
+				} else if u == 5 {
+					rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, n0 + 4, firstSymb})
+				} else if u == 6 {
+					rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, n0 + 8, firstSymb})
+				}
+			}
+		}
+	} else if flags.gridsetting._coreset0MultiplexingPat == 2 {
+		// refer to 38.213 vh40
+		// 13	UE procedure for monitoring Type0-PDCCH CSS sets
+		// Table 13-13: PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 2 and {SS/PBCH block, PDCCH} SCS {120, 60} kHz
+		// Table 13-14: PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 2 and {SS/PBCH block, PDCCH} SCS {240, 120} kHz
+		for _, issb := range flags.gridsetting.candSsbIndex {
+			sfnc := sfn
+			nc := rgd.ssbFirstSymbs[issb] / rgd.symbPerSlot
+
+			var firstSymb int
+			if flags.gridsetting._ssbScs == "120KHz" && flags.gridsetting._mibCommonScs == "60KHz" {
+				firstSymb = []int{0, 1, 6, 7}[issb%4]
+			} else if flags.gridsetting._ssbScs == "240KHz" && flags.gridsetting._mibCommonScs == "120KHz" {
+				if issb%8 == 4 || issb%8 == 5 {
+					nc--
+					firstSymb = []int{12, 13}[issb%8-4]
+				} else {
+					if issb%8 < 4 {
+						firstSymb = issb % 8
+					} else if issb%8 > 5 {
+						firstSymb = issb%8 - 6
+					}
+				}
+			}
+
+			key := fmt.Sprintf("%v_%v", sfn, issb)
+			_, exist := rgd.css0TdOccasions[key]
+			if !exist {
+				rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, nc, firstSymb})
+			}
+		}
+	} else {
+		// refer to 38.213 vh40
+		// 13	UE procedure for monitoring Type0-PDCCH CSS sets
+		// Table 13-15: PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 3 and {SS/PBCH block, PDCCH} SCS {120, 120} kHz
+		// Table 13-15A: PDCCH monitoring occasions for Type0-PDCCH CSS set - SS/PBCH block and CORESET multiplexing pattern 3 and {SS/PBCH block, PDCCH} SCS {480, 480} kHz or {960, 960} kHz
+		for _, issb := range flags.gridsetting.candSsbIndex {
+			sfnc := sfn
+			nc := rgd.ssbFirstSymbs[issb] / rgd.symbPerSlot
+
+			var firstSymb int
+			if flags.gridsetting._ssbScs == "120KHz" && flags.gridsetting._mibCommonScs == "120KHz" {
+				firstSymb = []int{4, 8, 2, 6}[issb%4]
+			} else if flags.gridsetting._ssbScs == "480KHz" || flags.gridsetting._ssbScs == "960KHz" {
+				firstSymb = []int{2, 9}[issb%2]
+			}
+
+			key := fmt.Sprintf("%v_%v", sfn, issb)
+			_, exist := rgd.css0TdOccasions[key]
+			if !exist {
+				rgd.css0TdOccasions[key] = append(rgd.css0TdOccasions[key], nrgrid.Css0OccasionTd{sfnc, nc, firstSymb})
+			}
+		}
+	}
+
+	// TODO: validate PDCCH occasions of CSS0
+	fmt.Printf("[SFN=%v, candSsbIndex=%v] css0TdOccasions=%v\n", sfn, flags.gridsetting.candSsbIndex, rgd.css0TdOccasions)
+	rgd.occCss0[sfn] = true
 
 	return nil
 }
@@ -1700,7 +1948,7 @@ func updateRach() error {
 			raScsSet = append(raScsSet, []string{"15KHz", "30KHz"}...)
 		} else if flags.gridsetting._freqRange == "FR2-1" {
 			raScsSet = append(raScsSet, []string{"60KHz", "120KHz"}...)
-		} else {
+		} else if flags.gridsetting._freqRange == "FR2-2" {
 			raScsSet = append(raScsSet, []string{"120KHz", "480KHz", "960KHz"}...)
 		}
 	}
@@ -1791,7 +2039,7 @@ func updateKSsbAndNCrbSsb() error {
 	} else if flags.gridsetting._freqRange == "FR2-1" {
 		flags.gridsetting._kSsbScs = rmsiScs
 		flags.gridsetting._nCrbSsbScs = 60
-	} else {
+	} else if flags.gridsetting._freqRange == "FR2-2" {
 		flags.gridsetting._kSsbScs = ssbScs
 		flags.gridsetting._nCrbSsbScs = 60
 	}
@@ -1837,7 +2085,7 @@ func validateCoreset0() error {
 		rmsiScsSet = append(rmsiScsSet, []string{"15KHz", "30KHz"}...)
 	} else if fr == "FR2-1" {
 		rmsiScsSet = append(rmsiScsSet, []string{"60KHz", "120KHz"}...)
-	} else {
+	} else if fr == "FR2-2" {
 		rmsiScsSet = ssbScsSet
 	}
 
@@ -1860,7 +2108,7 @@ func validateCoreset0() error {
 				bwSubset = append(bwSubset, nrgrid.BwSetFr21[i])
 			}
 		}
-	} else {
+	} else if fr == "FR2-2" {
 		for i, v := range nrgrid.BandScs2BwFr22[key] {
 			if v == 1 {
 				bwSubset = append(bwSubset, nrgrid.BwSetFr22[i])
@@ -1889,9 +2137,10 @@ func validateCoreset0() error {
 		p, exist = nrgrid.Coreset0Fr1MinChBw5m10m[key]
 	} else if fr == "FR1" && minChBw == 40 {
 		p, exist = nrgrid.Coreset0Fr1MinChBw40m[key]
-	} else {
-		// FR2-1
+	} else if fr == "FR2-1" {
 		p, exist = nrgrid.Coreset0Fr21[key]
+	} else if fr == "FR2-2" {
+		p, exist = nrgrid.Coreset0Fr22[key]
 	}
 	if !exist || p == nil {
 		return errors.New(fmt.Sprintf("Invalid configurations for CORESET0: fr=%v, ssbScs=%v, rmsiScs=%v, minChBw=%vMHz, coresetZero=%v", fr, ssbScs, rmsiScs, minChBw, flags.gridsetting.rmsiCoreset0))
@@ -1911,7 +2160,7 @@ func validateCoreset0() error {
 		idx = utils.IndexStr(nrgrid.BwSetFr1, carrierBw)
 	} else if fr == "FR2-1" {
 		idx = utils.IndexStr(nrgrid.BwSetFr21, carrierBw)
-	} else {
+	} else if fr == "FR2-2" {
 		idx = utils.IndexStr(nrgrid.BwSetFr22, carrierBw)
 	}
 	if idx < 0 {
