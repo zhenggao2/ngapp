@@ -549,11 +549,13 @@ type NrrgData struct {
 	ssbSc0Rb0      int
 	coreset0Sc0Rb0 int
 
-	coreset0NumCces    int
-	coreset0RegBundles []int
-	coreset0Cces       []int
-	css0TdOccasions    map[string][]nrgrid.Css0OccasionTd
-	occCss0            map[int]bool // whether PDCCH occasions for CSS0 is determined in certain SFN?
+	coreset0NumCces     int
+	coreset0RegBundles  []int
+	coreset0Cces        []int
+	css0TdOccasions     map[string][]nrgrid.Css0OccasionTd
+	occCss0             map[int]bool // whether PDCCH occasions for CSS0 is determined in certain SFN?
+	trPdcchSib1         map[int]bool // whether PDCCH for SIB1 is transmitted in certain SFN?
+	css0PdcchCandidates map[string][]nrgrid.Css0PdcchCandidate
 
 	coreset1NumCces    int
 	coreset1RegBundles []int
@@ -1300,6 +1302,8 @@ func initNrrgData() error {
 
 	rgd.css0TdOccasions = make(map[string][]nrgrid.Css0OccasionTd)
 	rgd.occCss0 = make(map[int]bool)
+	rgd.trPdcchSib1 = make(map[int]bool)
+	rgd.css0PdcchCandidates = make(map[string][]nrgrid.Css0PdcchCandidate)
 
 	// CORESET1
 	rgd.coreset1NumCces = flags.searchspace._coreset1Duration * flags.searchspace.coreset1NumRbs / 6
@@ -1524,6 +1528,7 @@ func initTddGrid(sfn int) {
 
 		rgd.trSsb[sfn] = false
 		rgd.occCss0[sfn] = false
+		rgd.trPdcchSib1[sfn] = false
 	}
 }
 
@@ -1539,6 +1544,7 @@ func initFddGrid(sfn int) {
 
 		rgd.trSsb[sfn] = false
 		rgd.occCss0[sfn] = false
+		rgd.trPdcchSib1[sfn] = false
 	}
 }
 
@@ -1662,10 +1668,72 @@ func aotPdcchSib1(sfn int) error {
 		return nil
 	}
 
+	if rgd.trPdcchSib1[sfn] {
+		return nil
+	}
+
 	err := detCss0(sfn)
 	if err != nil {
 		return err
 	}
+
+	for _, issb := range flags.gridsetting.candSsbIndex {
+		var ssbLastSymbsMinus1 []int
+		if flags.gridsetting.ssbPeriod == "5ms" {
+			ssbLastSymbsMinus1 = []int{rgd.ssbFirstSymbs[issb] - 1, rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
+		} else {
+			ssbLastSymbsMinus1 = []int{flags.gridsetting._hrf*rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
+		}
+		fmt.Printf("issb=%v, ssbLastSymbsMinus1=%v\n", issb, ssbLastSymbsMinus1)
+
+		key := fmt.Sprintf("%v_%v", sfn, issb)
+		for _, td := range rgd.css0TdOccasions[key] {
+			sfnc := td.Sfn
+			nc := td.Slot
+			firstSymb := td.FirstSymb
+
+			// validation #1: PDCCH occasion should not start before corresponding SSB transmission!
+			if nc*rgd.symbPerSlot+firstSymb <= ssbLastSymbsMinus1[0] {
+				continue
+			}
+
+			// validation #2/#3: Collision of SSB/CORESET0, and TDD-UL-DL-Config
+			// refer to 38.213 vh40
+			// 10	UE procedure for receiving control information
+			// If a UE monitors the PDCCH candidate for a Type0-PDCCH CSS set on the serving cell according to the procedure described in clause 13, the UE may assume that no SS/PBCH block is transmitted in REs used for monitoring the PDCCH candidate on the serving cell.
+			// 11.1	Slot configuration
+			// For a set of symbols of a slot indicated to a UE by pdcch-ConfigSIB1 in MIB for a CORESET for Type0-PDCCH CSS set, the UE does not expect the set of symbols to be indicated as uplink by tdd-UL-DL-ConfigurationCommon, or tdd-UL-DL-ConfigurationDedicated.
+			if flags.gridsetting._duplexMode == "TDD" {
+				valid := true
+				for i := 0; i < flags.gridsetting._coreset0NumSymbs; i++ {
+					for j := 0; j < flags.gridsetting._coreset0NumRbs*rgd.scPerRb; j++ {
+						if rgd.gridTdd[sfn].res[rgd.scPerSymb*(nc*rgd.symbPerSlot+firstSymb+i)+rgd.coreset0Sc0Rb0+j] != NR_RES_D {
+							valid = false
+							break
+						}
+					}
+				}
+
+				if !valid {
+					continue
+				}
+			}
+
+			M, _ := strconv.Atoi(flags.gridsetting._css0NumCandidates[1:])
+			for m := 0; m < M; m++ {
+				cces, err := detCcesPerPdcchCand(0, flags.gridsetting._css0AggLevel, m, nc, "type0", 0, rgd.coreset0NumCces, 0, M)
+				if err != nil {
+					return err
+				}
+
+				rgd.css0PdcchCandidates[key] = append(rgd.css0PdcchCandidates[key], nrgrid.Css0PdcchCandidate{sfnc, nc, firstSymb, m, cces})
+				fmt.Printf("SSB/SIB1 PDCCH candidate: issb=%v, sfnc=%v, nc=%v, firstSymb=%v, m=%v, cces=%v\n", issb, sfnc, nc, firstSymb, m, cces)
+			}
+		}
+	}
+
+	fmt.Printf("[SFN=%v, candSsbIndex=%v] css0PdcchCandidates=%v\n", sfn, flags.gridsetting.candSsbIndex, rgd.css0PdcchCandidates)
+	rgd.trPdcchSib1[sfn] = true
 
 	return nil
 }
@@ -1887,11 +1955,60 @@ func detCss0(sfn int) error {
 		}
 	}
 
-	// TODO: validate PDCCH occasions of CSS0
+	// TODO: validate PDCCH occasions of CSS0 --> 2023/3/27: moved to aotPdcchSib1
 	fmt.Printf("[SFN=%v, candSsbIndex=%v] css0TdOccasions=%v\n", sfn, flags.gridsetting.candSsbIndex, rgd.css0TdOccasions)
 	rgd.occCss0[sfn] = true
 
 	return nil
+}
+
+// detCcesPerPdcchCand determines the CCE indexes for aggregation level L corresponding to PDCCH candidate m of the search space set in slot n for an active DL BWP of a serving cell corresponding to carrier indicator field value n_CI For a search space set s associated with CORESET p
+//  p: CORESET index
+//  L: aggregation level
+//  m: PDCCH candidate index
+//  n: slot index
+//  sst: search space type, which can be type0, type0a, type1, type2, type3 or uss
+//  nRNTI: the n_RNTI
+//  NCCE: the N_CCE
+//  nCI: the n_CI
+//  Mmax: the M_max
+func detCcesPerPdcchCand(p int, L int, m int, n int, sst string, nRNTI int, NCCE int, nCI int, Mmax int) ([]int, error) {
+	if sst == "uss" && nRNTI == 0 {
+		return nil, errors.New(fmt.Sprintf("For a USS, the nRNTI must not be 0!"))
+	}
+
+	var Y int
+	if sst != "uss" {
+		Y = 0
+	} else {
+		var Ap int
+		if p%3 == 0 {
+			Ap = 39827
+		} else if p%3 == 1 {
+			Ap = 39829
+		} else {
+			Ap = 39839
+		}
+		D := 65537
+		for k := -1; k <= n; k++ {
+			if k == -1 {
+				Y = nRNTI
+			} else {
+				Y = (Ap * Y) % D
+			}
+		}
+	}
+
+	v1 := Y + utils.FloorInt(float64(m*NCCE)/float64(L*Mmax)) + nCI
+	v2 := utils.FloorInt(float64(NCCE) / float64(L))
+	v3 := v1 % v2
+
+	var cces []int
+	for i := 0; i < L; i++ {
+		cces = append(cces, L*v3+i)
+	}
+
+	return cces, nil
 }
 
 func aotSib1(sfn int) error {
@@ -4317,7 +4434,7 @@ func initGridSettingCmd() {
 	gridSettingCmd.Flags().IntVar(&flags.gridsetting._coreset0Offset, "_coreset0Offset", 16, "Offset of CORESET0")
 	gridSettingCmd.Flags().IntVar(&flags.gridsetting.rmsiCss0, "rmsiCss0", 4, "searchSpaceZero of PDCCH-ConfigSIB1[0..15]")
 	gridSettingCmd.Flags().IntVar(&flags.gridsetting._css0AggLevel, "_css0AggLevel", 4, "CCE aggregation level of CSS0[4,8,16]")
-	gridSettingCmd.Flags().StringVar(&flags.gridsetting._css0NumCandidates, "_css0NumCandidates", "n4", "Number of PDCCH candidates of CSS0[n1,n2,n4]")
+	gridSettingCmd.Flags().StringVar(&flags.gridsetting._css0NumCandidates, "_css0NumCandidates", "n2", "Number of PDCCH candidates of CSS0[n1,n2,n4]")
 	gridSettingCmd.Flags().StringVar(&flags.gridsetting.dmrsTypeAPos, "dmrsTypeAPos", "pos2", "dmrs-TypeA-Position[pos2,pos3]")
 	gridSettingCmd.Flags().IntVar(&flags.gridsetting._sfn, "_sfn", 0, "System frame number(SFN)[0..1023]")
 	gridSettingCmd.Flags().IntVar(&flags.gridsetting._hrf, "_hrf", 0, "Half frame bit[0,1]")

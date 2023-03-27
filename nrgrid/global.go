@@ -424,6 +424,15 @@ type Css0OccasionTd struct {
 	FirstSymb int
 }
 
+// Css0PdcchCandidate contains the TD/FD info of PDCCH candidate for CSS0
+type Css0PdcchCandidate struct {
+	Sfnc      int
+	Nc        int
+	FirstSymb int
+	M         int
+	Cces      []int
+}
+
 // refer to 3GPP 38.213 vf30/vh40
 //  vh40 Table 13-1: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 15} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
 //  vh40 Table 13-2: Set of resource blocks and slot symbols of control resource set for Type0-PDCCH search space when {SS/PBCH block, PDCCH} subcarrier spacing is {15, 30} kHz for frequency bands with minimum channel bandwidth 5 MHz or 10 MHz
