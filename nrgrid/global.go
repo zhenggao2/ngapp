@@ -409,6 +409,13 @@ type Coreset0Info struct {
 	OffsetLst       []int
 }
 
+// RegInfo contains info of REGs
+type RegInfo struct {
+	Id    int // index of REG bundle
+	Isymb int // Symbol index of the REG
+	Irb   int // RB index of the REG
+}
+
 // Css0OccasionPat1 contains info of PDCCH occasions for CSS0 with CORESET0 multiplexing pattern 1
 type Css0OccasionPat1 struct {
 	O8         int   // the O multiplied by 8

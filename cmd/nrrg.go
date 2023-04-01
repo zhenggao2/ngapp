@@ -23,12 +23,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/xuri/excelize/v2"
 	"github.com/zhenggao2/ngapp/nrgrid"
 	"github.com/zhenggao2/ngapp/utils"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -165,15 +167,15 @@ const (
 
 	// NR resource tags
 
-	NR_RES_PSS    int = 0
-	NR_RES_SSS    int = 1
-	NR_RES_PBCH   int = 2
-	NR_RES_SIB1   int = 3
-	NR_RES_PDCCH  int = 4
-	NR_RES_PDSCH  int = 5
-	NR_RES_CSI_RS int = 6
-	NR_RES_MSG2   int = 7
-	NR_RES_MSG4   int = 8
+	NR_RES_PSS             int = 0
+	NR_RES_SSS             int = 1
+	NR_RES_PBCH            int = 2
+	NR_RES_SIB1            int = 3
+	NR_RES_PDCCH_CANDIDATE int = 400
+	NR_RES_PDSCH           int = 5
+	NR_RES_CSI_RS          int = 6
+	NR_RES_MSG2            int = 7
+	NR_RES_MSG4            int = 8
 
 	NR_RES_PRACH int = 10
 	// NR_RES_PUCCH int = 11
@@ -550,7 +552,7 @@ type NrrgData struct {
 	coreset0Sc0Rb0 int
 
 	coreset0NumCces     int
-	coreset0RegBundles  []int
+	coreset0RegBundles  []nrgrid.RegInfo
 	coreset0Cces        []int
 	css0TdOccasions     map[string][]nrgrid.Css0OccasionTd
 	occCss0             map[int]bool // whether PDCCH occasions for CSS0 is determined in certain SFN?
@@ -558,7 +560,7 @@ type NrrgData struct {
 	css0PdcchCandidates map[string][]nrgrid.Css0PdcchCandidate
 
 	coreset1NumCces    int
-	coreset1RegBundles []int
+	coreset1RegBundles []nrgrid.RegInfo
 	coreset1Cces       []int
 
 	dci10Sib1Prbs []int
@@ -1052,6 +1054,14 @@ var gridSettingCmd = &cobra.Command{
 			return
 		}
 
+		// export NR resource grid
+		regYellow.Printf("[5GNR SIM]Exporting NR resource grid...\n")
+		err = exportNrrg()
+		if err != nil {
+			regRed.Printf("[ERR]: %s\n", err.Error())
+			return
+		}
+
 		/*
 			self.ngwin.logEdit.append('<font color=green><b>[5GNR SIM]Start 5GNR simulation</b></font>')
 			nrGrid = NgNrGrid(self.ngwin, self.args)
@@ -1151,6 +1161,160 @@ var gridSettingCmd = &cobra.Command{
 					nrGrid.exportToExcel()
 		*/
 	},
+}
+
+func int2Col(i int) string {
+	var s string
+	azm := make(map[int]byte)
+	for i := 0; i < 26; i++ {
+		azm[i] = byte('A' + i)
+	}
+
+	for {
+		if i > 26 {
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
+			i = (i - rem) / 26
+		} else {
+			rem := (i - 1) % 26
+			s = string(azm[rem]) + s
+			break
+		}
+	}
+
+	return s
+}
+
+func exportNrrg() error {
+	wb := excelize.NewFile()
+	if flags.gridsetting._duplexMode == "TDD" {
+		var keys []int
+		for sfn := range rgd.gridTdd {
+			keys = append(keys, sfn)
+		}
+		sort.Ints(keys)
+	} else {
+		var keys []int
+		for sfn := range rgd.gridFddDl {
+			keys = append(keys, sfn)
+		}
+		sort.Ints(keys)
+
+		shn := "FDD_DL"
+		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
+			wb.SetSheetName("Sheet1", shn)
+		} else {
+			wb.NewSheet(shn)
+		}
+
+		row := 1
+		col := 1
+		for isc := 0; isc < rgd.scPerSymb; isc++ {
+			// write vertical header
+			if isc == 0 {
+				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), "k/l")
+			}
+			wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row+1+isc), fmt.Sprintf("%v-%v", isc/rgd.scPerRb, isc%rgd.scPerRb))
+		}
+		for _, sfn := range keys {
+			for isymb := 0; isymb < rgd.symbPerRf; isymb++ {
+				// skip empty slot
+				if rgd.gridFddDl[sfn].tags[isymb/rgd.symbPerSlot] == nil || rgd.gridFddDl[sfn].tags[isymb/rgd.symbPerSlot].Cardinality() == 0 {
+					continue
+				} else {
+					col++
+				}
+
+				// write horizontal header
+				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), fmt.Sprintf("%v-%v-%v", sfn, isymb/rgd.symbPerSlot, isymb%rgd.symbPerSlot))
+
+				for isc := 0; isc < rgd.scPerSymb; isc++ {
+					var tag string
+					var style int
+					switch rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc] {
+					case NR_RES_D:
+						tag = "DL"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+							//style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
+						})
+					case NR_RES_U:
+						tag = "UL"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+						})
+					case NR_RES_GB:
+						tag = "GB"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#808080"},
+						})
+					case NR_RES_PSS:
+						tag = "PSS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#00FF00"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_SSS:
+						tag = "SSS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFF00"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_PBCH:
+						tag = "PBCH"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#80FFFF"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_DMRS_PBCH, NR_RES_DMRS_PDCCH:
+						tag = "DMRS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF0000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_DTX:
+						tag = "DTX"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+						})
+					case NR_RES_PDCCH_CANDIDATE, NR_RES_PDCCH_CANDIDATE + 1, NR_RES_PDCCH_CANDIDATE + 2, NR_RES_PDCCH_CANDIDATE + 3, NR_RES_PDCCH_CANDIDATE + 4, NR_RES_PDCCH_CANDIDATE + 5, NR_RES_PDCCH_CANDIDATE + 6, NR_RES_PDCCH_CANDIDATE + 7:
+						tag = fmt.Sprintf("PDCCH%v", rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc]-NR_RES_PDCCH_CANDIDATE)
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF8000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					}
+
+					axis := fmt.Sprintf("%v%v", int2Col(col), row+1+isc)
+					wb.SetCellValue(shn, axis, fmt.Sprintf("%v", tag))
+					wb.SetCellStyle(shn, axis, axis, style)
+				}
+			}
+		}
+
+		wb.SetPanes(shn, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		wb.AutoFilter(shn, "A1", fmt.Sprintf("%v%v", int2Col(col), rgd.scPerSymb+1), "")
+	}
+
+	if err := wb.SaveAs(fmt.Sprintf("./logs/nrrg_export_%v.xlsx", time.Now().Format("20060102_150405"))); err != nil {
+		regRed.Printf("[ERR]: %s\n", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 func initNrrgData() error {
@@ -1353,7 +1517,7 @@ func initNrrgData() error {
 }
 
 // CCE-to-REG mapping of CORESET
-func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved bool, L int, R int, nShift int) ([]int, []int, error) {
+func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved bool, L int, R int, nShift int) ([]nrgrid.RegInfo, []int, error) {
 	if !utils.ContainsStr([]string{"CORESET0", "CORESET1"}, coreset) {
 		return nil, nil, errors.New(fmt.Sprintf("coresetCceRegMapping: Only CORESET0 and CORESET1 are supported."))
 	}
@@ -1376,11 +1540,11 @@ func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved b
 	// 7.3.2.2	Control-resource set (CORESET)
 	// Resource-element groups within a control-resource set are numbered in increasing order in a time-first manner, starting with 0 for the first OFDM symbol and the lowest-numbered resource block in the control resource set.
 	numRegs := numRbs * numSymbs
-	regBundles := make([]int, numRegs)
+	regBundles := make([]nrgrid.RegInfo, numRegs)
 	count := 0
 	for i := 0; i < numRbs; i++ {
 		for j := 0; j < numSymbs; j++ {
-			regBundles[i*numSymbs+j] = count
+			regBundles[i*numSymbs+j] = nrgrid.RegInfo{Id: count, Isymb: j, Irb: i}
 			count++
 		}
 	}
@@ -1389,7 +1553,7 @@ func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved b
 	numRegBundles := numRegs / L
 	for i := 0; i < numRbs; i++ {
 		for j := 0; j < numSymbs; j++ {
-			regBundles[i*numSymbs+j] /= L
+			regBundles[i*numSymbs+j].Id /= L
 		}
 	}
 
@@ -1415,7 +1579,7 @@ func coresetCceRegMapping(coreset string, numRbs int, numSymbs int, interlaved b
 
 		for j := 0; j < numRbs; j++ {
 			for k := 0; k < numSymbs; k++ {
-				if utils.ContainsInt(regBundlesSet, regBundles[j*numSymbs+k]) {
+				if utils.ContainsInt(regBundlesSet, regBundles[j*numSymbs+k].Id) {
 					cces[j*numSymbs+k] = i
 				}
 			}
@@ -1517,7 +1681,7 @@ func alwaysOnTr(sfn, slot int) error {
 func initTddGrid(sfn int) {
 	_, exist := rgd.gridTdd[sfn]
 	if !exist {
-		rgd.gridTdd[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
+		rgd.gridTdd[sfn] = DataPerRf{res: make([]int, rgd.scPerRf), tags: make([]mapset.Set, rgd.slotPerRf)}
 		for i := 0; i < rgd.scPerRf; i++ {
 			if sfn%2 == 0 {
 				rgd.gridTdd[sfn].res[i] = map[string]int{"D": NR_RES_D, "U": NR_RES_U, "GB": NR_RES_GB}[rgd.tddPatEvenRf[i/rgd.scPerSymb]]
@@ -1535,8 +1699,8 @@ func initTddGrid(sfn int) {
 func initFddGrid(sfn int) {
 	_, exist := rgd.gridFddDl[sfn]
 	if !exist {
-		rgd.gridFddDl[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
-		rgd.gridFddUl[sfn] = DataPerRf{make([]int, rgd.scPerRf), make([]mapset.Set, rgd.slotPerRf)}
+		rgd.gridFddDl[sfn] = DataPerRf{res: make([]int, rgd.scPerRf), tags: make([]mapset.Set, rgd.slotPerRf)}
+		rgd.gridFddUl[sfn] = DataPerRf{res: make([]int, rgd.scPerRf), tags: make([]mapset.Set, rgd.slotPerRf)}
 		for i := 0; i < rgd.scPerRf; i++ {
 			rgd.gridFddDl[sfn].res[i] = NR_RES_D
 			rgd.gridFddUl[sfn].res[i] = NR_RES_U
@@ -1616,6 +1780,11 @@ func aotSsb(sfn int) error {
 						rgd.gridTdd[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DTX
 					}
 				}
+
+				if rgd.gridTdd[sfn].tags[ssbFirstSymb/rgd.symbPerSlot] == nil {
+					rgd.gridTdd[sfn].tags[ssbFirstSymb/rgd.symbPerSlot] = mapset.NewSet()
+				}
+				rgd.gridTdd[sfn].tags[ssbFirstSymb/rgd.symbPerSlot].Add("SSB")
 			} else {
 				// symbol 0: PSS
 				for i := 0; i < 240; i++ {
@@ -1651,6 +1820,11 @@ func aotSsb(sfn int) error {
 						rgd.gridFddDl[sfn].res[rgd.scPerSymb*(ssbFirstSymb+2)+rgd.ssbSc0Rb0+i] = NR_RES_DTX
 					}
 				}
+
+				if rgd.gridFddDl[sfn].tags[ssbFirstSymb/rgd.symbPerSlot] == nil {
+					rgd.gridFddDl[sfn].tags[ssbFirstSymb/rgd.symbPerSlot] = mapset.NewSet()
+				}
+				rgd.gridFddDl[sfn].tags[ssbFirstSymb/rgd.symbPerSlot].Add("SSB")
 			}
 
 			rgd.ssbSymbs[sfn] = append(rgd.ssbSymbs[sfn], []int{ssbFirstSymb, ssbFirstSymb + 1, ssbFirstSymb + 2, ssbFirstSymb + 3}...)
@@ -1678,13 +1852,13 @@ func aotPdcchSib1(sfn int) error {
 	}
 
 	for _, issb := range flags.gridsetting.candSsbIndex {
-		var ssbLastSymbsMinus1 []int
+		var ssbFirstSymbsMinus1 []int
 		if flags.gridsetting.ssbPeriod == "5ms" {
-			ssbLastSymbsMinus1 = []int{rgd.ssbFirstSymbs[issb] - 1, rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
+			ssbFirstSymbsMinus1 = []int{rgd.ssbFirstSymbs[issb] - 1, rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
 		} else {
-			ssbLastSymbsMinus1 = []int{flags.gridsetting._hrf*rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
+			ssbFirstSymbsMinus1 = []int{flags.gridsetting._hrf*rgd.symbPerRf/2 + rgd.ssbFirstSymbs[issb] - 1}
 		}
-		fmt.Printf("issb=%v, ssbLastSymbsMinus1=%v\n", issb, ssbLastSymbsMinus1)
+		fmt.Printf("issb=%v, ssbFirstSymbsMinus1=%v\n", issb, ssbFirstSymbsMinus1)
 
 		key := fmt.Sprintf("%v_%v", sfn, issb)
 		for _, td := range rgd.css0TdOccasions[key] {
@@ -1693,7 +1867,7 @@ func aotPdcchSib1(sfn int) error {
 			firstSymb := td.FirstSymb
 
 			// validation #1: PDCCH occasion should not start before corresponding SSB transmission!
-			if nc*rgd.symbPerSlot+firstSymb <= ssbLastSymbsMinus1[0] {
+			if nc*rgd.symbPerSlot+firstSymb <= ssbFirstSymbsMinus1[0] {
 				continue
 			}
 
@@ -1728,6 +1902,38 @@ func aotPdcchSib1(sfn int) error {
 
 				rgd.css0PdcchCandidates[key] = append(rgd.css0PdcchCandidates[key], nrgrid.Css0PdcchCandidate{sfnc, nc, firstSymb, m, cces})
 				fmt.Printf("SSB/SIB1 PDCCH candidate: issb=%v, sfnc=%v, nc=%v, firstSymb=%v, m=%v, cces=%v\n", issb, sfnc, nc, firstSymb, m, cces)
+
+				for i, icce := range rgd.coreset0Cces {
+					if utils.ContainsInt(cces, icce) {
+						isymb := rgd.coreset0RegBundles[i].Isymb
+						irb := rgd.coreset0RegBundles[i].Irb
+						for isc := 0; isc < rgd.scPerRb; isc++ {
+							if flags.gridsetting._duplexMode == "TDD" {
+								if isc > 0 && (isc-1)%4 == 0 {
+									rgd.gridTdd[sfnc].res[nc*rgd.scPerSlot+(firstSymb+isymb)*rgd.scPerSymb+rgd.coreset0Sc0Rb0+irb*rgd.scPerRb+isc] = NR_RES_DMRS_PDCCH
+								} else {
+									rgd.gridTdd[sfnc].res[nc*rgd.scPerSlot+(firstSymb+isymb)*rgd.scPerSymb+rgd.coreset0Sc0Rb0+irb*rgd.scPerRb+isc] = NR_RES_PDCCH_CANDIDATE + m
+								}
+
+								if rgd.gridTdd[sfnc].tags[nc] == nil {
+									rgd.gridTdd[sfnc].tags[nc] = mapset.NewSet()
+								}
+								rgd.gridTdd[sfnc].tags[nc].Add("PDCCH")
+							} else {
+								if isc > 0 && (isc-1)%4 == 0 {
+									rgd.gridFddDl[sfnc].res[nc*rgd.scPerSlot+(firstSymb+isymb)*rgd.scPerSymb+rgd.coreset0Sc0Rb0+irb*rgd.scPerRb+isc] = NR_RES_DMRS_PDCCH
+								} else {
+									rgd.gridFddDl[sfnc].res[nc*rgd.scPerSlot+(firstSymb+isymb)*rgd.scPerSymb+rgd.coreset0Sc0Rb0+irb*rgd.scPerRb+isc] = NR_RES_PDCCH_CANDIDATE + m
+								}
+
+								if rgd.gridFddDl[sfnc].tags[nc] == nil {
+									rgd.gridFddDl[sfnc].tags[nc] = mapset.NewSet()
+								}
+								rgd.gridFddDl[sfnc].tags[nc].Add("PDCCH")
+							}
+						}
+					}
+				}
 			}
 		}
 	}
