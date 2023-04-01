@@ -401,6 +401,12 @@ var SsbRasters = map[string][][]string{
 		{"480KHz", "Case F", "24162 + 24 * N – 12 * floor((N+4)/18), N=0:33"}}, // 2023/2/15: 960KHz SSB SCS for n263 is not supported!
 }
 
+// NrResExt contains representations of NR resources when exported
+type NrResExt struct {
+	Tag   string
+	Style int // excelize.Style
+}
+
 // Coreste0Info contains info of CORESET0 for CSS0
 type Coreset0Info struct {
 	MultiplexingPat int

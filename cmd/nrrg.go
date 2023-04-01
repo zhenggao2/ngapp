@@ -569,6 +569,7 @@ type NrrgData struct {
 	dci11Prbs     []int
 
 	msg4Recved bool
+	resMap     map[int]nrgrid.NrResExt
 }
 
 // nrrgCmd represents the "nrrg" command
@@ -1185,8 +1186,121 @@ func int2Col(i int) string {
 	return s
 }
 
+func makeResMap(wb *excelize.File) error {
+	var style int
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#FFFFFF"},
+		//style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
+	})
+	rgd.resMap[NR_RES_D] = nrgrid.NrResExt{Tag: "DL", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#FFFFFF"},
+	})
+	rgd.resMap[NR_RES_U] = nrgrid.NrResExt{Tag: "UL", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#808080"},
+	})
+	rgd.resMap[NR_RES_GB] = nrgrid.NrResExt{Tag: "GB", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#00FF00"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_PSS] = nrgrid.NrResExt{Tag: "PSS", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFF00"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_SSS] = nrgrid.NrResExt{Tag: "SSS", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#80FFFF"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_PBCH] = nrgrid.NrResExt{Tag: "PBCH", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFFFF"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#0000FF"},
+	})
+	rgd.resMap[NR_RES_SIB1] = nrgrid.NrResExt{Tag: "SIB1", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF00FF"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_MSG2] = nrgrid.NrResExt{Tag: "MSG2", Style: style}
+	rgd.resMap[NR_RES_MSG4] = nrgrid.NrResExt{Tag: "MSG4", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFFFF"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_PDSCH] = nrgrid.NrResExt{Tag: "PDSCH", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF0000"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_DMRS_PBCH] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_PDCCH] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_SIB1] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_MSG2] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_MSG4] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_PDSCH] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_PUCCH] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_MSG3] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+	rgd.resMap[NR_RES_DMRS_PUSCH] = nrgrid.NrResExt{Tag: "DMRS", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF00FF"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	rgd.resMap[NR_RES_PTRS_PDSCH] = nrgrid.NrResExt{Tag: "PTRS", Style: style}
+	rgd.resMap[NR_RES_PTRS_PUSCH] = nrgrid.NrResExt{Tag: "PTRS", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#FFFFFF"},
+	})
+	rgd.resMap[NR_RES_DTX] = nrgrid.NrResExt{Tag: "DTX", Style: style}
+
+	style, _ = wb.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF8000"}, Pattern: 1},
+		Font:      &excelize.Font{Color: "#000000"},
+	})
+	for i := 0; i < 8; i++ {
+		rgd.resMap[NR_RES_PDCCH_CANDIDATE+i] = nrgrid.NrResExt{Tag: fmt.Sprintf("PDCCH%v", i), Style: style}
+	}
+
+	return nil
+}
+
 func exportNrrg() error {
 	wb := excelize.NewFile()
+	if err := makeResMap(wb); err != nil {
+		return err
+	}
+
 	if flags.gridsetting._duplexMode == "TDD" {
 		var keys []int
 		for sfn := range rgd.gridTdd {
@@ -1223,76 +1337,8 @@ func exportNrrg() error {
 				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), fmt.Sprintf("%v-%v-%v", sfn, isymb/rgd.symbPerSlot, isymb%rgd.symbPerSlot))
 
 				for isc := 0; isc < rgd.scPerSymb; isc++ {
-					//TODO
-					var tag string
-					var style int
-					switch rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc] {
-					case NR_RES_D:
-						tag = "DL"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-							//style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
-						})
-					case NR_RES_U:
-						tag = "UL"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-						})
-					case NR_RES_GB:
-						tag = "GB"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#808080"},
-						})
-					case NR_RES_PSS:
-						tag = "PSS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#00FF00"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_SSS:
-						tag = "SSS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFF00"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_PBCH:
-						tag = "PBCH"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#80FFFF"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_DMRS_PBCH, NR_RES_DMRS_PDCCH:
-						tag = "DMRS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF0000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_DTX:
-						tag = "DTX"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-						})
-					case NR_RES_PDCCH_CANDIDATE, NR_RES_PDCCH_CANDIDATE + 1, NR_RES_PDCCH_CANDIDATE + 2, NR_RES_PDCCH_CANDIDATE + 3, NR_RES_PDCCH_CANDIDATE + 4, NR_RES_PDCCH_CANDIDATE + 5, NR_RES_PDCCH_CANDIDATE + 6, NR_RES_PDCCH_CANDIDATE + 7:
-						tag = fmt.Sprintf("PDCCH%v", rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc]-NR_RES_PDCCH_CANDIDATE)
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF8000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					}
-
+					tag := rgd.resMap[rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc]].Tag
+					style := rgd.resMap[rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc]].Style
 					axis := fmt.Sprintf("%v%v", int2Col(col), row+1+isc)
 					wb.SetCellValue(shn, axis, fmt.Sprintf("%v", tag))
 					wb.SetCellStyle(shn, axis, axis, style)
@@ -1338,76 +1384,8 @@ func exportNrrg() error {
 				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), fmt.Sprintf("%v-%v-%v", sfn, isymb/rgd.symbPerSlot, isymb%rgd.symbPerSlot))
 
 				for isc := 0; isc < rgd.scPerSymb; isc++ {
-					//TODO
-					var tag string
-					var style int
-					switch rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc] {
-					case NR_RES_D:
-						tag = "DL"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-							//style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
-						})
-					case NR_RES_U:
-						tag = "UL"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-						})
-					case NR_RES_GB:
-						tag = "GB"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#808080"},
-						})
-					case NR_RES_PSS:
-						tag = "PSS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#00FF00"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_SSS:
-						tag = "SSS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFF00"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_PBCH:
-						tag = "PBCH"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#80FFFF"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_DMRS_PBCH, NR_RES_DMRS_PDCCH:
-						tag = "DMRS"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF0000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					case NR_RES_DTX:
-						tag = "DTX"
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#FFFFFF"},
-						})
-					case NR_RES_PDCCH_CANDIDATE, NR_RES_PDCCH_CANDIDATE + 1, NR_RES_PDCCH_CANDIDATE + 2, NR_RES_PDCCH_CANDIDATE + 3, NR_RES_PDCCH_CANDIDATE + 4, NR_RES_PDCCH_CANDIDATE + 5, NR_RES_PDCCH_CANDIDATE + 6, NR_RES_PDCCH_CANDIDATE + 7:
-						tag = fmt.Sprintf("PDCCH%v", rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc]-NR_RES_PDCCH_CANDIDATE)
-						style, _ = wb.NewStyle(&excelize.Style{
-							Alignment: &excelize.Alignment{Horizontal: "center"},
-							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF8000"}, Pattern: 1},
-							Font:      &excelize.Font{Color: "#000000"},
-						})
-					}
-
+					tag := rgd.resMap[rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc]].Tag
+					style := rgd.resMap[rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc]].Style
 					axis := fmt.Sprintf("%v%v", int2Col(col), row+1+isc)
 					wb.SetCellValue(shn, axis, fmt.Sprintf("%v", tag))
 					wb.SetCellStyle(shn, axis, axis, style)
@@ -1622,6 +1600,7 @@ func initNrrgData() error {
 	*/
 
 	rgd.msg4Recved = false
+	rgd.resMap = make(map[int]nrgrid.NrResExt)
 
 	return nil
 }
@@ -1753,34 +1732,23 @@ func alwaysOnTr(sfn, slot int) error {
 		initFddGrid(sfn)
 	}
 
-	err := aotSsb(sfn)
-	if err != nil {
+	if err := aotSsb(sfn); err != nil {
 		return err
 	}
 
-	//fmt.Printf("gridFddDl SFN=0,symbol=2:%v\n", rgd.gridFddDl[sfn].res[2*rgd.scPerSymb:3*rgd.scPerSymb])
-	//fmt.Printf("gridFddDl SFN=0,symbol=3:%v\n", rgd.gridFddDl[sfn].res[3*rgd.scPerSymb:4*rgd.scPerSymb])
-	//fmt.Printf("gridFddDl SFN=0,symbol=4:%v\n", rgd.gridFddDl[sfn].res[4*rgd.scPerSymb:5*rgd.scPerSymb])
-	//fmt.Printf("gridFddDl SFN=0,symbol=5:%v\n", rgd.gridFddDl[sfn].res[5*rgd.scPerSymb:6*rgd.scPerSymb])
-
-	err = aotPdcchSib1(sfn)
-	if err != nil {
+	if err := aotPdcchSib1(sfn); err != nil {
 		return err
 	}
 
-	err = aotSib1(sfn)
-	if err != nil {
+	if err := aotSib1(sfn); err != nil {
 		return err
 	}
 
 	if rgd.msg4Recved {
-		err = aotCsi(sfn, slot)
-		if err != nil {
+		if err := aotCsi(sfn, slot); err != nil {
 			return err
 		}
-
-		err = aotSrs(sfn, slot)
-		if err != nil {
+		if err := aotSrs(sfn, slot); err != nil {
 			return err
 		}
 	}
