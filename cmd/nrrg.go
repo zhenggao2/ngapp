@@ -1193,6 +1193,115 @@ func exportNrrg() error {
 			keys = append(keys, sfn)
 		}
 		sort.Ints(keys)
+
+		shn := "TDD"
+		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
+			wb.SetSheetName("Sheet1", shn)
+		} else {
+			wb.NewSheet(shn)
+		}
+
+		row := 1
+		col := 1
+		for isc := 0; isc < rgd.scPerSymb; isc++ {
+			// write vertical header
+			if isc == 0 {
+				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), "k/l")
+			}
+			wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row+1+isc), fmt.Sprintf("%v-%v", isc/rgd.scPerRb, isc%rgd.scPerRb))
+		}
+		for _, sfn := range keys {
+			for isymb := 0; isymb < rgd.symbPerRf; isymb++ {
+				// skip empty slot
+				if rgd.gridTdd[sfn].tags[isymb/rgd.symbPerSlot] == nil || rgd.gridTdd[sfn].tags[isymb/rgd.symbPerSlot].Cardinality() == 0 {
+					continue
+				} else {
+					col++
+				}
+
+				// write horizontal header
+				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), fmt.Sprintf("%v-%v-%v", sfn, isymb/rgd.symbPerSlot, isymb%rgd.symbPerSlot))
+
+				for isc := 0; isc < rgd.scPerSymb; isc++ {
+					//TODO
+					var tag string
+					var style int
+					switch rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc] {
+					case NR_RES_D:
+						tag = "DL"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+							//style, err := f.NewStyle(`{"font":{"bold":true,"italic":true,"family":"Times New Roman","size":36,"color":"#777777"}}`)
+						})
+					case NR_RES_U:
+						tag = "UL"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#808080"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+						})
+					case NR_RES_GB:
+						tag = "GB"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#808080"},
+						})
+					case NR_RES_PSS:
+						tag = "PSS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#00FF00"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_SSS:
+						tag = "SSS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FFFF00"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_PBCH:
+						tag = "PBCH"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#80FFFF"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_DMRS_PBCH, NR_RES_DMRS_PDCCH:
+						tag = "DMRS"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF0000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					case NR_RES_DTX:
+						tag = "DTX"
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#000000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#FFFFFF"},
+						})
+					case NR_RES_PDCCH_CANDIDATE, NR_RES_PDCCH_CANDIDATE + 1, NR_RES_PDCCH_CANDIDATE + 2, NR_RES_PDCCH_CANDIDATE + 3, NR_RES_PDCCH_CANDIDATE + 4, NR_RES_PDCCH_CANDIDATE + 5, NR_RES_PDCCH_CANDIDATE + 6, NR_RES_PDCCH_CANDIDATE + 7:
+						tag = fmt.Sprintf("PDCCH%v", rgd.gridTdd[sfn].res[isymb*rgd.scPerSymb+isc]-NR_RES_PDCCH_CANDIDATE)
+						style, _ = wb.NewStyle(&excelize.Style{
+							Alignment: &excelize.Alignment{Horizontal: "center"},
+							Fill:      excelize.Fill{Type: "pattern", Color: []string{"#FF8000"}, Pattern: 1},
+							Font:      &excelize.Font{Color: "#000000"},
+						})
+					}
+
+					axis := fmt.Sprintf("%v%v", int2Col(col), row+1+isc)
+					wb.SetCellValue(shn, axis, fmt.Sprintf("%v", tag))
+					wb.SetCellStyle(shn, axis, axis, style)
+				}
+			}
+		}
+
+		wb.SetPanes(shn, `{"freeze":true,"split":false,"x_split":1,"y_split":1}`)
+		wb.AutoFilter(shn, "A1", fmt.Sprintf("%v%v", int2Col(col), rgd.scPerSymb+1), "")
 	} else {
 		var keys []int
 		for sfn := range rgd.gridFddDl {
@@ -1229,6 +1338,7 @@ func exportNrrg() error {
 				wb.SetCellValue(shn, fmt.Sprintf("%v%v", int2Col(col), row), fmt.Sprintf("%v-%v-%v", sfn, isymb/rgd.symbPerSlot, isymb%rgd.symbPerSlot))
 
 				for isc := 0; isc < rgd.scPerSymb; isc++ {
+					//TODO
 					var tag string
 					var style int
 					switch rgd.gridFddDl[sfn].res[isymb*rgd.scPerSymb+isc] {
