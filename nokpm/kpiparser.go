@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,21 +51,21 @@ type KpiParser struct {
 var NUM_KPI_DEF_FIELDS = 8
 
 type KpiDef struct {
-	name string // the KPI_NAME field
-	perPlmn bool // the PER_PLMN field
-	perSlice bool // the PER_SLICE field
-	perRelation bool // the PER_RELATION field
-	formula string // the KPI_FORMULA field
-	precision int // the KPI_PRECISION field
-	unit string // the KPI_UNIT field
-	aggMethod string // the KPI_AGG_METHOD field
+	name        string // the KPI_NAME field
+	perPlmn     bool   // the PER_PLMN field
+	perSlice    bool   // the PER_SLICE field
+	perRelation bool   // the PER_RELATION field
+	formula     string // the KPI_FORMULA field
+	precision   int    // the KPI_PRECISION field
+	unit        string // the KPI_UNIT field
+	aggMethod   string // the KPI_AGG_METHOD field
 
 	measTypes []string
-	counters []string
-	agg string // used aggregation level
+	counters  []string
+	agg       string // used aggregation level
 }
 
-var PmAggMax = []string {
+var PmAggMax = []string{
 	// 5G NSA
 	"M55114C00010",
 	"M55114C00013",
@@ -88,7 +88,7 @@ var PmAggMax = []string {
 	"M55351C01001", // new in 5G22R1
 }
 
-var PmAggMin = []string {
+var PmAggMin = []string{
 	// 5G SA
 	"M55139C00512",
 }
@@ -142,16 +142,16 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 		if !p.kpis.Exist(name) {
 			//p.kpis[name] = &KpiDef{
 			p.kpis.Add(name, &KpiDef{
-				name: tokens[0],
-				perPlmn: p.unsafeParseBool(tokens[1]),
-				perSlice: p.unsafeParseBool(tokens[2]),
+				name:        tokens[0],
+				perPlmn:     p.unsafeParseBool(tokens[1]),
+				perSlice:    p.unsafeParseBool(tokens[2]),
 				perRelation: p.unsafeParseBool(tokens[3]),
-				formula: tokens[4],
-				precision: p.unsafeAtoi(tokens[5]),
-				unit: tokens[6],
-				aggMethod: tokens[7],
-				measTypes: make([]string, 0),
-				counters: make([]string, 0),
+				formula:     tokens[4],
+				precision:   p.unsafeAtoi(tokens[5]),
+				unit:        tokens[6],
+				aggMethod:   tokens[7],
+				measTypes:   make([]string, 0),
+				counters:    make([]string, 0),
 			})
 
 			// validate KPI definition
@@ -178,7 +178,7 @@ func (p *KpiParser) ParseKpiDef(kdf string) {
 				} else {
 					if p.kpis.Val(name).(*KpiDef).agg != aggPerMeasType[k] {
 						valid = false
-						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Invalid KPI definition: all counters must have the same aggregation level." +
+						p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Invalid KPI definition: all counters must have the same aggregation level."+
 							" (kpiDef.name=%s, kpidef.agg=%s while measType[%s].agg=%s)", name, p.kpis.Val(name).(*KpiDef).agg, k, aggPerMeasType[k]))
 					}
 				}
@@ -228,7 +228,7 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 			}
 		}
 
-		fn := filepath.Join(db, c + ".gz")
+		fn := filepath.Join(db, c+".gz")
 		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("Loading PM...[%s]", filepath.Base(fn)))
 
 		wg.Add(1)
@@ -316,7 +316,7 @@ func (p *KpiParser) LoadPmDb(db, btsid, stime, etime string) {
 								} else if utils.ContainsStr(PmAggMin, c) {
 									m.(cmap.ConcurrentMap).Set(tokens[0], math.Min(v0.(float64), v))
 								} else {
-									m.(cmap.ConcurrentMap).Set(tokens[0], v0.(float64) + v)
+									m.(cmap.ConcurrentMap).Set(tokens[0], v0.(float64)+v)
 								}
 							}
 							p.pms.Set(c, m)
@@ -418,31 +418,31 @@ func (p *KpiParser) CalcKpi(rptPath string) {
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Generating KPI report..."))
 	/*
-	for agg := range report {
-		ofn := filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
-		fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
-			return
-		}
-
-		fout.WriteString(strings.Join(reportHeaderWiUnit[agg], ",") + "\n")
-		for _, aggKey := range report[agg].Keys() {
-			v := report[agg].Val(aggKey).(*utils.OrderedMap)
-			line := []string{strings.Replace(aggKey.(string), "_", ",", -1)}
-			for i := 1; i < len(reportHeader[agg]); i += 1 {
-				if v.Exist(reportHeader[agg][i]) {
-					line = append(line, v.Val(reportHeader[agg][i]).(string))
-				} else {
-					line = append(line, "-")
-				}
+		for agg := range report {
+			ofn := filepath.Join(rptPath, fmt.Sprintf("kpi_report_%s_%s.csv", agg, timestamp))
+			fout, err := os.OpenFile(ofn, os.O_WRONLY|os.O_CREATE, 0664)
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+				return
 			}
-			fout.WriteString(strings.Join(line, ",") + "\n")
-		}
 
-		fout.Close()
-	}
-	 */
+			fout.WriteString(strings.Join(reportHeaderWiUnit[agg], ",") + "\n")
+			for _, aggKey := range report[agg].Keys() {
+				v := report[agg].Val(aggKey).(*utils.OrderedMap)
+				line := []string{strings.Replace(aggKey.(string), "_", ",", -1)}
+				for i := 1; i < len(reportHeader[agg]); i += 1 {
+					if v.Exist(reportHeader[agg][i]) {
+						line = append(line, v.Val(reportHeader[agg][i]).(string))
+					} else {
+						line = append(line, "-")
+					}
+				}
+				fout.WriteString(strings.Join(line, ",") + "\n")
+			}
+
+			fout.Close()
+		}
+	*/
 
 	wb := excelize.NewFile()
 	for agg := range report {
@@ -539,4 +539,3 @@ func (p *KpiParser) writeLog(level zapcore.Level, s string) {
 		fmt.Println(s)
 	}
 }
-

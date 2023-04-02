@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,322 +32,322 @@ import (
 )
 
 // keyPerAgg is map between measurement aggregation and its default key pattern in PM database.
-var keyPerAgg = map[string]string {
-	"NRDU" : "NRBTSID_NRDUID_TS",
-	"NRCUUP" : "NRBTSID_NRCUUPID_TS",
-	"NRBTS" : "NRBTSID_TS",
-	"NRBTS_PLMN" : "NRBTSID_MCC_MNC_TS",
-	"NRBTS_PLMN_SLICE" : "NRBTSID_MCC_MNC_SST_SD_TS",
-	"NRCELL" : "NRBTSID_NRCELLID_TS",
-	"NRCELL_PLMN" : "NRBTSID_NRCELLID_MCC_MNC_TS",
-	"NRCELL_NRREL" : "NRBTSID_NRCELLID_NRCI_MCC_MNC_TS",
-	"NRCELL_PLMN_NRRELE" : "NRBTSID_NRCELLID_MCC_MNC_ECI_DMCC_DMNC_TS",
+var keyPerAgg = map[string]string{
+	"NRDU":               "NRBTSID_NRDUID_TS",
+	"NRCUUP":             "NRBTSID_NRCUUPID_TS",
+	"NRBTS":              "NRBTSID_TS",
+	"NRBTS_PLMN":         "NRBTSID_MCC_MNC_TS",
+	"NRBTS_PLMN_SLICE":   "NRBTSID_MCC_MNC_SST_SD_TS",
+	"NRCELL":             "NRBTSID_NRCELLID_TS",
+	"NRCELL_PLMN":        "NRBTSID_NRCELLID_MCC_MNC_TS",
+	"NRCELL_NRREL":       "NRBTSID_NRCELLID_NRCI_MCC_MNC_TS",
+	"NRCELL_PLMN_NRRELE": "NRBTSID_NRCELLID_MCC_MNC_ECI_DMCC_DMNC_TS",
 }
 
 // aggPerMeas is map between measurement type and its aggregation.
-var aggPerMeasType = map[string]string {
-	"NX2CB" : "NRBTS",
-	"NX2CC" : "NRCELL",
-	"NF1CC" : "NRCELL",
-	"RACCU" : "NRCELL",
-	"RACDU" : "NRCELL",
-	"NNSAU" : "NRCELL",
-	"NF1CD" : "NRDU",
-	"NCAC" : "NRCELL",
-	"NNGCB" : "NRBTS",
-	"NINFC" : "NRCELL",
-	"NE1CB" : "NRBTS",
-	"NE1CU" : "NRCUUP",
-	"NRRCC" : "NRCELL",
-	"NNGCC" : "NRCELL",
-	"NXNCB" : "NRBTS",
-	"NRRCD" : "NRDU",
-	"LTEMO" : "NRBTS",
-	"NRLFC" : "NRCELL",
-	"SRB3C" : "NRCELL",
-	"NTRAF" : "NRBTS",
-	"NE1UN" : "NRCUUP",
-	"NE1US" : "NRCUUP",
-	"NE1CN" : "NRBTS",
-	"NE1CS" : "NRBTS",
-	"LTEMG" : "NRCELL",
-	"RSACU" : "NRCELL",
-	"RSADU" : "NRCELL",
-	"RSANB" : "NRBTS",
-	"SRB3D" : "NRCELL",
-	"NXNCC" : "NRCELL",
-	"NRANS" : "NRCELL_PLMN",
-	"NRBC" : "NRCELL",
-	"NMOCU" : "NRCELL",
-	"NMODU" : "NRCELL",
-	"NSL" : "NRBTS_PLMN_SLICE",
-	"NF1UU" : "NRDU",
-	"NIFC" : "NRCELL",
-	"NRMG" : "NRCELL",
-	"NRREL" : "NRCELL_NRREL",
-	"NGCFB" : "NRCELL",
-	"NDLHQ" : "NRCELL",
-	"NDLSQ" : "NRCELL",
-	"NULHQ" : "NRCELL",
-	"NULSQ" : "NRCELL",
-	"NMPDU" : "NRCELL",
-	"NRBF" : "NRCELL",
-	"NRACH" : "NRCELL",
-	"NRTA" : "NRCELL",
-	"NCELA" : "NRCELL",
-	"NMSDU" : "NRCELL",
-	"NLRLC" : "NRCELL",
-	"NHRLC" : "NRDU",
-	"NX2UB" : "NRBTS",
-	"NF1UD" : "NRDU",
-	"NS1UB" : "NRBTS",
-	"NCAD" : "NRCELL",
-	"NPDCC" : "NRBTS",
-	"NECUP" : "NRCELL",
-	"PDCP1" : "NRBTS",
-	"PDCP2" : "NRBTS",
-	"NF1UB" : "NRBTS",
-	"NEIRP" : "NRCELL",
-	"NRASU" : "NRBTS_PLMN",
-	"NRNGU" : "NRBTS",
-	"NRXNU" : "NRBTS",
-	"NRPAG" : "NRCELL",
-	"ENDSS" : "NRCELL",
-	"PDCCH" : "NRCELL",
-	"NCAV" : "NRCELL",
-	"NREMO" : "NRCELL_PLMN_NRRELE", // FIXME, new in 5G21A
-	"NPSL" : "NRBTS_PLMN_SLICE", // new in 5G21A
-	"NRMOP" : "NRCELL", // new in 5G21B
-	"NRPFW" : "NRBTS", // new in 5G21B
-	"NCAD1" : "NRDU", // new in 5G21B
-	"NUSQ2" : "NRCELL", // new in 5G22R1
-	"NHRRC" : "NRCELL", // new in 5G22R1
-	"PDCPC" : "NRCELL", // new in 5G22R1
-	"DBWP" : "NRCELL", // new in 5G22R1
-	"NRCCD" : "NRCELL", // new in 5G22R1
+var aggPerMeasType = map[string]string{
+	"NX2CB": "NRBTS",
+	"NX2CC": "NRCELL",
+	"NF1CC": "NRCELL",
+	"RACCU": "NRCELL",
+	"RACDU": "NRCELL",
+	"NNSAU": "NRCELL",
+	"NF1CD": "NRDU",
+	"NCAC":  "NRCELL",
+	"NNGCB": "NRBTS",
+	"NINFC": "NRCELL",
+	"NE1CB": "NRBTS",
+	"NE1CU": "NRCUUP",
+	"NRRCC": "NRCELL",
+	"NNGCC": "NRCELL",
+	"NXNCB": "NRBTS",
+	"NRRCD": "NRDU",
+	"LTEMO": "NRBTS",
+	"NRLFC": "NRCELL",
+	"SRB3C": "NRCELL",
+	"NTRAF": "NRBTS",
+	"NE1UN": "NRCUUP",
+	"NE1US": "NRCUUP",
+	"NE1CN": "NRBTS",
+	"NE1CS": "NRBTS",
+	"LTEMG": "NRCELL",
+	"RSACU": "NRCELL",
+	"RSADU": "NRCELL",
+	"RSANB": "NRBTS",
+	"SRB3D": "NRCELL",
+	"NXNCC": "NRCELL",
+	"NRANS": "NRCELL_PLMN",
+	"NRBC":  "NRCELL",
+	"NMOCU": "NRCELL",
+	"NMODU": "NRCELL",
+	"NSL":   "NRBTS_PLMN_SLICE",
+	"NF1UU": "NRDU",
+	"NIFC":  "NRCELL",
+	"NRMG":  "NRCELL",
+	"NRREL": "NRCELL_NRREL",
+	"NGCFB": "NRCELL",
+	"NDLHQ": "NRCELL",
+	"NDLSQ": "NRCELL",
+	"NULHQ": "NRCELL",
+	"NULSQ": "NRCELL",
+	"NMPDU": "NRCELL",
+	"NRBF":  "NRCELL",
+	"NRACH": "NRCELL",
+	"NRTA":  "NRCELL",
+	"NCELA": "NRCELL",
+	"NMSDU": "NRCELL",
+	"NLRLC": "NRCELL",
+	"NHRLC": "NRDU",
+	"NX2UB": "NRBTS",
+	"NF1UD": "NRDU",
+	"NS1UB": "NRBTS",
+	"NCAD":  "NRCELL",
+	"NPDCC": "NRBTS",
+	"NECUP": "NRCELL",
+	"PDCP1": "NRBTS",
+	"PDCP2": "NRBTS",
+	"NF1UB": "NRBTS",
+	"NEIRP": "NRCELL",
+	"NRASU": "NRBTS_PLMN",
+	"NRNGU": "NRBTS",
+	"NRXNU": "NRBTS",
+	"NRPAG": "NRCELL",
+	"ENDSS": "NRCELL",
+	"PDCCH": "NRCELL",
+	"NCAV":  "NRCELL",
+	"NREMO": "NRCELL_PLMN_NRRELE", // FIXME, new in 5G21A
+	"NPSL":  "NRBTS_PLMN_SLICE",   // new in 5G21A
+	"NRMOP": "NRCELL",             // new in 5G21B
+	"NRPFW": "NRBTS",              // new in 5G21B
+	"NCAD1": "NRDU",               // new in 5G21B
+	"NUSQ2": "NRCELL",             // new in 5G22R1
+	"NHRRC": "NRCELL",             // new in 5G22R1
+	"PDCPC": "NRCELL",             // new in 5G22R1
+	"DBWP":  "NRCELL",             // new in 5G22R1
+	"NRCCD": "NRCELL",             // new in 5G22R1
 }
 
 // measId2MeasType is map between measurement ID and its type.
-var measId2MeasType = map[string]string {
-	"M55110" : "NX2CB",
-	"M55112" : "NX2CC",
-	"M55113" : "NF1CC",
-	"M55114" : "RACCU",
-	"M55115" : "RACDU",
-	"M55116" : "NNSAU",
-	"M55117" : "NF1CD",
-	"M55118" : "NCAC",
-	"M55119" : "NNGCB",
-	"M55120" : "NINFC",
-	"M55121" : "NE1CB",
-	"M55123" : "NE1CU",
-	"M55124" : "NRRCC",
-	"M55125" : "NNGCC",
-	"M55126" : "NXNCB",
-	"M55127" : "NRRCD",
-	"M55128" : "LTEMO",
-	"M55129" : "NRLFC",
-	"M55130" : "SRB3C",
-	"M55131" : "NTRAF",
-	"M55132" : "NE1UN",
-	"M55133" : "NE1US",
-	"M55134" : "NE1CN",
-	"M55135" : "NE1CS",
-	"M55136" : "LTEMG",
-	"M55138" : "RSACU",
-	"M55139" : "RSADU",
-	"M55140" : "RSANB",
-	"M55141" : "SRB3D",
-	"M55143" : "NXNCC",
-	"M55145" : "NRANS",
-	"M55146" : "NRBC",
-	"M55147" : "NMOCU",
-	"M55148" : "NMODU",
-	"M55149" : "NSL",
-	"M55150" : "NF1UU",
-	"M55151" : "NIFC",
-	"M55152" : "NRMG",
-	"M55153" : "NRREL",
-	"M55155" : "NGCFB",
-	"M55300" : "NDLHQ",
-	"M55301" : "NDLSQ",
-	"M55302" : "NULHQ",
-	"M55303" : "NULSQ",
-	"M55304" : "NMPDU",
-	"M55305" : "NRBF",
-	"M55306" : "NRACH",
-	"M55307" : "NRTA",
-	"M55308" : "NCELA",
-	"M55309" : "NMSDU",
-	"M55310" : "NLRLC",
-	"M55311" : "NHRLC",
-	"M55313" : "NX2UB",
-	"M55314" : "NF1UD",
-	"M55315" : "NS1UB",
-	"M55316" : "NCAD",
-	"M55317" : "NPDCC",
-	"M55318" : "NECUP",
-	"M55319" : "PDCP1",
-	"M55320" : "PDCP2",
-	"M55323" : "NF1UB",
-	"M55324" : "NEIRP",
-	"M55326" : "NRASU",
-	"M55327" : "NRNGU",
-	"M55329" : "NRXNU",
-	"M55331" : "NRPAG",
-	"M55332" : "ENDSS",
-	"M55335" : "PDCCH",
-	"M55601" : "NCAV",
-	"M55602" : "SBM",
-	"M55603" : "SFPRM",
-	"M55800" : "NGNS",
-	"M55144" : "NREMO",
-	"M55328" : "NPSL",
-	"M55157" : "NRMOP",
-	"M55337" : "NRPFW",
-	"M55348" : "NCAD1",
-	"M55604" : "RURWS",
-	"M55605" : "TRRW",
-	"M55340" : "NUSQ2", // new in 5G22R1
-	"M55349" : "NHRRC", // new in 5G22R1
-	"M55350" : "PDCPC", // new in 5G22R1
-	"M55351" : "DBWP", // new in 5G22R1
-	"M55166" : "NRCCD", // new in 5G22R1
+var measId2MeasType = map[string]string{
+	"M55110": "NX2CB",
+	"M55112": "NX2CC",
+	"M55113": "NF1CC",
+	"M55114": "RACCU",
+	"M55115": "RACDU",
+	"M55116": "NNSAU",
+	"M55117": "NF1CD",
+	"M55118": "NCAC",
+	"M55119": "NNGCB",
+	"M55120": "NINFC",
+	"M55121": "NE1CB",
+	"M55123": "NE1CU",
+	"M55124": "NRRCC",
+	"M55125": "NNGCC",
+	"M55126": "NXNCB",
+	"M55127": "NRRCD",
+	"M55128": "LTEMO",
+	"M55129": "NRLFC",
+	"M55130": "SRB3C",
+	"M55131": "NTRAF",
+	"M55132": "NE1UN",
+	"M55133": "NE1US",
+	"M55134": "NE1CN",
+	"M55135": "NE1CS",
+	"M55136": "LTEMG",
+	"M55138": "RSACU",
+	"M55139": "RSADU",
+	"M55140": "RSANB",
+	"M55141": "SRB3D",
+	"M55143": "NXNCC",
+	"M55145": "NRANS",
+	"M55146": "NRBC",
+	"M55147": "NMOCU",
+	"M55148": "NMODU",
+	"M55149": "NSL",
+	"M55150": "NF1UU",
+	"M55151": "NIFC",
+	"M55152": "NRMG",
+	"M55153": "NRREL",
+	"M55155": "NGCFB",
+	"M55300": "NDLHQ",
+	"M55301": "NDLSQ",
+	"M55302": "NULHQ",
+	"M55303": "NULSQ",
+	"M55304": "NMPDU",
+	"M55305": "NRBF",
+	"M55306": "NRACH",
+	"M55307": "NRTA",
+	"M55308": "NCELA",
+	"M55309": "NMSDU",
+	"M55310": "NLRLC",
+	"M55311": "NHRLC",
+	"M55313": "NX2UB",
+	"M55314": "NF1UD",
+	"M55315": "NS1UB",
+	"M55316": "NCAD",
+	"M55317": "NPDCC",
+	"M55318": "NECUP",
+	"M55319": "PDCP1",
+	"M55320": "PDCP2",
+	"M55323": "NF1UB",
+	"M55324": "NEIRP",
+	"M55326": "NRASU",
+	"M55327": "NRNGU",
+	"M55329": "NRXNU",
+	"M55331": "NRPAG",
+	"M55332": "ENDSS",
+	"M55335": "PDCCH",
+	"M55601": "NCAV",
+	"M55602": "SBM",
+	"M55603": "SFPRM",
+	"M55800": "NGNS",
+	"M55144": "NREMO",
+	"M55328": "NPSL",
+	"M55157": "NRMOP",
+	"M55337": "NRPFW",
+	"M55348": "NCAD1",
+	"M55604": "RURWS",
+	"M55605": "TRRW",
+	"M55340": "NUSQ2", // new in 5G22R1
+	"M55349": "NHRRC", // new in 5G22R1
+	"M55350": "PDCPC", // new in 5G22R1
+	"M55351": "DBWP",  // new in 5G22R1
+	"M55166": "NRCCD", // new in 5G22R1
 }
 
 // measType2MeasId is map between measurement type and its ID.
-var measType2MeasId = map[string]string {
-	"NX2CB" : "M55110",
-	"NX2CC" : "M55112",
-	"NF1CC" : "M55113",
-	"RACCU" : "M55114",
-	"RACDU" : "M55115",
-	"NNSAU" : "M55116",
-	"NF1CD" : "M55117",
-	"NCAC" : "M55118",
-	"NNGCB" : "M55119",
-	"NINFC" : "M55120",
-	"NE1CB" : "M55121",
-	"NE1CU" : "M55123",
-	"NRRCC" : "M55124",
-	"NNGCC" : "M55125",
-	"NXNCB" : "M55126",
-	"NRRCD" : "M55127",
-	"LTEMO" : "M55128",
-	"NRLFC" : "M55129",
-	"SRB3C" : "M55130",
-	"NTRAF" : "M55131",
-	"NE1UN" : "M55132",
-	"NE1US" : "M55133",
-	"NE1CN" : "M55134",
-	"NE1CS" : "M55135",
-	"LTEMG" : "M55136",
-	"RSACU" : "M55138",
-	"RSADU" : "M55139",
-	"RSANB" : "M55140",
-	"SRB3D" : "M55141",
-	"NXNCC" : "M55143",
-	"NRANS" : "M55145",
-	"NRBC" : "M55146",
-	"NMOCU" : "M55147",
-	"NMODU" : "M55148",
-	"NSL" : "M55149",
-	"NF1UU" : "M55150",
-	"NIFC" : "M55151",
-	"NRMG" : "M55152",
-	"NRREL" : "M55153",
-	"NGCFB" : "M55155",
-	"NDLHQ" : "M55300",
-	"NDLSQ" : "M55301",
-	"NULHQ" : "M55302",
-	"NULSQ" : "M55303",
-	"NMPDU" : "M55304",
-	"NRBF" : "M55305",
-	"NRACH" : "M55306",
-	"NRTA" : "M55307",
-	"NCELA" : "M55308",
-	"NMSDU" : "M55309",
-	"NLRLC" : "M55310",
-	"NHRLC" : "M55311",
-	"NX2UB" : "M55313",
-	"NF1UD" : "M55314",
-	"NS1UB" : "M55315",
-	"NCAD" : "M55316",
-	"NPDCC" : "M55317",
-	"NECUP" : "M55318",
-	"PDCP1" : "M55319",
-	"PDCP2" : "M55320",
-	"NF1UB" : "M55323",
-	"NEIRP" : "M55324",
-	"NRASU" : "M55326",
-	"NRNGU" : "M55327",
-	"NRXNU" : "M55329",
-	"NRPAG" : "M55331",
-	"ENDSS" : "M55332",
-	"PDCCH" : "M55335",
-	"NCAV" : "M55601",
-	"SBM" : "M55602",
-	"SFPRM" : "M55603",
-	"NGNS" : "M55800",
-	"NREMO" : "M55144",
-	"NPSL" : "M55328",
-	"NRMOP" : "M55157",
-	"NRPFW" : "M55337",
-	"NCAD1" : "M55348",
-	"RURWS" : "M55604",
-	"TRRW" : "M55605",
-	"NUSQ2" : "M55340", // new in 5G22R1
-	"NHRRC" : "M55349", // new in 5G22R1
-	"PDCPC" : "M55350", // new in 5G22R1
-	"DBWP" : "M55351", // new in 5G22R1
-	"NRCCD" : "M55166", // new in 5G22R1
+var measType2MeasId = map[string]string{
+	"NX2CB": "M55110",
+	"NX2CC": "M55112",
+	"NF1CC": "M55113",
+	"RACCU": "M55114",
+	"RACDU": "M55115",
+	"NNSAU": "M55116",
+	"NF1CD": "M55117",
+	"NCAC":  "M55118",
+	"NNGCB": "M55119",
+	"NINFC": "M55120",
+	"NE1CB": "M55121",
+	"NE1CU": "M55123",
+	"NRRCC": "M55124",
+	"NNGCC": "M55125",
+	"NXNCB": "M55126",
+	"NRRCD": "M55127",
+	"LTEMO": "M55128",
+	"NRLFC": "M55129",
+	"SRB3C": "M55130",
+	"NTRAF": "M55131",
+	"NE1UN": "M55132",
+	"NE1US": "M55133",
+	"NE1CN": "M55134",
+	"NE1CS": "M55135",
+	"LTEMG": "M55136",
+	"RSACU": "M55138",
+	"RSADU": "M55139",
+	"RSANB": "M55140",
+	"SRB3D": "M55141",
+	"NXNCC": "M55143",
+	"NRANS": "M55145",
+	"NRBC":  "M55146",
+	"NMOCU": "M55147",
+	"NMODU": "M55148",
+	"NSL":   "M55149",
+	"NF1UU": "M55150",
+	"NIFC":  "M55151",
+	"NRMG":  "M55152",
+	"NRREL": "M55153",
+	"NGCFB": "M55155",
+	"NDLHQ": "M55300",
+	"NDLSQ": "M55301",
+	"NULHQ": "M55302",
+	"NULSQ": "M55303",
+	"NMPDU": "M55304",
+	"NRBF":  "M55305",
+	"NRACH": "M55306",
+	"NRTA":  "M55307",
+	"NCELA": "M55308",
+	"NMSDU": "M55309",
+	"NLRLC": "M55310",
+	"NHRLC": "M55311",
+	"NX2UB": "M55313",
+	"NF1UD": "M55314",
+	"NS1UB": "M55315",
+	"NCAD":  "M55316",
+	"NPDCC": "M55317",
+	"NECUP": "M55318",
+	"PDCP1": "M55319",
+	"PDCP2": "M55320",
+	"NF1UB": "M55323",
+	"NEIRP": "M55324",
+	"NRASU": "M55326",
+	"NRNGU": "M55327",
+	"NRXNU": "M55329",
+	"NRPAG": "M55331",
+	"ENDSS": "M55332",
+	"PDCCH": "M55335",
+	"NCAV":  "M55601",
+	"SBM":   "M55602",
+	"SFPRM": "M55603",
+	"NGNS":  "M55800",
+	"NREMO": "M55144",
+	"NPSL":  "M55328",
+	"NRMOP": "M55157",
+	"NRPFW": "M55337",
+	"NCAD1": "M55348",
+	"RURWS": "M55604",
+	"TRRW":  "M55605",
+	"NUSQ2": "M55340", // new in 5G22R1
+	"NHRRC": "M55349", // new in 5G22R1
+	"PDCPC": "M55350", // new in 5G22R1
+	"DBWP":  "M55351", // new in 5G22R1
+	"NRCCD": "M55166", // new in 5G22R1
 }
 
 // keyPatTwmXinos is map between token of the default key pattern and the field of TWM XINOS.
-var keyPatTwmXinos = map[string]string {
-	"NRBTSID" : "NRBTS_ID",
-	"NRCELLID" : "NRCELL_ID",
-	"NRDUID" : "NRDU",
-	"NRCUUPID" : "NRCUUP",
-	"MCC" : "MCC",
-	"MNC" : "MNC",
-	"SST" : "SST",
-	"SD" : "SD",
-	"NRCI" : "NRCI",
-	"ECI" : "ECI",
-	"DMCC" : "DMCC",
-	"DMNC" : "DMNC",
-	"TS" : "TIME",
+var keyPatTwmXinos = map[string]string{
+	"NRBTSID":  "NRBTS_ID",
+	"NRCELLID": "NRCELL_ID",
+	"NRDUID":   "NRDU",
+	"NRCUUPID": "NRCUUP",
+	"MCC":      "MCC",
+	"MNC":      "MNC",
+	"SST":      "SST",
+	"SD":       "SD",
+	"NRCI":     "NRCI",
+	"ECI":      "ECI",
+	"DMCC":     "DMCC",
+	"DMNC":     "DMNC",
+	"TS":       "TIME",
 }
 
 // keyPatRawPm is map between token of the default key pattern and the field of Raw PM.
-var keyPatRawPm = map[string]string {
-	"NRBTSID" : "NRBTS",
-	"NRCELLID" : "NRCELL",
-	"NRDUID" : "NRDU",
-	"NRCUUPID" : "NRCUUP",
-	"MCC" : "MCC",
-	"MNC" : "MNC",
-	"SST" : "SST",
-	"SD" : "SD",
-	"NRCI" : "NRCI",
-	"ECI" : "ECI",
-	"DMCC" : "DMCC",
-	"DMNC" : "DMNC",
-	"TS" : "TS", // format: xxx/TS-startTime.interval
+var keyPatRawPm = map[string]string{
+	"NRBTSID":  "NRBTS",
+	"NRCELLID": "NRCELL",
+	"NRDUID":   "NRDU",
+	"NRCUUPID": "NRCUUP",
+	"MCC":      "MCC",
+	"MNC":      "MNC",
+	"SST":      "SST",
+	"SD":       "SD",
+	"NRCI":     "NRCI",
+	"ECI":      "ECI",
+	"DMCC":     "DMCC",
+	"DMNC":     "DMNC",
+	"TS":       "TS", // format: xxx/TS-startTime.interval
 }
 
 type PmParser struct {
-	log   *zap.Logger
-	op    string
-	db    string
-	debug bool
+	log    *zap.Logger
+	op     string
+	db     string
+	debug  bool
 	rawDat cmap.ConcurrentMap
 }
 
 type CsvHeaderPos struct {
 	keyPatPos map[string]int
-	posStart int // position of first counter
+	posStart  int // position of first counter
 }
 
 func (p *PmParser) Init(log *zap.Logger, op, db string, debug bool) {
@@ -456,20 +456,20 @@ func (p *PmParser) ParseRawPmXml(xml string) {
 	}
 
 	/*
-	for counter := range data {
-		ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
-		fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
-		if err != nil {
-			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
-			return
-		}
+		for counter := range data {
+			ofn := filepath.Join(p.db, fmt.Sprintf("%s.gz", counter))
+			fout, err := os.OpenFile(ofn, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0664)
+			if err != nil {
+				p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Fail to open file: %s", ofn))
+				return
+			}
 
-		gw := gzip.NewWriter(fout)
-		gw.Write(data[counter].Bytes())
-		gw.Close()
-		fout.Close()
-	}
-	 */
+			gw := gzip.NewWriter(fout)
+			gw.Write(data[counter].Bytes())
+			gw.Close()
+			fout.Close()
+		}
+	*/
 }
 
 func (p *PmParser) ParseSqlQueryCsv(csv string) {
@@ -487,7 +487,7 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 	header, _ := reader.ReadString('\n')
 	// remove preceding 0xefbbbf and ending 0x0A(0x0A0D return and newline) of BOM format
 	boom := []byte{0xEF, 0xBB, 0xBF, 0x0A}
-	header= strings.Trim(header, string(boom))
+	header = strings.Trim(header, string(boom))
 	headerTokens := strings.Split(header, ",")
 	var pos CsvHeaderPos
 	if p.op == "twm" {
@@ -592,7 +592,7 @@ func (p *PmParser) ParseSqlQueryCsv(csv string) {
 func (p *PmParser) findKeyPatPosTwmXinos(tokens []string) CsvHeaderPos {
 	pos := CsvHeaderPos{
 		keyPatPos: make(map[string]int),
-		posStart: -1,
+		posStart:  -1,
 	}
 	for k := range keyPatTwmXinos {
 		pos.keyPatPos[k] = -1

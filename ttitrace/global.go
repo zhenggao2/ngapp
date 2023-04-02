@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -81,8 +81,8 @@ type TtiDlBeamData struct {
 }
 
 type TtiDlBeamDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
 	PosSubcellId          int
 	PosCurrentBestBeamId  int
 	PosCurrent2ndBeamId   int
@@ -90,18 +90,17 @@ type TtiDlBeamDataPos struct {
 	PosSelected2ndBeamId  int
 }
 
-
 func FindTtiDlBeamDataPos(tokens []string) TtiDlBeamDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiDlBeamDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosSubcellId: -1,
-		PosCurrentBestBeamId: -1,
-		PosCurrent2ndBeamId: -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosSubcellId:          -1,
+		PosCurrentBestBeamId:  -1,
+		PosCurrent2ndBeamId:   -1,
 		PosSelectedBestBeamId: -1,
-		PosSelected2ndBeamId: -1,
+		PosSelected2ndBeamId:  -1,
 	}
 
 	i := 0
@@ -134,28 +133,28 @@ func FindTtiDlBeamDataPos(tokens []string) TtiDlBeamDataPos {
 
 type TtiDlPreSchedData struct {
 	TtiEventHeader
-	CsListEvent string
+	CsListEvent          string
 	HighestClassPriority string
-	PrachPreambleIndex string
+	PrachPreambleIndex   string
 }
 
 type TtiDlPreSchedDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCsListEvent int
+	Ready                   bool
+	PosEventHeader          TtiEventHeaderPos
+	PosCsListEvent          int
 	PosHighestClassPriority int
-	PosPrachPreambleIndex int
+	PosPrachPreambleIndex   int
 }
 
 func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 3
 	p := TtiDlPreSchedDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCsListEvent: -1,
+		Ready:                   false,
+		PosEventHeader:          FindTtiEventHeaderPos(tokens),
+		PosCsListEvent:          -1,
 		PosHighestClassPriority: -1,
-		PosPrachPreambleIndex: -1,
+		PosPrachPreambleIndex:   -1,
 	}
 
 	i := 0
@@ -166,8 +165,8 @@ func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 		} else if strings.ToLower(item) == "highestclasspriority" && p.PosHighestClassPriority < 0 {
 			p.PosHighestClassPriority = pos
 			i += 1
-		} else if strings.ToLower(item) == "prachpreambleindex" && p.PosPrachPreambleIndex< 0 {
-			p.PosPrachPreambleIndex= pos
+		} else if strings.ToLower(item) == "prachpreambleindex" && p.PosPrachPreambleIndex < 0 {
+			p.PosPrachPreambleIndex = pos
 			i += 1
 		}
 
@@ -183,21 +182,21 @@ func FindTtiDlPreSchedDataPos(tokens []string) TtiDlPreSchedDataPos {
 type TtiDlTdSchedSubcellData struct {
 	TtiEventHeader
 	SubcellId string
-	Cs2List []string
+	Cs2List   []string
 }
 
 type TtiDlTdSchedSubcellDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosSubcellId int
+	Ready                   bool
+	PosEventHeader          TtiEventHeaderPos
+	PosSubcellId            int
 	PosRecordSequenceNumber int
 }
 
 func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos {
 	p := TtiDlTdSchedSubcellDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosSubcellId: -1,
+		Ready:                   false,
+		PosEventHeader:          FindTtiEventHeaderPos(tokens),
+		PosSubcellId:            -1,
 		PosRecordSequenceNumber: 0,
 	}
 
@@ -216,49 +215,49 @@ func FindTtiDlTdSchedSubcellDataPos(tokens []string) TtiDlTdSchedSubcellDataPos 
 type TtiDlFdSchedData struct {
 	TtiEventHeader
 	CellDbIndex        string
-	SubcellId string
+	SubcellId          string
 	TxNumber           string
 	DlHarqProcessIndex string
 	K1                 string
-	NumOfPrb string
-	StartPrb string
+	NumOfPrb           string
+	StartPrb           string
 	LcIdList           []string
 	AllFields          []string
 }
 
 type TtiDlFdSchedDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCellDbIndex int
-	PosSubcellId int
-	PosTxNumber int
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
+	PosCellDbIndex        int
+	PosSubcellId          int
+	PosTxNumber           int
 	PosDlHarqProcessIndex int
-	PosK1 int
+	PosK1                 int
 
 	// additional position for RIV/SLIV/AntPort/per-Bearer post-processing
 	PosNumOfPrb int
 	PosStartPrb int
-	PosSliv int
-	PosAntPort int
-	PosLcId int
+	PosSliv     int
+	PosAntPort  int
+	PosLcId     int
 }
 
 func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 10
 	p := TtiDlFdSchedDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex: -1,
-		PosSubcellId: -1,
-		PosTxNumber: -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:        -1,
+		PosSubcellId:          -1,
+		PosTxNumber:           -1,
 		PosDlHarqProcessIndex: -1,
-		PosK1: -1,
-		PosNumOfPrb: -1,
-		PosStartPrb: -1,
-		PosSliv: -1,
-		PosAntPort: -1,
-		PosLcId: -1,
+		PosK1:                 -1,
+		PosNumOfPrb:           -1,
+		PosStartPrb:           -1,
+		PosSliv:               -1,
+		PosAntPort:            -1,
+		PosLcId:               -1,
 	}
 
 	i := 0
@@ -279,7 +278,7 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 			p.PosK1 = pos
 			i += 1
 		} else if strings.ToLower(item) == "numofprb" && p.PosNumOfPrb < 0 {
-			p.PosNumOfPrb= pos
+			p.PosNumOfPrb = pos
 			i += 1
 		} else if strings.ToLower(item) == "startprb" && p.PosStartPrb < 0 {
 			p.PosStartPrb = pos
@@ -306,31 +305,31 @@ func FindTtiDlFdSchedDataPos(tokens []string) TtiDlFdSchedDataPos {
 
 type TtiDlHarqRxData struct {
 	TtiEventHeader
-	HarqSubcellId string
-	AckNack string
+	HarqSubcellId      string
+	AckNack            string
 	DlHarqProcessIndex string
-	PucchFormat string
+	PucchFormat        string
 }
 
 type TtiDlHarqRxDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosHarqSubcellId int
-	PosAckNack int
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
+	PosHarqSubcellId      int
+	PosAckNack            int
 	PosDlHarqProcessIndex int
-	PosPucchFormat int
+	PosPucchFormat        int
 }
 
 func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 4
 	p := TtiDlHarqRxDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosHarqSubcellId: -1,
-		PosAckNack: -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosHarqSubcellId:      -1,
+		PosAckNack:            -1,
 		PosDlHarqProcessIndex: -1,
-		PosPucchFormat: -1,
+		PosPucchFormat:        -1,
 	}
 
 	i := 0
@@ -361,21 +360,21 @@ func FindTtiDlHarqRxDataPos(tokens []string) TtiDlHarqRxDataPos {
 type TtiDlLaAverageCqi struct {
 	TtiEventHeader
 	CellDbIndex string
-	RrmInstCqi string
-	Rank string
-	RrmAvgCqi string
-	Mcs string
+	RrmInstCqi  string
+	Rank        string
+	RrmAvgCqi   string
+	Mcs         string
 	RrmDeltaCqi string
 }
 
 type TtiDlLaAverageCqiPos struct {
-	Ready bool
+	Ready          bool
 	PosEventHeader TtiEventHeaderPos
 	PosCellDbIndex int
-	PosRrmInstCqi int
-	PosRank int
-	PosRrmAvgCqi int
-	PosMcs int
+	PosRrmInstCqi  int
+	PosRank        int
+	PosRrmAvgCqi   int
+	PosMcs         int
 	PosRrmDeltaCqi int
 }
 
@@ -383,13 +382,13 @@ func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 6
 	p := TtiDlLaAverageCqiPos{
-		Ready:                 false,
-		PosEventHeader:        FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex:      -1,
-		PosRrmInstCqi: -1,
-		PosRank: -1,
-		PosRrmAvgCqi:            -1,
-		PosMcs: -1,
+		Ready:          false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex: -1,
+		PosRrmInstCqi:  -1,
+		PosRank:        -1,
+		PosRrmAvgCqi:   -1,
+		PosMcs:         -1,
 		PosRrmDeltaCqi: -1,
 	}
 
@@ -426,49 +425,49 @@ func FindTtiDlLaAverageCqiPos(tokens []string) TtiDlLaAverageCqiPos {
 
 type TtiCsiSrReportData struct {
 	TtiEventHeader
-	UlChannel string
-	Dtx string
+	UlChannel   string
+	Dtx         string
 	PucchFormat string
-	Cqi string
-	PmiRank1 string
-	PmiRank2 string
-	Ri string
-	Cri string
-	Li string
-	Sr string
+	Cqi         string
+	PmiRank1    string
+	PmiRank2    string
+	Ri          string
+	Cri         string
+	Li          string
+	Sr          string
 }
 
 type TtiCsiSrReportDataPos struct {
-	Ready bool
+	Ready          bool
 	PosEventHeader TtiEventHeaderPos
-	PosUlChannel int
-	PosDtx int
+	PosUlChannel   int
+	PosDtx         int
 	PosPucchFormat int
-	PosCqi int
-	PosPmiRank1 int
-	PosPmiRank2 int
-	PosRi int
-	PosCri int
-	PosLi int
-	PosSr int
+	PosCqi         int
+	PosPmiRank1    int
+	PosPmiRank2    int
+	PosRi          int
+	PosCri         int
+	PosLi          int
+	PosSr          int
 }
 
 func FindTtiCsiSrReportDataPos(tokens []string) TtiCsiSrReportDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 10
 	p := TtiCsiSrReportDataPos{
-		Ready:                 false,
-		PosEventHeader:        FindTtiEventHeaderPos(tokens),
-		PosUlChannel:      -1,
-		PosDtx:      -1,
-		PosPucchFormat:      -1,
-		PosCqi:      -1,
-		PosPmiRank1:      -1,
-		PosPmiRank2:      -1,
-		PosRi:      -1,
-		PosCri:      -1,
-		PosLi:      -1,
-		PosSr:      -1,
+		Ready:          false,
+		PosEventHeader: FindTtiEventHeaderPos(tokens),
+		PosUlChannel:   -1,
+		PosDtx:         -1,
+		PosPucchFormat: -1,
+		PosCqi:         -1,
+		PosPmiRank1:    -1,
+		PosPmiRank2:    -1,
+		PosRi:          -1,
+		PosCri:         -1,
+		PosLi:          -1,
+		PosSr:          -1,
 	}
 
 	i := 0
@@ -516,33 +515,33 @@ func FindTtiCsiSrReportDataPos(tokens []string) TtiCsiSrReportDataPos {
 
 type TtiDlFlowControlData struct {
 	TtiEventHeader
-	LchId string
-	ReportType string
+	LchId          string
+	ReportType     string
 	ScheduledBytes string
-	EthAvg string
-	EthScaled string
+	EthAvg         string
+	EthScaled      string
 }
 
 type TtiDlFlowControlDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosLchId int
-	PosReportType int
+	Ready             bool
+	PosEventHeader    TtiEventHeaderPos
+	PosLchId          int
+	PosReportType     int
 	PosScheduledBytes int
-	PosEthAvg int
-	PosEthScaled int
+	PosEthAvg         int
+	PosEthScaled      int
 }
 
 func FindTtiDlFlowControlDataPos(tokens []string) TtiDlFlowControlDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiDlFlowControlDataPos{
-		Ready:                 false,
-		PosEventHeader:        FindTtiEventHeaderPos(tokens),
-		PosLchId:      -1,
-		PosReportType:      -1,
-		PosScheduledBytes:      -1,
-		PosEthAvg:      -1,
+		Ready:             false,
+		PosEventHeader:    FindTtiEventHeaderPos(tokens),
+		PosLchId:          -1,
+		PosReportType:     -1,
+		PosScheduledBytes: -1,
+		PosEthAvg:         -1,
 		PosEthScaled:      -1,
 	}
 
@@ -576,12 +575,12 @@ func FindTtiDlFlowControlDataPos(tokens []string) TtiDlFlowControlDataPos {
 
 type TtiDlLaDeltaCqi struct {
 	TtiEventHeader
-	CellDbIndex string
-	IsDeltaCqiCalculated string
+	CellDbIndex              string
+	IsDeltaCqiCalculated     string
 	RrmPauseUeInDlScheduling string
-	HarqFb string
-	RrmDeltaCqi string
-	RrmRemainingBucketLevel string
+	HarqFb                   string
+	RrmDeltaCqi              string
+	RrmRemainingBucketLevel  string
 }
 
 type TtiDlLaDeltaCqiPos struct {
@@ -624,7 +623,7 @@ func FindTtiDlLaDeltaCqiPos(tokens []string) TtiDlLaDeltaCqiPos {
 			p.PosHarqFb = pos
 			i += 1
 		} else if strings.ToLower(item) == "rrmdeltacqi" && p.PosRrmDeltaCqi < 0 {
-			p.PosRrmDeltaCqi= pos
+			p.PosRrmDeltaCqi = pos
 			i += 1
 		} else if strings.ToLower(item) == "rrmremainingbucketlevel" && p.PosRrmRemainingBucketLevel < 0 {
 			p.PosRrmRemainingBucketLevel = pos
@@ -643,25 +642,25 @@ func FindTtiDlLaDeltaCqiPos(tokens []string) TtiDlLaDeltaCqiPos {
 type TtiUlBsrRxData struct {
 	TtiEventHeader
 	UlHarqProcessIndex string
-	BsrFormat string
-	BufferSizeList []string
+	BsrFormat          string
+	BufferSizeList     []string
 }
 
 type TtiUlBsrRxDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
 	PosUlHarqProcessIndex int
-	PosBsrFormat int
+	PosBsrFormat          int
 }
 
 func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 2
 	p := TtiUlBsrRxDataPos{
-		Ready:                       false,
-		PosEventHeader:              FindTtiEventHeaderPos(tokens),
-		PosUlHarqProcessIndex:              -1,
-		PosBsrFormat:     -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosUlHarqProcessIndex: -1,
+		PosBsrFormat:          -1,
 	}
 
 	i := 0
@@ -686,46 +685,46 @@ func FindTtiUlBsrRxDataPos(tokens []string) TtiUlBsrRxDataPos {
 type TtiUlFdSchedData struct {
 	TtiEventHeader
 	CellDbIndex        string
-	SubcellId	string
+	SubcellId          string
 	TxNumber           string
 	UlHarqProcessIndex string
 	K2                 string
-	NumOfPrb string
-	StartPrb string
+	NumOfPrb           string
+	StartPrb           string
 	AllFields          []string
 }
 
 type TtiUlFdSchedDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCellDbIndex int
-	PosSubcellId int
-	PosTxNumber int
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
+	PosCellDbIndex        int
+	PosSubcellId          int
+	PosTxNumber           int
 	PosUlHarqProcessIndex int
-	PosK2 int
+	PosK2                 int
 
 	// additional position for RIV/SLIV/AntPort/per-Bearer post-processing
 	PosNumOfPrb int
 	PosStartPrb int
-	PosSliv int
-	PosAntPort int
+	PosSliv     int
+	PosAntPort  int
 }
 
 func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 9
 	p := TtiUlFdSchedDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex: -1,
-		PosSubcellId: -1,
-		PosTxNumber: -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:        -1,
+		PosSubcellId:          -1,
+		PosTxNumber:           -1,
 		PosUlHarqProcessIndex: -1,
-		PosK2: -1,
-		PosNumOfPrb: -1,
-		PosStartPrb: -1,
-		PosSliv: -1,
-		PosAntPort: -1,
+		PosK2:                 -1,
+		PosNumOfPrb:           -1,
+		PosStartPrb:           -1,
+		PosSliv:               -1,
+		PosAntPort:            -1,
 	}
 
 	i := 0
@@ -746,7 +745,7 @@ func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 			p.PosK2 = pos
 			i += 1
 		} else if strings.ToLower(item) == "numofprb" && p.PosNumOfPrb < 0 {
-			p.PosNumOfPrb= pos
+			p.PosNumOfPrb = pos
 			i += 1
 		} else if strings.ToLower(item) == "startprb" && p.PosStartPrb < 0 {
 			p.PosStartPrb = pos
@@ -770,18 +769,18 @@ func FindTtiUlFdSchedDataPos(tokens []string) TtiUlFdSchedDataPos {
 
 type TtiUlHarqRxData struct {
 	TtiEventHeader
-	SubcellId string
-	Dtx string
-	CrcResult string
+	SubcellId          string
+	Dtx                string
+	CrcResult          string
 	UlHarqProcessIndex string
 }
 
 type TtiUlHarqRxDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosSubcellId int
-	PosDtx int
-	PosCrcResult int
+	Ready                 bool
+	PosEventHeader        TtiEventHeaderPos
+	PosSubcellId          int
+	PosDtx                int
+	PosCrcResult          int
 	PosUlHarqProcessIndex int
 }
 
@@ -789,11 +788,11 @@ func FindTtiUlHarqRxDataPos(tokens []string) TtiUlHarqRxDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 4
 	p := TtiUlHarqRxDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosSubcellId: -1,
-		PosDtx: -1,
-		PosCrcResult: -1,
+		Ready:                 false,
+		PosEventHeader:        FindTtiEventHeaderPos(tokens),
+		PosSubcellId:          -1,
+		PosDtx:                -1,
+		PosCrcResult:          -1,
 		PosUlHarqProcessIndex: -1,
 	}
 
@@ -824,15 +823,15 @@ func FindTtiUlHarqRxDataPos(tokens []string) TtiUlHarqRxDataPos {
 
 type TtiUlIntraDlToUlDtxSyncDlData struct {
 	TtiEventHeader
-	DrxEnabled string
+	DrxEnabled             string
 	DlDrxOnDurationTimerOn string
 	DlDrxInactivityTimerOn string
 }
 
 type TtiUlIntraDlToUlDrxSyncDlDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosDrxEnabled int
+	Ready                     bool
+	PosEventHeader            TtiEventHeaderPos
+	PosDrxEnabled             int
 	PosDlDrxOnDurationTimerOn int
 	PosDlDrxInactivityTimerOn int
 }
@@ -841,16 +840,16 @@ func FindTtiUlIntraDlToUlDrxSyncDlDataPos(tokens []string) TtiUlIntraDlToUlDrxSy
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 3
 	p := TtiUlIntraDlToUlDrxSyncDlDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosDrxEnabled: -1,
+		Ready:                     false,
+		PosEventHeader:            FindTtiEventHeaderPos(tokens),
+		PosDrxEnabled:             -1,
 		PosDlDrxOnDurationTimerOn: -1,
 		PosDlDrxInactivityTimerOn: -1,
 	}
 
 	i := 0
 	for pos, item := range tokens {
-		if strings.ToLower(item) == "drxenabled" && p.PosDrxEnabled< 0 {
+		if strings.ToLower(item) == "drxenabled" && p.PosDrxEnabled < 0 {
 			p.PosDrxEnabled = pos
 			i += 1
 		} else if strings.ToLower(item) == "dldrxondurationtimeron" && p.PosDlDrxOnDurationTimerOn < 0 {
@@ -872,35 +871,34 @@ func FindTtiUlIntraDlToUlDrxSyncDlDataPos(tokens []string) TtiUlIntraDlToUlDrxSy
 
 type TtiUlLaDeltaSinr struct {
 	TtiEventHeader
-	CellDbIndex string
-	IsDeltaSinrCalculated string
+	CellDbIndex              string
+	IsDeltaSinrCalculated    string
 	RrmPauseUeInUlScheduling string
-	CrcFb string
-	RrmDeltaSinr string
+	CrcFb                    string
+	RrmDeltaSinr             string
 }
 
 type TtiUlLaDeltaSinrPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCellDbIndex int
-	PosIsDeltaSinrCalculated int
+	Ready                       bool
+	PosEventHeader              TtiEventHeaderPos
+	PosCellDbIndex              int
+	PosIsDeltaSinrCalculated    int
 	PosRrmPauseUeInUlScheduling int
-	PosCrcFb int
-	PosRrmDeltaSinr int
+	PosCrcFb                    int
+	PosRrmDeltaSinr             int
 }
-
 
 func FindTtiUlLaDeltaSinrPos(tokens []string) TtiUlLaDeltaSinrPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiUlLaDeltaSinrPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex: -1,
-		PosIsDeltaSinrCalculated: -1,
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:              -1,
+		PosIsDeltaSinrCalculated:    -1,
 		PosRrmPauseUeInUlScheduling: -1,
-		PosCrcFb: -1,
-		PosRrmDeltaSinr: -1,
+		PosCrcFb:                    -1,
+		PosRrmDeltaSinr:             -1,
 	}
 
 	i := 0
@@ -933,37 +931,37 @@ func FindTtiUlLaDeltaSinrPos(tokens []string) TtiUlLaDeltaSinrPos {
 
 type TtiUlLaAverageSinr struct {
 	TtiEventHeader
-	CellDbIndex string
-	RrmInstSinrRank string
+	CellDbIndex              string
+	RrmInstSinrRank          string
 	RrmNumOfSinrMeasurements string
-	RrmInstSinr string
-	RrmAvgSinrUl string
-	RrmSinrCorrection string
+	RrmInstSinr              string
+	RrmAvgSinrUl             string
+	RrmSinrCorrection        string
 }
 
 type TtiUlLaAverageSinrPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCellDbIndex int
-	PosRrmInstSinrRank int
+	Ready                       bool
+	PosEventHeader              TtiEventHeaderPos
+	PosCellDbIndex              int
+	PosRrmInstSinrRank          int
 	PosRrmNumOfSinrMeasurements int
-	PosRrmInstSinr int
-	PosRrmAvgSinrUl int
-	PosRrmSinrCorrection int
+	PosRrmInstSinr              int
+	PosRrmAvgSinrUl             int
+	PosRrmSinrCorrection        int
 }
 
 func FindTtiUlLaAverageSinrPos(tokens []string) TtiUlLaAverageSinrPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 6
 	p := TtiUlLaAverageSinrPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex: -1,
-		PosRrmInstSinrRank: -1,
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:              -1,
+		PosRrmInstSinrRank:          -1,
 		PosRrmNumOfSinrMeasurements: -1,
-		PosRrmInstSinr: -1,
-		PosRrmAvgSinrUl: -1,
-		PosRrmSinrCorrection: -1,
+		PosRrmInstSinr:              -1,
+		PosRrmAvgSinrUl:             -1,
+		PosRrmSinrCorrection:        -1,
 	}
 
 	i := 0
@@ -999,34 +997,34 @@ func FindTtiUlLaAverageSinrPos(tokens []string) TtiUlLaAverageSinrPos {
 
 type TtiUlLaPhr struct {
 	TtiEventHeader
-	CellDbIndex string
+	CellDbIndex              string
 	IsRrmPhrScaledCalculated string
-	Phr string
-	RrmNumPuschPrb string
-	RrmPhrScaled string
+	Phr                      string
+	RrmNumPuschPrb           string
+	RrmPhrScaled             string
 }
 
 type TtiUlLaPhrPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCellDbIndex int
+	Ready                       bool
+	PosEventHeader              TtiEventHeaderPos
+	PosCellDbIndex              int
 	PosIsRrmPhrScaledCalculated int
-	PosPhr int
-	PosRrmNumPuschPrb int
-	PosRrmPhrScaled int
+	PosPhr                      int
+	PosRrmNumPuschPrb           int
+	PosRrmPhrScaled             int
 }
 
 func FindTtiUlLaPhrPos(tokens []string) TtiUlLaPhrPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 5
 	p := TtiUlLaPhrPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCellDbIndex: -1,
+		Ready:                       false,
+		PosEventHeader:              FindTtiEventHeaderPos(tokens),
+		PosCellDbIndex:              -1,
 		PosIsRrmPhrScaledCalculated: -1,
-		PosPhr: -1,
-		PosRrmNumPuschPrb: -1,
-		PosRrmPhrScaled: -1,
+		PosPhr:                      -1,
+		PosRrmNumPuschPrb:           -1,
+		PosRrmPhrScaled:             -1,
 	}
 
 	i := 0
@@ -1060,42 +1058,42 @@ func FindTtiUlLaPhrPos(tokens []string) TtiUlLaPhrPos {
 type TtiUlPucchReceiveRespPsData struct {
 	TtiEventHeader
 	PucchFormat string
-	StartPrb string
-	Rssi string
-	SinrLayer0 string //sinr_[0]
-	SinrLayer1 string //sinr_[1]
-	Dtx string
-	SrBit string
-	SubcellId string
+	StartPrb    string
+	Rssi        string
+	SinrLayer0  string //sinr_[0]
+	SinrLayer1  string //sinr_[1]
+	Dtx         string
+	SrBit       string
+	SubcellId   string
 }
 
 type TtiUlPucchReceiveRespPsDataPos struct {
-	Ready bool
+	Ready          bool
 	PosEventHeader TtiEventHeaderPos
 	PosPucchFormat int
-	PosStartPrb int
-	PosRssi int
-	PosSinrLayer0 int
-	PosSinrLayer1 int
-	PosDtx int
-	PosSrBit int
-	PosSubcellId int
+	PosStartPrb    int
+	PosRssi        int
+	PosSinrLayer0  int
+	PosSinrLayer1  int
+	PosDtx         int
+	PosSrBit       int
+	PosSubcellId   int
 }
 
 func FindTtiUlPucchReceiveRespPsDataPos(tokens []string) TtiUlPucchReceiveRespPsDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 8
 	p := TtiUlPucchReceiveRespPsDataPos{
-		Ready: false,
+		Ready:          false,
 		PosEventHeader: FindTtiEventHeaderPos(tokens),
 		PosPucchFormat: -1,
-		PosStartPrb: -1,
-		PosRssi: -1,
-		PosSinrLayer0: -1,
-		PosSinrLayer1: -1,
-		PosDtx: -1,
-		PosSrBit: -1,
-		PosSubcellId: -1,
+		PosStartPrb:    -1,
+		PosRssi:        -1,
+		PosSinrLayer0:  -1,
+		PosSinrLayer1:  -1,
+		PosDtx:         -1,
+		PosSrBit:       -1,
+		PosSubcellId:   -1,
 	}
 
 	i := 0
@@ -1137,52 +1135,52 @@ func FindTtiUlPucchReceiveRespPsDataPos(tokens []string) TtiUlPucchReceiveRespPs
 
 type TtiUlPuschReceiveRespPsData struct {
 	TtiEventHeader
-	Rssi string
-	SinrLayer0 string // sinr_[0]
-	SinrLayer1 string // sinr_[1]
-	Dtx string
-	UlRank string
-	UlPmiRank1 string
-	UlPmiRank1Sinr string
-	UlPmiRank2 string
+	Rssi                 string
+	SinrLayer0           string // sinr_[0]
+	SinrLayer1           string // sinr_[1]
+	Dtx                  string
+	UlRank               string
+	UlPmiRank1           string
+	UlPmiRank1Sinr       string
+	UlPmiRank2           string
 	UlPmiRank2SinrLayer0 string //ulPmiRank2Sinr_[0]
 	UlPmiRank2SinrLayer1 string //ulPmiRank2Sinr_[1]
-	LongTermRank string
+	LongTermRank         string
 }
 
 type TtiUlPuschReceiveRespPsDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosRssi int
-	PosSinrLayer0 int
-	PosSinrLayer1 int
-	PosDtx int
-	PosUlRank int
-	PosUlPmiRank1 int
-	PosUlPmiRank1Sinr int
-	PosUlPmiRank2 int
+	Ready                   bool
+	PosEventHeader          TtiEventHeaderPos
+	PosRssi                 int
+	PosSinrLayer0           int
+	PosSinrLayer1           int
+	PosDtx                  int
+	PosUlRank               int
+	PosUlPmiRank1           int
+	PosUlPmiRank1Sinr       int
+	PosUlPmiRank2           int
 	PosUlPmiRank2SinrLayer0 int
 	PosUlPmiRank2SinrLayer1 int
-	PosLongTermRank int
+	PosLongTermRank         int
 }
 
 func FindTtiUlPuschReceiveRespPsDataPos(tokens []string) TtiUlPuschReceiveRespPsDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 11
 	p := TtiUlPuschReceiveRespPsDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosRssi: -1,
-		PosSinrLayer0: -1,
-		PosSinrLayer1: -1,
-		PosDtx: -1,
-		PosUlRank: -1,
-		PosUlPmiRank1: -1,
-		PosUlPmiRank1Sinr: -1,
-		PosUlPmiRank2: -1,
+		Ready:                   false,
+		PosEventHeader:          FindTtiEventHeaderPos(tokens),
+		PosRssi:                 -1,
+		PosSinrLayer0:           -1,
+		PosSinrLayer1:           -1,
+		PosDtx:                  -1,
+		PosUlRank:               -1,
+		PosUlPmiRank1:           -1,
+		PosUlPmiRank1Sinr:       -1,
+		PosUlPmiRank2:           -1,
 		PosUlPmiRank2SinrLayer0: -1,
 		PosUlPmiRank2SinrLayer1: -1,
-		PosLongTermRank: -1,
+		PosLongTermRank:         -1,
 	}
 
 	i := 0
@@ -1242,29 +1240,29 @@ type TtiUlPduDemuxData struct {
 }
 
 type TtiUlPduDemuxDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosHarqId int
+	Ready           bool
+	PosEventHeader  TtiEventHeaderPos
+	PosHarqId       int
 	PosIsUlCcchData int
 	PosIsTcpTraffic int
-	PosTempCrnti int
+	PosTempCrnti    int
 }
 
 func FindTtiUlPduDemuxDataPos(tokens []string) TtiUlPduDemuxDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 4
 	p := TtiUlPduDemuxDataPos{
-		Ready:                       false,
-		PosEventHeader:              FindTtiEventHeaderPos(tokens),
-		PosHarqId:              -1,
-		PosIsUlCcchData:     -1,
-		PosIsTcpTraffic:     -1,
-		PosTempCrnti:     -1,
+		Ready:           false,
+		PosEventHeader:  FindTtiEventHeaderPos(tokens),
+		PosHarqId:       -1,
+		PosIsUlCcchData: -1,
+		PosIsTcpTraffic: -1,
+		PosTempCrnti:    -1,
 	}
 
 	i := 0
 	for pos, item := range tokens {
-		if strings.ToLower(item) == "harqid" && p.PosHarqId< 0 {
+		if strings.ToLower(item) == "harqid" && p.PosHarqId < 0 {
 			p.PosHarqId = pos
 			i += 1
 		} else if strings.ToLower(item) == "isulccchdata" && p.PosIsUlCcchData < 0 {
@@ -1289,14 +1287,14 @@ func FindTtiUlPduDemuxDataPos(tokens []string) TtiUlPduDemuxDataPos {
 
 type TtiUlPreSchedData struct {
 	TtiEventHeader
-	CsListEvent string
+	CsListEvent          string
 	HighestClassPriority string
 }
 
 type TtiUlPreSchedDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosCsListEvent int
+	Ready                   bool
+	PosEventHeader          TtiEventHeaderPos
+	PosCsListEvent          int
 	PosHighestClassPriority int
 }
 
@@ -1304,9 +1302,9 @@ func FindTtiUlPreSchedDataPos(tokens []string) TtiUlPreSchedDataPos {
 	// n is the total number of interested fields, make sure to update n if any field is added or removed.
 	n := 2
 	p := TtiUlPreSchedDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosCsListEvent: -1,
+		Ready:                   false,
+		PosEventHeader:          FindTtiEventHeaderPos(tokens),
+		PosCsListEvent:          -1,
 		PosHighestClassPriority: -1,
 	}
 
@@ -1332,21 +1330,21 @@ func FindTtiUlPreSchedDataPos(tokens []string) TtiUlPreSchedDataPos {
 type TtiUlTdSchedSubcellData struct {
 	TtiEventHeader
 	SubcellId string
-	Cs2List []string
+	Cs2List   []string
 }
 
 type TtiUlTdSchedSubcellDataPos struct {
-	Ready bool
-	PosEventHeader TtiEventHeaderPos
-	PosSubcellId int
+	Ready                   bool
+	PosEventHeader          TtiEventHeaderPos
+	PosSubcellId            int
 	PosRecordSequenceNumber int
 }
 
 func FindTtiUlTdSchedSubcellDataPos(tokens []string) TtiUlTdSchedSubcellDataPos {
 	p := TtiUlTdSchedSubcellDataPos{
-		Ready: false,
-		PosEventHeader: FindTtiEventHeaderPos(tokens),
-		PosSubcellId: -1,
+		Ready:                   false,
+		PosEventHeader:          FindTtiEventHeaderPos(tokens),
+		PosSubcellId:            -1,
 		PosRecordSequenceNumber: 0,
 	}
 

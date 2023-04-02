@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,24 +33,24 @@ type MocCategory struct {
 	suffix []string
 }
 
-var mocCatMap = map[string]MocCategory {
-	"sbts": {prefix: "MRBTS", suffix: []string{"MRBTS", "MRBTSDESC"}},
+var mocCatMap = map[string]MocCategory{
+	"sbts":  {prefix: "MRBTS", suffix: []string{"MRBTS", "MRBTSDESC"}},
 	"nrbts": {prefix: "MRBTS.NRBTS", suffix: nil},
-	"mnl": {prefix: "MRBTS.MNL", suffix: nil},
-	"tnl": {prefix: "MRBTS.TNL", suffix: nil},
-	"eqm": {prefix: "MRBTS.EQM", suffix: nil},
-	"eqmr": {prefix: "MRBTS.EQM_R", suffix: nil},
+	"mnl":   {prefix: "MRBTS.MNL", suffix: nil},
+	"tnl":   {prefix: "MRBTS.TNL", suffix: nil},
+	"eqm":   {prefix: "MRBTS.EQM", suffix: nil},
+	"eqmr":  {prefix: "MRBTS.EQM_R", suffix: nil},
 }
 
 type CmDiffer struct {
-	log *zap.Logger
+	log    *zap.Logger
 	cmpath []string
-	ins []string
-	moc []string // list of MOC catagories to be analyzed
-	ignore map[string][]string // key=MOC catagory, val=list of ignored MOCs
-	db map[string]map[string]*utils.OrderedMap // [k1=moc, v1=[k2=paraName, v2=[k3=instanceId, v3=paraVal]]]
-	db2 *utils.OrderedMap
-	debug bool
+	ins    []string
+	moc    []string                                // list of MOC catagories to be analyzed
+	ignore map[string][]string                     // key=MOC catagory, val=list of ignored MOCs
+	db     map[string]map[string]*utils.OrderedMap // [k1=moc, v1=[k2=paraName, v2=[k3=instanceId, v3=paraVal]]]
+	db2    *utils.OrderedMap
+	debug  bool
 }
 
 func (p *CmDiffer) Init(log *zap.Logger, cmpath, ins, moc, ignore string, debug bool) {
@@ -171,7 +171,7 @@ func (p *CmDiffer) Compare() {
 
 		// set sheet name
 		if hasDiff {
-			wb.SetSheetName(sname, sname + "#")
+			wb.SetSheetName(sname, sname+"#")
 			sname += "#"
 		}
 
@@ -211,7 +211,7 @@ func (p *CmDiffer) parseDat(dat string) {
 		}
 
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			line = line[1:len(line)-1]
+			line = line[1 : len(line)-1]
 			dn := strings.Split(line, "===")[1]
 			tokens := strings.Split(dn, "/")
 			mocList := make([]string, 0)

@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/zhenggao2/ngapp/ddr4trace"
-	"github.com/zhenggao2/ngapp/ttitrace"
-	"github.com/zhenggao2/ngapp/l2trace"
 	"github.com/zhenggao2/ngapp/biptrace"
+	"github.com/zhenggao2/ngapp/ddr4trace"
+	"github.com/zhenggao2/ngapp/l2trace"
+	"github.com/zhenggao2/ngapp/ttitrace"
 )
 
 var (
@@ -40,7 +40,7 @@ var (
 	chbw     string
 	gain     int
 	filter   string
-	ttidec string
+	ttidec   string
 )
 
 // ttiCmd represents the tti command
@@ -102,7 +102,7 @@ var ddr4Cmd = &cobra.Command{
 		laPrint(cmd, args)
 		viper.WriteConfig()
 
-		if tlog == "ddr4" && pattern == ".bin"{
+		if tlog == "ddr4" && pattern == ".bin" {
 			// .bin is raw DDR4 from WebEM or gnb_logs
 			ddr4 := new(ddr4trace.Ddr4TraceParser)
 			ddr4.Init(Logger, py3, snaptool, trace, pattern, scs, chbw, filter, maxgo, gain, debug)
@@ -147,16 +147,16 @@ And finally means finally: init is called after all the variable declarations in
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 */
 func init() {
-	if cmdFlags& CMD_FLAG_TTI != 0 {
+	if cmdFlags&CMD_FLAG_TTI != 0 {
 		rootCmd.AddCommand(ttiCmd)
 	}
-	if cmdFlags& CMD_FLAG_BIP != 0 {
+	if cmdFlags&CMD_FLAG_BIP != 0 {
 		rootCmd.AddCommand(bipCmd)
 	}
-	if cmdFlags& CMD_FLAG_DDR4 != 0 {
+	if cmdFlags&CMD_FLAG_DDR4 != 0 {
 		rootCmd.AddCommand(ddr4Cmd)
 	}
-	if cmdFlags& CMD_FLAG_L2TRACE != 0 {
+	if cmdFlags&CMD_FLAG_L2TRACE != 0 {
 		rootCmd.AddCommand(l2traceCmd)
 	}
 

@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,8 +48,8 @@ const (
 	BIN_PYTHON3_LINUX   string = "python3"
 	PY3_SNAPSHOT_TOOL   string = "SnapshotAnalyzer.py"
 	LOKI_IQ_NORM_FACTOR int    = 16384
-	VG_IMG_WIDTH int = 6
-	VG_IMG_HEIGHT int = 3
+	VG_IMG_WIDTH        int    = 6
+	VG_IMG_HEIGHT       int    = 3
 )
 
 type Ddr4TraceParser struct {
@@ -65,10 +65,10 @@ type Ddr4TraceParser struct {
 	gain          float64
 	debug         bool
 
-	iqData    cmap.ConcurrentMap
+	iqData cmap.ConcurrentMap
 
 	// key1 = ant, val1 = [key2 = symbol, val2 = list of FFT bins]]
-	rssiData  cmap.ConcurrentMap
+	rssiData cmap.ConcurrentMap
 	// key1 = ant, val1 = [key2 = symbol, val2 = count of a specific symbol]]
 	rssiCount cmap.ConcurrentMap
 }
@@ -117,7 +117,7 @@ func (p *Ddr4TraceParser) Exec() {
 
 		wg := &sync.WaitGroup{}
 		for _, file := range fileInfo {
-			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()),".bin") {
+			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".bin") {
 				for {
 					if runtime.NumGoroutine() >= p.maxgo {
 						time.Sleep(1 * time.Second)

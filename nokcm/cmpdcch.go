@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,19 +29,19 @@ import (
 )
 
 type CmPdcch struct {
-	log *zap.Logger
-	scs string
-	bwpid int
+	log     *zap.Logger
+	scs     string
+	bwpid   int
 	coreset []string
-	css []string
-	uss []string
-	rnti int
-	debug bool
+	css     []string
+	uss     []string
+	rnti    int
+	debug   bool
 }
 
 type Coreset struct {
-	id int
-	size int
+	id       int
+	size     int
 	duration int
 }
 
@@ -66,7 +66,7 @@ func (p *CmPdcch) Init(log *zap.Logger, scs string, bwpid int, coreset, css, uss
 }
 
 func (p *CmPdcch) Exec() {
-	mapCoreset := make(map[string]Coreset) //key=coresetId, val=Coreset struct
+	mapCoreset := make(map[string]Coreset)      //key=coresetId, val=Coreset struct
 	mapSearchSpace := make(map[int]SearchSpace) //key=id, val=SearchSpace struct
 
 	for _, k := range p.coreset {
@@ -75,9 +75,9 @@ func (p *CmPdcch) Exec() {
 			p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Invalid CORESET settings: %v. Format should be: coresetId_size_duration.", k))
 			return
 		}
-		mapCoreset[toks[0]] = Coreset {
-			id: p.unsafeAtoi(toks[0][len("CORESET"):]),
-			size: p.unsafeAtoi(toks[1]),
+		mapCoreset[toks[0]] = Coreset{
+			id:       p.unsafeAtoi(toks[0][len("CORESET"):]),
+			size:     p.unsafeAtoi(toks[1]),
 			duration: p.unsafeAtoi(toks[2]),
 		}
 	}
@@ -103,73 +103,73 @@ func (p *CmPdcch) Exec() {
 		}
 
 		//mapSearchSpace[strings.ToLower(toks[0])] = SearchSpace {
-		mapSearchSpace[searchSpaceId] = SearchSpace {
+		mapSearchSpace[searchSpaceId] = SearchSpace{
 			id:              searchSpaceId,
 			searchSpaceType: toks[0],
 			monitoringSymbs: monitoringSymbs,
-			mapCandidates: map[int]int {
-				1 : p.unsafeAtoi(toks[3][1:]),
-				2 : p.unsafeAtoi(toks[4][1:]),
-				4 : p.unsafeAtoi(toks[5][1:]),
-				8 : p.unsafeAtoi(toks[6][1:]),
-				16 : p.unsafeAtoi(toks[7][1:]),
+			mapCandidates: map[int]int{
+				1:  p.unsafeAtoi(toks[3][1:]),
+				2:  p.unsafeAtoi(toks[4][1:]),
+				4:  p.unsafeAtoi(toks[5][1:]),
+				8:  p.unsafeAtoi(toks[6][1:]),
+				16: p.unsafeAtoi(toks[7][1:]),
 			},
-			period : p.unsafeAtoi(toks[8][2:]),
-			coreset : toks[9],
+			period:  p.unsafeAtoi(toks[8][2:]),
+			coreset: toks[9],
 		}
 	}
 
 	p.writeLog(zapcore.DebugLevel, fmt.Sprintf("mapCoreset=%v\nmapSearchSpace=%v", mapCoreset, mapSearchSpace))
 
 	/*
-	cssCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
-	ussCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
-	for coresetId := range mapCoreset {
-		cssCandidatesPerSymb[coresetId] = make(map[int]int)
-		ussCandidatesPerSymb[coresetId] = make(map[int]int)
-		for i := 0; i < 3; i++ {
-			cssCandidatesPerSymb[coresetId][i] = 0
-			ussCandidatesPerSymb[coresetId][i] = 0
-		}
-
-		for _, ss := range mapSearchSpace {
-			if ss.coreset != coresetId {
-				continue
+		cssCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
+		ussCandidatesPerSymb := make(map[string]map[int]int) //key=corestId, key2=monitoringSymbol, val=count
+		for coresetId := range mapCoreset {
+			cssCandidatesPerSymb[coresetId] = make(map[int]int)
+			ussCandidatesPerSymb[coresetId] = make(map[int]int)
+			for i := 0; i < 3; i++ {
+				cssCandidatesPerSymb[coresetId][i] = 0
+				ussCandidatesPerSymb[coresetId][i] = 0
 			}
 
-			if ss.searchSpaceType == "uss" {
-				for _, i  := range ss.monitoringSymbs {
-					for _, al := range []int{1,2,4,8,16} {
-						ussCandidatesPerSymb[coresetId][i] += ss.mapCandidates[al]
-					}
+			for _, ss := range mapSearchSpace {
+				if ss.coreset != coresetId {
+					continue
 				}
-			} else {
-				for _, i := range ss.monitoringSymbs {
-					totCandiates := 0
-					for _, al := range []int{1,2,4,8,16} {
-						totCandiates += ss.mapCandidates[al]
+
+				if ss.searchSpaceType == "uss" {
+					for _, i  := range ss.monitoringSymbs {
+						for _, al := range []int{1,2,4,8,16} {
+							ussCandidatesPerSymb[coresetId][i] += ss.mapCandidates[al]
+						}
 					}
-					cssCandidatesPerSymb[coresetId][i] = utils.MaxInt([]int{cssCandidatesPerSymb[coresetId][i], totCandiates})
+				} else {
+					for _, i := range ss.monitoringSymbs {
+						totCandiates := 0
+						for _, al := range []int{1,2,4,8,16} {
+							totCandiates += ss.mapCandidates[al]
+						}
+						cssCandidatesPerSymb[coresetId][i] = utils.MaxInt([]int{cssCandidatesPerSymb[coresetId][i], totCandiates})
+					}
 				}
 			}
 		}
-	}
 
-	totCandidatesPerCoreset := make(map[string]int) //key=coresetId, val=count
-	totCandidates := 0
-	for coresetId := range mapCoreset {
-		totCandidatesPerCoreset[coresetId] = 0
-		for i := 0; i < 3; i++ {
-			totCandidatesPerCoreset[coresetId] += (cssCandidatesPerSymb[coresetId][i] + ussCandidatesPerSymb[coresetId][i] * 2)
+		totCandidatesPerCoreset := make(map[string]int) //key=coresetId, val=count
+		totCandidates := 0
+		for coresetId := range mapCoreset {
+			totCandidatesPerCoreset[coresetId] = 0
+			for i := 0; i < 3; i++ {
+				totCandidatesPerCoreset[coresetId] += (cssCandidatesPerSymb[coresetId][i] + ussCandidatesPerSymb[coresetId][i] * 2)
+			}
+			totCandidates += totCandidatesPerCoreset[coresetId]
 		}
-		totCandidates += totCandidatesPerCoreset[coresetId]
-	}
-	p.writeLog(zapcore.DebugLevel, "By YangYang's method:")
-	if totCandidates > mapScs2MaxCandidatesPerSlot[p.scs] {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation FAILED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidates))
-	} else {
-		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation PASSED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidates))
-	}
+		p.writeLog(zapcore.DebugLevel, "By YangYang's method:")
+		if totCandidates > mapScs2MaxCandidatesPerSlot[p.scs] {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation FAILED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidates))
+		} else {
+			p.writeLog(zapcore.DebugLevel, fmt.Sprintf("-Max number of monitored PDCCH candidates validation PASSED: cssCandidatesPerSymb = %v, ussCandidatesPerSymb = %v, totCandidatesPerCoreset = %v and totCandidatesPerSlot = %v", cssCandidatesPerSymb, ussCandidatesPerSymb, totCandidatesPerCoreset, totCandidates))
+		}
 	*/
 
 	// 2021-12-3 comments: need to validate against all RNTIs
@@ -178,7 +178,7 @@ func (p *CmPdcch) Exec() {
 	// Valid RNTIs are(Dec): 1- 65519, 65534, 65535
 	allRntis := make([]int, 65521)
 	for i := 0; i < 65519; i++ {
-		allRntis[i] = i+1
+		allRntis[i] = i + 1
 	}
 	allRntis[65519] = 65534
 	allRntis[65520] = 65535
@@ -535,7 +535,7 @@ func (p *CmPdcch) Exec() {
 					}
 				}
 			}
-		} (rnti)
+		}(rnti)
 	}
 	wg.Wait()
 
@@ -557,7 +557,7 @@ func (p *CmPdcch) Exec() {
 }
 
 func (p *CmPdcch) CalcStartCceIndex(rnti int, sstype string, N_CCE, L, M, m, Y float64, ns int) int {
-	startCce := int(L * math.Mod(Y + math.Floor(m * N_CCE / (L * M)), math.Floor(N_CCE / L)))
+	startCce := int(L * math.Mod(Y+math.Floor(m*N_CCE/(L*M)), math.Floor(N_CCE/L)))
 	if rnti == p.rnti {
 		p.writeLog(zapcore.DebugLevel, fmt.Sprintf("%v, ns=%v, N_CCE=%v, L=%v, M=%v, m=%v, Y=%v -> startCce=%v", sstype, ns, N_CCE, L, M, m, Y, startCce))
 	}

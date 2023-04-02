@@ -12,5 +12,5 @@ BSD License.
 3, Contact
 -----
 author: github/zhenggao2<br>
-mail: zhengwei.gao@yahoo.com<br>
+mail: 28912001@qq.com<br>
 blog: http://blog.csdn.net/jeffyko

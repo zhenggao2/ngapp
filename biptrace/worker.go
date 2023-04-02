@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,20 +45,20 @@ import (
 )
 
 const (
-	BIN_TSHARK        string = "tshark.exe"
-	BIN_TSHARK_LINUX  string = "tshark"
-	BIN_EDITCAP string = "editcap.exe"
-	BIN_EDITCAP_LINUX string = "editcap"
-	BIN_GNBLOGS string = "gnb_logs.exe"
-	BIN_GNBLOGS_LINUX string = "gnb_logs"
-	LUA_LUASHARK      string = "luashark.lua"
-	BIP_PUCCH_REQ     int    = 0
-	BIP_PUCCH_RESP_PS int    = 1
-	BIP_PUSCH_REQ     int    = 2
-	BIP_PUSCH_RESP_PS int    = 3
-	VG_IMG_WIDTH      int    = 6
-	VG_IMG_HEIGHT     int    = 3
-	NUM_GNB_INFO_FIELDS int = 5
+	BIN_TSHARK          string = "tshark.exe"
+	BIN_TSHARK_LINUX    string = "tshark"
+	BIN_EDITCAP         string = "editcap.exe"
+	BIN_EDITCAP_LINUX   string = "editcap"
+	BIN_GNBLOGS         string = "gnb_logs.exe"
+	BIN_GNBLOGS_LINUX   string = "gnb_logs"
+	LUA_LUASHARK        string = "luashark.lua"
+	BIP_PUCCH_REQ       int    = 0
+	BIP_PUCCH_RESP_PS   int    = 1
+	BIP_PUSCH_REQ       int    = 2
+	BIP_PUSCH_RESP_PS   int    = 3
+	VG_IMG_WIDTH        int    = 6
+	VG_IMG_HEIGHT       int    = 3
+	NUM_GNB_INFO_FIELDS int    = 5
 )
 
 type BipTraceParser struct {
@@ -109,26 +109,26 @@ func (p *BipTraceParser) Exec() (map[string][]int, map[string][]int, map[string]
 		}
 
 		/*
-		wg := &sync.WaitGroup{}
-		for _, file := range fileInfo {
-			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
-				for {
-					if runtime.NumGoroutine() >= p.maxgo {
-						time.Sleep(1 * time.Second)
-					} else {
-						break
+			wg := &sync.WaitGroup{}
+			for _, file := range fileInfo {
+				if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
+					for {
+						if runtime.NumGoroutine() >= p.maxgo {
+							time.Sleep(1 * time.Second)
+						} else {
+							break
+						}
 					}
-				}
 
-				wg.Add(1)
-				go func(fn string) {
-					defer wg.Done()
-					p.parse(fn)
-				}(file.Name())
+					wg.Add(1)
+					go func(fn string) {
+						defer wg.Done()
+						p.parse(fn)
+					}(file.Name())
+				}
 			}
-		}
-		wg.Wait()
-		 */
+			wg.Wait()
+		*/
 
 		for _, file := range fileInfo {
 			if !file.IsDir() && strings.HasPrefix(filepath.Ext(file.Name()), ".pcap") {
@@ -231,7 +231,7 @@ func (p *BipTraceParser) Exec() (map[string][]int, map[string][]int, map[string]
 				for _, field := range msgFields[i][4:] {
 					key := strings.Join(append(keyPrefix, strings.Split(field, " ")[0]), "_")
 					if len(posMap[msg][field]) == 1 {
-						if len(tokens) < posMap[msg][field][0] + 1 {
+						if len(tokens) < posMap[msg][field][0]+1 {
 							continue
 						}
 
@@ -264,7 +264,7 @@ func (p *BipTraceParser) Exec() (map[string][]int, map[string][]int, map[string]
 				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("key=%v;%v, val=%v", key, msg, dataMap[msg][key]))
 			}
 		}
-	 */
+	*/
 
 	// key = scs_bw, val = PRB number
 	nbrPrbMap := map[string]int{
@@ -288,11 +288,11 @@ func (p *BipTraceParser) Exec() (map[string][]int, map[string][]int, map[string]
 	pucchRssiMap := make(map[string]map[int][]float64)
 	puschRssiMap := make(map[string]map[int][]float64)
 	/*
-	for i := 0; i < nbrPrb; i++ {
-		pucchRssiMap[i] = make([]float64, 0)
-		puschRssiMap[i] = make([]float64, 0)
-	}
-	 */
+		for i := 0; i < nbrPrb; i++ {
+			pucchRssiMap[i] = make([]float64, 0)
+			puschRssiMap[i] = make([]float64, 0)
+		}
+	*/
 
 	// collect PUSCH noisePower
 	for key := range dataMap[bipMsgs[BIP_PUCCH_RESP_PS]] {
@@ -530,9 +530,9 @@ func (p *BipTraceParser) parse(fn string) {
 	var stdErr bytes.Buffer
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP_LINUX), "-c", "50000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP_LINUX), "-c", "50000", filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP), "-c", "50000",  filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
+		cmd = exec.Command(filepath.Join(p.wsharkPath, BIN_EDITCAP), "-c", "50000", filepath.Join(p.bipTracePath, fn), filepath.Join(ecPath, "ec.pcap"))
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -711,7 +711,7 @@ func (p *BipTraceParser) parse(fn string) {
 
 				fout.Close()
 			}
-		} (ec)
+		}(ec)
 	}
 	wg.Wait()
 
@@ -743,24 +743,24 @@ func (p *BipTraceParser) writeLog(level zapcore.Level, s string) {
 }
 
 type GnbInfo struct {
-	id string
-	ip string
-	sw string
-	scs string
+	id   string
+	ip   string
+	sw   string
+	scs  string
 	chbw string
 }
 
 type AutoBipParser struct {
-	log          *zap.Logger
-	gnblist string
-	gnblogs string
+	log      *zap.Logger
+	gnblist  string
+	gnblogs  string
 	gnbtools string
-	wshark string
-	maxgo        int
-	debug        bool
+	wshark   string
+	maxgo    int
+	debug    bool
 
-	gnbs cmap.ConcurrentMap
-	bips cmap.ConcurrentMap
+	gnbs  cmap.ConcurrentMap
+	bips  cmap.ConcurrentMap
 	pcaps cmap.ConcurrentMap
 
 	fpucch *os.File
@@ -859,7 +859,7 @@ func (p *AutoBipParser) captureBip(gnb string) {
 	if runtime.GOOS == "linux" {
 		cmd = exec.Command(filepath.Join(p.gnblogs, BIN_GNBLOGS_LINUX), m.(GnbInfo).ip, "-b", "10", "-N", outPath)
 	} else if runtime.GOOS == "windows" {
-		cmd = exec.Command(filepath.Join(p.gnblogs, BIN_GNBLOGS),  m.(GnbInfo).ip, "-b", "10", "-N", outPath)
+		cmd = exec.Command(filepath.Join(p.gnblogs, BIN_GNBLOGS), m.(GnbInfo).ip, "-b", "10", "-N", outPath)
 	} else {
 		p.writeLog(zapcore.ErrorLevel, fmt.Sprintf("Unsupported OS: runtime.GOOS=%s", runtime.GOOS))
 		return
@@ -1009,7 +1009,7 @@ func (p *AutoBipParser) unzip(src string, dst string) ([]string, error) {
 		fpath := filepath.Join(dst, filepath.Base(f.Name))
 
 		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
-		if !strings.HasPrefix(fpath, filepath.Clean(dst) + string(os.PathSeparator)) {
+		if !strings.HasPrefix(fpath, filepath.Clean(dst)+string(os.PathSeparator)) {
 			return filenames, fmt.Errorf("%s: illegal file path", fpath)
 		}
 
@@ -1116,4 +1116,3 @@ func (p *AutoBipParser) writeLog(level zapcore.Level, s string) {
 		fmt.Println(s)
 	}
 }
-

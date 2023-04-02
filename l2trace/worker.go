@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ type L2TraceParser struct {
 	wsharkPath   string
 	l2TracePath  string
 	pattern      string
-	maxgo int
+	maxgo        int
 	debug        bool
 }
 
@@ -80,7 +80,7 @@ func (p *L2TraceParser) Exec() {
 		panic(fmt.Sprintf("Fail to create directory: %v", err))
 	}
 
-	if p.pattern == ".pcap"  {
+	if p.pattern == ".pcap" {
 		fileInfo, err := ioutil.ReadDir(p.l2TracePath)
 		if err != nil {
 			p.writeLog(zapcore.FatalLevel, fmt.Sprintf("Fail to read directory: %s.", p.l2TracePath))
@@ -102,7 +102,7 @@ func (p *L2TraceParser) Exec() {
 				go func(fn string) {
 					defer wg.Done()
 					p.parse(fn)
-				} (file.Name())
+				}(file.Name())
 			}
 		}
 		wg.Wait()
@@ -154,7 +154,7 @@ func (p *L2TraceParser) Exec() {
 				go func(fn string) {
 					defer wg.Done()
 					p.parse(fn)
-				} (file.Name())
+				}(file.Name())
 			}
 		}
 		wg.Wait()
@@ -321,7 +321,7 @@ func (p *L2TraceParser) parseWithTshark(fn string) {
 			}
 
 			fout.WriteString(strings.Join(v1, ",") + "\n")
-			for p := 0; p < mapEventRecord[k1].Len(); p += 1{
+			for p := 0; p < mapEventRecord[k1].Len(); p += 1 {
 				k2 := mapEventRecord[k1].Keys()[p].(string)
 				v2 := mapEventRecord[k1].Val(k2).(string)
 				fout.WriteString(v2 + "\n")

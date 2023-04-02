@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,14 +32,14 @@ import (
 )
 
 type CmFinder struct {
-	log *zap.Logger
+	log    *zap.Logger
 	cmpath []string
-	paras string
-	maxgo int
-	mocDb cmap.ConcurrentMap // key=MOC_CAT.MOC_NAME, val=MOC full name
+	paras  string
+	maxgo  int
+	mocDb  cmap.ConcurrentMap  // key=MOC_CAT.MOC_NAME, val=MOC full name
 	paraDb map[string][]string // key=MOC_CAT.MOC_NAME, val=list of parameters
-	db cmap.ConcurrentMap // [key1=MOC_CAT.MOC_NAME, val1=[key2=dn, val2=[key3=paraName, val3=paraVal]]]
-	debug bool
+	db     cmap.ConcurrentMap  // [key1=MOC_CAT.MOC_NAME, val1=[key2=dn, val2=[key3=paraName, val3=paraVal]]]
+	debug  bool
 }
 
 func (p *CmFinder) Init(log *zap.Logger, cmpath, paras string, debug bool) {
@@ -85,20 +85,20 @@ func (p *CmFinder) Search() {
 	}
 
 	/*
-	for _, sname := range p.db.Keys() {
-		m1, _ := p.db.Get(sname)
-		for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
-			m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
-			for _, pn := range m2.(cmap.ConcurrentMap).Keys() {
-				pv, _ := m2.(cmap.ConcurrentMap).Get(pn)
-				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("sname=%v,dn=%v,pn=%v,pv=%v", sname, dn, pn, pv))
+		for _, sname := range p.db.Keys() {
+			m1, _ := p.db.Get(sname)
+			for _, dn := range m1.(cmap.ConcurrentMap).Keys() {
+				m2, _ := m1.(cmap.ConcurrentMap).Get(dn)
+				for _, pn := range m2.(cmap.ConcurrentMap).Keys() {
+					pv, _ := m2.(cmap.ConcurrentMap).Get(pn)
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("sname=%v,dn=%v,pn=%v,pv=%v", sname, dn, pn, pv))
+				}
 			}
 		}
-	}
-	 */
+	*/
 
 	p.writeLog(zapcore.InfoLevel, fmt.Sprintf("Exporting results to excel..."))
-	wb:= excelize.NewFile()
+	wb := excelize.NewFile()
 	for _, sname := range p.db.Keys() {
 		if wb.GetSheetName(wb.GetActiveSheetIndex()) == "Sheet1" {
 			wb.SetSheetName("Sheet1", sname)
@@ -136,7 +136,7 @@ func (p *CmFinder) Search() {
 				}
 			}
 
-			for i, d := range rowData{
+			for i, d := range rowData {
 				wb.SetCellValue(sname, fmt.Sprintf("%v%v", p.int2Col(i+1), row), d)
 			}
 		}
@@ -236,7 +236,7 @@ func (p *CmFinder) parseDat(dat, ts string) {
 		}
 
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			line = line[1:len(line)-1]
+			line = line[1 : len(line)-1]
 			dn = strings.Split(line, "===")[1]
 			tokens := strings.Split(dn, "/")
 			mocList := make([]string, 0)

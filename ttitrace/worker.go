@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@ import (
 
 type L2TtiTraceParser struct {
 	log          *zap.Logger
-	py3Path string
-	ttiDecPath string
+	py3Path      string
+	ttiDecPath   string
 	ttiTracePath string
 	ttiPattern   string
 	ttiRat       string
@@ -45,12 +45,12 @@ type L2TtiTraceParser struct {
 	nok21a       bool
 
 	slotsPerRf int
-	ttiFiles []string
+	ttiFiles   []string
 }
 
 type SfnInfo struct {
 	lastSfn int
-	hsfn int
+	hsfn    int
 }
 
 func (p *L2TtiTraceParser) Init(log *zap.Logger, py3, ttidec, trace, pattern, rat, scs, filter string, maxgo int, debug bool) {
@@ -73,7 +73,7 @@ func (p *L2TtiTraceParser) Init(log *zap.Logger, py3, ttidec, trace, pattern, ra
 	}
 
 	for _, file := range fileInfo {
-	    if !file.IsDir() && filepath.Ext(file.Name()) == p.ttiPattern {
+		if !file.IsDir() && filepath.Ext(file.Name()) == p.ttiPattern {
 			p.ttiFiles = append(p.ttiFiles, filepath.Join(p.ttiTracePath, file.Name()))
 		}
 	}
@@ -121,28 +121,28 @@ func (p *L2TtiTraceParser) Exec() {
 	var posUlPucch TtiUlPucchReceiveRespPsDataPos
 	var posUlPusch TtiUlPuschReceiveRespPsDataPos
 	var posUlPduDemux TtiUlPduDemuxDataPos
-	var mapEventRecord = map[string]map[string]*utils.OrderedMap {
-		"dlBeamData":           make(map[string]*utils.OrderedMap),
-		"dlPreSchedData":       make(map[string]*utils.OrderedMap),
-		"dlTdSchedSubcellData": make(map[string]*utils.OrderedMap),
-		"dlFdSchedData":        make(map[string]*utils.OrderedMap),
-		"dlHarqRxData":         make(map[string]*utils.OrderedMap),
-		"dlLaAverageCqi":       make(map[string]*utils.OrderedMap),
-		"csiSrReportData":       make(map[string]*utils.OrderedMap),
-		"dlFlowControlData":       make(map[string]*utils.OrderedMap),
-		"dlLaDeltaCqi":       make(map[string]*utils.OrderedMap),
-		"ulBsrRxData":       make(map[string]*utils.OrderedMap),
-		"ulPreSchedData":       make(map[string]*utils.OrderedMap),
-		"ulTdSchedSubcellData": make(map[string]*utils.OrderedMap),
-		"ulFdSchedData":       make(map[string]*utils.OrderedMap),
-		"ulHarqRxData":       make(map[string]*utils.OrderedMap),
-		"ulIntraDlToUlDrxSyncDlData":       make(map[string]*utils.OrderedMap),
-		"ulLaDeltaSinr":       make(map[string]*utils.OrderedMap),
-		"ulLaAverageSinr":       make(map[string]*utils.OrderedMap),
-		"ulLaPhr":       make(map[string]*utils.OrderedMap),
-		"ulPucchReceiveRespPsData":       make(map[string]*utils.OrderedMap),
-		"ulPuschReceiveRespPsData":       make(map[string]*utils.OrderedMap),
-		"ulPduDemuxData":       make(map[string]*utils.OrderedMap),
+	var mapEventRecord = map[string]map[string]*utils.OrderedMap{
+		"dlBeamData":                 make(map[string]*utils.OrderedMap),
+		"dlPreSchedData":             make(map[string]*utils.OrderedMap),
+		"dlTdSchedSubcellData":       make(map[string]*utils.OrderedMap),
+		"dlFdSchedData":              make(map[string]*utils.OrderedMap),
+		"dlHarqRxData":               make(map[string]*utils.OrderedMap),
+		"dlLaAverageCqi":             make(map[string]*utils.OrderedMap),
+		"csiSrReportData":            make(map[string]*utils.OrderedMap),
+		"dlFlowControlData":          make(map[string]*utils.OrderedMap),
+		"dlLaDeltaCqi":               make(map[string]*utils.OrderedMap),
+		"ulBsrRxData":                make(map[string]*utils.OrderedMap),
+		"ulPreSchedData":             make(map[string]*utils.OrderedMap),
+		"ulTdSchedSubcellData":       make(map[string]*utils.OrderedMap),
+		"ulFdSchedData":              make(map[string]*utils.OrderedMap),
+		"ulHarqRxData":               make(map[string]*utils.OrderedMap),
+		"ulIntraDlToUlDrxSyncDlData": make(map[string]*utils.OrderedMap),
+		"ulLaDeltaSinr":              make(map[string]*utils.OrderedMap),
+		"ulLaAverageSinr":            make(map[string]*utils.OrderedMap),
+		"ulLaPhr":                    make(map[string]*utils.OrderedMap),
+		"ulPucchReceiveRespPsData":   make(map[string]*utils.OrderedMap),
+		"ulPuschReceiveRespPsData":   make(map[string]*utils.OrderedMap),
+		"ulPduDemuxData":             make(map[string]*utils.OrderedMap),
 	}
 	var dlSchedAggFields string
 	var ulSchedAggFields string
@@ -155,24 +155,24 @@ func (p *L2TtiTraceParser) Exec() {
 	var mapDlFdra = make(map[string][]string)
 	var mapUlFdra = make(map[string][]string)
 
-	mapAntPort := map[int]string {
+	mapAntPort := map[int]string{
 		32768: "0",
 		16384: "1",
-		8192: "2",
-		4096: "3",
+		8192:  "2",
+		4096:  "3",
 		49152: "0;1",
 		12288: "2;3",
 		57344: "0;1;2",
 		61440: "0;1;2;3",
 		40960: "0;2",
-		2048: "4",
-		1024: "5",
-		512: "6",
-		256: "7",
-		3072: "4;5",
-		768: "6;7",
+		2048:  "4",
+		1024:  "5",
+		512:   "6",
+		256:   "7",
+		3072:  "4;5",
+		768:   "6;7",
 		34816: "0;4",
-		8704: "2;6",
+		8704:  "2;6",
 		51200: "0;1;4",
 		12800: "2;3;6",
 		52224: "0;1;4;5",
@@ -298,7 +298,7 @@ func (p *L2TtiTraceParser) Exec() {
 							v := TtiDlBeamData{
 								// event header
 								TtiEventHeader: TtiEventHeader{
-									eventId:   eventId,
+									eventId:    eventId,
 									Sfn:        tokens[valStart+posDlBeam.PosEventHeader.PosSfn],
 									Slot:       tokens[valStart+posDlBeam.PosEventHeader.PosSlot],
 									Rnti:       tokens[valStart+posDlBeam.PosEventHeader.PosRnti],
@@ -338,7 +338,7 @@ func (p *L2TtiTraceParser) Exec() {
 
 								CsListEvent:          tokens[valStart+posDlPreSched.PosCsListEvent],
 								HighestClassPriority: p.ttiDlPreSchedClassPriority(tokens[valStart+posDlPreSched.PosHighestClassPriority]),
-								PrachPreambleIndex: tokens[valStart+posDlPreSched.PosPrachPreambleIndex],
+								PrachPreambleIndex:   tokens[valStart+posDlPreSched.PosPrachPreambleIndex],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -371,7 +371,7 @@ func (p *L2TtiTraceParser) Exec() {
 
 							n := 10 // Per UE in CS2 is statically defined for 10UEs
 							for k := 0; k < n; k += 1 {
-								posRnti := valStart + posDlTdSched.PosRecordSequenceNumber + 1 + 3 * k
+								posRnti := valStart + posDlTdSched.PosRecordSequenceNumber + 1 + 3*k
 								if posRnti > len(tokens) || len(tokens[posRnti]) == 0 {
 									break
 								}
@@ -403,12 +403,12 @@ func (p *L2TtiTraceParser) Exec() {
 								},
 
 								CellDbIndex:        tokens[valStart+posDlFdSched.PosCellDbIndex],
-								SubcellId:        tokens[valStart+posDlFdSched.PosSubcellId],
+								SubcellId:          tokens[valStart+posDlFdSched.PosSubcellId],
 								TxNumber:           tokens[valStart+posDlFdSched.PosTxNumber],
 								DlHarqProcessIndex: tokens[valStart+posDlFdSched.PosDlHarqProcessIndex],
 								K1:                 tokens[valStart+posDlFdSched.PosK1],
-								NumOfPrb: tokens[valStart+posDlFdSched.PosNumOfPrb],
-								StartPrb: tokens[valStart+posDlFdSched.PosStartPrb],
+								NumOfPrb:           tokens[valStart+posDlFdSched.PosNumOfPrb],
+								StartPrb:           tokens[valStart+posDlFdSched.PosStartPrb],
 								AllFields:          make([]string, len(tokens)-valStart),
 							}
 							copy(v.AllFields, tokens[valStart:])
@@ -540,7 +540,7 @@ func (p *L2TtiTraceParser) Exec() {
 									HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId],
 									AckNack:            tokens[valStart+posDlHarq.PosAckNack],
 									DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex],
-									PucchFormat: tokens[valStart+posDlHarq.PosPucchFormat],
+									PucchFormat:        tokens[valStart+posDlHarq.PosPucchFormat],
 								}
 
 								k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -549,10 +549,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 								mapEventRecord["dlHarqRxData"][k2].Add(eventId, &v)
 							} else {
-								maxNumHarq := 32	// max 32 HARQ feedbacks per dlHarqRxDataArray
+								maxNumHarq := 32 // max 32 HARQ feedbacks per dlHarqRxDataArray
 								sizeDlHarqRecord := 14
 								for ih := 0; ih < maxNumHarq; ih += 1 {
-									posRnti := valStart+posDlHarq.PosEventHeader.PosRnti+ih*sizeDlHarqRecord
+									posRnti := valStart + posDlHarq.PosEventHeader.PosRnti + ih*sizeDlHarqRecord
 									if posRnti >= len(tokens) || len(tokens[posRnti]) == 0 {
 										break
 									}
@@ -561,7 +561,7 @@ func (p *L2TtiTraceParser) Exec() {
 										// event header
 										TtiEventHeader: TtiEventHeader{
 											//eventId:    strconv.Itoa(mapSfnInfo[key].hsfn),
-											eventId:   eventId,
+											eventId:    eventId,
 											Sfn:        tokens[valStart+posDlHarq.PosEventHeader.PosSfn],
 											Slot:       tokens[valStart+posDlHarq.PosEventHeader.PosSlot],
 											Rnti:       tokens[valStart+posDlHarq.PosEventHeader.PosRnti+ih*sizeDlHarqRecord],
@@ -571,7 +571,7 @@ func (p *L2TtiTraceParser) Exec() {
 										HarqSubcellId:      tokens[valStart+posDlHarq.PosHarqSubcellId+ih*sizeDlHarqRecord],
 										AckNack:            tokens[valStart+posDlHarq.PosAckNack+ih*sizeDlHarqRecord],
 										DlHarqProcessIndex: tokens[valStart+posDlHarq.PosDlHarqProcessIndex+ih*sizeDlHarqRecord],
-										PucchFormat: tokens[valStart+posDlHarq.PosPucchFormat+ih*sizeDlHarqRecord],
+										PucchFormat:        tokens[valStart+posDlHarq.PosPucchFormat+ih*sizeDlHarqRecord],
 									}
 
 									k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -601,10 +601,10 @@ func (p *L2TtiTraceParser) Exec() {
 								},
 
 								CellDbIndex: tokens[valStart+posDlLaAvgCqi.PosCellDbIndex],
-								RrmInstCqi:   tokens[valStart+posDlLaAvgCqi.PosRrmInstCqi],
-								Rank:   tokens[valStart+posDlLaAvgCqi.PosRank],
+								RrmInstCqi:  tokens[valStart+posDlLaAvgCqi.PosRrmInstCqi],
+								Rank:        tokens[valStart+posDlLaAvgCqi.PosRank],
 								RrmAvgCqi:   tokens[valStart+posDlLaAvgCqi.PosRrmAvgCqi],
-								Mcs:   tokens[valStart+posDlLaAvgCqi.PosMcs],
+								Mcs:         tokens[valStart+posDlLaAvgCqi.PosMcs],
 								RrmDeltaCqi: tokens[valStart+posDlLaAvgCqi.PosRrmDeltaCqi],
 							}
 
@@ -632,16 +632,16 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posCsiSrReport.PosEventHeader.PosPhysCellId],
 								},
 
-								UlChannel: tokens[valStart+posCsiSrReport.PosUlChannel],
-								Dtx:   tokens[valStart+posCsiSrReport.PosDtx],
-								PucchFormat:   tokens[valStart+posCsiSrReport.PosPucchFormat],
-								Cqi:   tokens[valStart+posCsiSrReport.PosCqi],
-								PmiRank1:   tokens[valStart+posCsiSrReport.PosPmiRank1],
-								PmiRank2: tokens[valStart+posCsiSrReport.PosPmiRank2],
-								Ri: tokens[valStart+posCsiSrReport.PosRi],
-								Cri: tokens[valStart+posCsiSrReport.PosCri],
-								Li: tokens[valStart+posCsiSrReport.PosLi],
-								Sr: tokens[valStart+posCsiSrReport.PosSr],
+								UlChannel:   tokens[valStart+posCsiSrReport.PosUlChannel],
+								Dtx:         tokens[valStart+posCsiSrReport.PosDtx],
+								PucchFormat: tokens[valStart+posCsiSrReport.PosPucchFormat],
+								Cqi:         tokens[valStart+posCsiSrReport.PosCqi],
+								PmiRank1:    tokens[valStart+posCsiSrReport.PosPmiRank1],
+								PmiRank2:    tokens[valStart+posCsiSrReport.PosPmiRank2],
+								Ri:          tokens[valStart+posCsiSrReport.PosRi],
+								Cri:         tokens[valStart+posCsiSrReport.PosCri],
+								Li:          tokens[valStart+posCsiSrReport.PosLi],
+								Sr:          tokens[valStart+posCsiSrReport.PosSr],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -668,11 +668,11 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posDlFlowControl.PosEventHeader.PosPhysCellId],
 								},
 
-								LchId: tokens[valStart+posDlFlowControl.PosLchId],
-								ReportType:   tokens[valStart+posDlFlowControl.PosReportType],
-								ScheduledBytes:   tokens[valStart+posDlFlowControl.PosScheduledBytes],
-								EthAvg:   tokens[valStart+posDlFlowControl.PosEthAvg],
-								EthScaled:   tokens[valStart+posDlFlowControl.PosEthScaled],
+								LchId:          tokens[valStart+posDlFlowControl.PosLchId],
+								ReportType:     tokens[valStart+posDlFlowControl.PosReportType],
+								ScheduledBytes: tokens[valStart+posDlFlowControl.PosScheduledBytes],
+								EthAvg:         tokens[valStart+posDlFlowControl.PosEthAvg],
+								EthScaled:      tokens[valStart+posDlFlowControl.PosEthScaled],
 							}
 
 							k2 := v.TtiEventHeader.Rnti
@@ -706,12 +706,12 @@ func (p *L2TtiTraceParser) Exec() {
 										PhysCellId: tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosPhysCellId],
 									},
 
-									CellDbIndex:      tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex],
-									IsDeltaCqiCalculated:            tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated],
+									CellDbIndex:              tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex],
+									IsDeltaCqiCalculated:     tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated],
 									RrmPauseUeInDlScheduling: tokens[valStart+posDlLaDeltaCqi.PosRrmPauseUeInDlScheduling],
-									HarqFb: tokens[valStart+posDlLaDeltaCqi.PosHarqFb],
-									RrmDeltaCqi: tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi],
-									RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel],
+									HarqFb:                   tokens[valStart+posDlLaDeltaCqi.PosHarqFb],
+									RrmDeltaCqi:              tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi],
+									RrmRemainingBucketLevel:  tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel],
 								}
 
 								k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -720,10 +720,10 @@ func (p *L2TtiTraceParser) Exec() {
 								}
 								mapEventRecord["dlLaDeltaCqi"][k2].Add(eventId, &v)
 							} else {
-								maxNumDlOlqc := 64	// max 64 DL LA deltaCqi records per dlHarqRxDataArray
+								maxNumDlOlqc := 64 // max 64 DL LA deltaCqi records per dlHarqRxDataArray
 								sizeDlOlqcRecord := 8
 								for ih := 0; ih < maxNumDlOlqc; ih += 1 {
-									posRnti := valStart+posDlLaDeltaCqi.PosEventHeader.PosRnti+ih*sizeDlOlqcRecord
+									posRnti := valStart + posDlLaDeltaCqi.PosEventHeader.PosRnti + ih*sizeDlOlqcRecord
 									if posRnti >= len(tokens) || len(tokens[posRnti]) == 0 {
 										break
 									}
@@ -738,12 +738,12 @@ func (p *L2TtiTraceParser) Exec() {
 											PhysCellId: tokens[valStart+posDlLaDeltaCqi.PosEventHeader.PosPhysCellId+ih*sizeDlOlqcRecord],
 										},
 
-										CellDbIndex:      tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex+ih*sizeDlOlqcRecord],
-										IsDeltaCqiCalculated:            tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated+ih*sizeDlOlqcRecord],
+										CellDbIndex:              tokens[valStart+posDlLaDeltaCqi.PosCellDbIndex+ih*sizeDlOlqcRecord],
+										IsDeltaCqiCalculated:     tokens[valStart+posDlLaDeltaCqi.PosIsDeltaCqiCalculated+ih*sizeDlOlqcRecord],
 										RrmPauseUeInDlScheduling: tokens[valStart+posDlLaDeltaCqi.PosRrmPauseUeInDlScheduling+ih*sizeDlOlqcRecord],
-										HarqFb: tokens[valStart+posDlLaDeltaCqi.PosHarqFb+ih*sizeDlOlqcRecord],
-										RrmDeltaCqi: tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi+ih*sizeDlOlqcRecord],
-										RrmRemainingBucketLevel: tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel+ih*sizeDlOlqcRecord],
+										HarqFb:                   tokens[valStart+posDlLaDeltaCqi.PosHarqFb+ih*sizeDlOlqcRecord],
+										RrmDeltaCqi:              tokens[valStart+posDlLaDeltaCqi.PosRrmDeltaCqi+ih*sizeDlOlqcRecord],
+										RrmRemainingBucketLevel:  tokens[valStart+posDlLaDeltaCqi.PosRrmRemainingBucketLevel+ih*sizeDlOlqcRecord],
 									}
 
 									k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -773,11 +773,11 @@ func (p *L2TtiTraceParser) Exec() {
 								},
 
 								UlHarqProcessIndex: tokens[valStart+posUlBsr.PosUlHarqProcessIndex],
-								BsrFormat:   tokens[valStart+posUlBsr.PosBsrFormat],
-								BufferSizeList: make([]string, 0),
+								BsrFormat:          tokens[valStart+posUlBsr.PosBsrFormat],
+								BufferSizeList:     make([]string, 0),
 							}
 
-							numLcg := 8  // for LCG 0~7 and maxLCG-ID = 7
+							numLcg := 8 // for LCG 0~7 and maxLCG-ID = 7
 							for i := 0; i < numLcg; i += 1 {
 								// TODO convert bufferSize to a readable string as specified in TS 38.321
 								v.BufferSizeList = append(v.BufferSizeList, tokens[valStart+posUlBsr.PosBsrFormat+1+i])
@@ -788,7 +788,7 @@ func (p *L2TtiTraceParser) Exec() {
 								mapEventRecord[eventName][k2] = utils.NewOrderedMap()
 							}
 							mapEventRecord[eventName][k2].Add(eventId, &v)
-						}  else if eventName == "ulPreSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
+						} else if eventName == "ulPreSchedData" && (p.ttiFilter == "ul" || p.ttiFilter == "both") {
 							// TODO - event aggregation - ulPreSchedData
 							if posUlPreSched.Ready == false {
 								posUlPreSched = FindTtiUlPreSchedDataPos(tokens)
@@ -873,12 +873,12 @@ func (p *L2TtiTraceParser) Exec() {
 								},
 
 								CellDbIndex:        tokens[valStart+posUlFdSched.PosCellDbIndex],
-								SubcellId:        tokens[valStart+posUlFdSched.PosSubcellId],
+								SubcellId:          tokens[valStart+posUlFdSched.PosSubcellId],
 								TxNumber:           tokens[valStart+posUlFdSched.PosTxNumber],
 								UlHarqProcessIndex: tokens[valStart+posUlFdSched.PosUlHarqProcessIndex],
 								K2:                 tokens[valStart+posUlFdSched.PosK2],
-								NumOfPrb:                 tokens[valStart+posUlFdSched.PosNumOfPrb],
-								StartPrb:                 tokens[valStart+posUlFdSched.PosStartPrb],
+								NumOfPrb:           tokens[valStart+posUlFdSched.PosNumOfPrb],
+								StartPrb:           tokens[valStart+posUlFdSched.PosStartPrb],
 								AllFields:          make([]string, len(tokens)-valStart),
 							}
 							copy(v.AllFields, tokens[valStart:])
@@ -954,9 +954,9 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posUlHarq.PosEventHeader.PosPhysCellId],
 								},
 
-								SubcellId: tokens[valStart+posUlHarq.PosSubcellId],
-								Dtx: tokens[valStart+posUlHarq.PosDtx],
-								CrcResult: tokens[valStart+posUlHarq.PosCrcResult],
+								SubcellId:          tokens[valStart+posUlHarq.PosSubcellId],
+								Dtx:                tokens[valStart+posUlHarq.PosDtx],
+								CrcResult:          tokens[valStart+posUlHarq.PosCrcResult],
 								UlHarqProcessIndex: tokens[valStart+posUlHarq.PosUlHarqProcessIndex],
 							}
 
@@ -984,7 +984,7 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posDrx.PosEventHeader.PosPhysCellId],
 								},
 
-								DrxEnabled: tokens[valStart+posDrx.PosDrxEnabled],
+								DrxEnabled:             tokens[valStart+posDrx.PosDrxEnabled],
 								DlDrxOnDurationTimerOn: tokens[valStart+posDrx.PosDlDrxOnDurationTimerOn],
 								DlDrxInactivityTimerOn: tokens[valStart+posDrx.PosDlDrxInactivityTimerOn],
 							}
@@ -1013,11 +1013,11 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posUlLaDeltaSinr.PosEventHeader.PosPhysCellId],
 								},
 
-								CellDbIndex: tokens[valStart+posUlLaDeltaSinr.PosCellDbIndex],
-								IsDeltaSinrCalculated: tokens[valStart+posUlLaDeltaSinr.PosIsDeltaSinrCalculated],
+								CellDbIndex:              tokens[valStart+posUlLaDeltaSinr.PosCellDbIndex],
+								IsDeltaSinrCalculated:    tokens[valStart+posUlLaDeltaSinr.PosIsDeltaSinrCalculated],
 								RrmPauseUeInUlScheduling: tokens[valStart+posUlLaDeltaSinr.PosRrmPauseUeInUlScheduling],
-								CrcFb: tokens[valStart+posUlLaDeltaSinr.PosCrcFb],
-								RrmDeltaSinr: tokens[valStart+posUlLaDeltaSinr.PosRrmDeltaSinr],
+								CrcFb:                    tokens[valStart+posUlLaDeltaSinr.PosCrcFb],
+								RrmDeltaSinr:             tokens[valStart+posUlLaDeltaSinr.PosRrmDeltaSinr],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -1044,12 +1044,12 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posUlLaAvgSinr.PosEventHeader.PosPhysCellId],
 								},
 
-								CellDbIndex: tokens[valStart+posUlLaAvgSinr.PosCellDbIndex],
-								RrmInstSinrRank: tokens[valStart+posUlLaAvgSinr.PosRrmInstSinrRank],
+								CellDbIndex:              tokens[valStart+posUlLaAvgSinr.PosCellDbIndex],
+								RrmInstSinrRank:          tokens[valStart+posUlLaAvgSinr.PosRrmInstSinrRank],
 								RrmNumOfSinrMeasurements: tokens[valStart+posUlLaAvgSinr.PosRrmNumOfSinrMeasurements],
-								RrmInstSinr: tokens[valStart+posUlLaAvgSinr.PosRrmInstSinr],
-								RrmAvgSinrUl: tokens[valStart+posUlLaAvgSinr.PosRrmAvgSinrUl],
-								RrmSinrCorrection: tokens[valStart+posUlLaAvgSinr.PosRrmSinrCorrection],
+								RrmInstSinr:              tokens[valStart+posUlLaAvgSinr.PosRrmInstSinr],
+								RrmAvgSinrUl:             tokens[valStart+posUlLaAvgSinr.PosRrmAvgSinrUl],
+								RrmSinrCorrection:        tokens[valStart+posUlLaAvgSinr.PosRrmSinrCorrection],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -1076,11 +1076,11 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posUlLaPhr.PosEventHeader.PosPhysCellId],
 								},
 
-								CellDbIndex: tokens[valStart+posUlLaPhr.PosCellDbIndex],
+								CellDbIndex:              tokens[valStart+posUlLaPhr.PosCellDbIndex],
 								IsRrmPhrScaledCalculated: tokens[valStart+posUlLaPhr.PosIsRrmPhrScaledCalculated],
-								Phr: tokens[valStart+posUlLaPhr.PosPhr],
-								RrmNumPuschPrb: tokens[valStart+posUlLaPhr.PosRrmNumPuschPrb],
-								RrmPhrScaled: tokens[valStart+posUlLaPhr.PosRrmPhrScaled],
+								Phr:                      tokens[valStart+posUlLaPhr.PosPhr],
+								RrmNumPuschPrb:           tokens[valStart+posUlLaPhr.PosRrmNumPuschPrb],
+								RrmPhrScaled:             tokens[valStart+posUlLaPhr.PosRrmPhrScaled],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -1108,13 +1108,13 @@ func (p *L2TtiTraceParser) Exec() {
 								},
 
 								PucchFormat: tokens[valStart+posUlPucch.PosPucchFormat],
-								StartPrb: tokens[valStart+posUlPucch.PosStartPrb],
-								Rssi: tokens[valStart+posUlPucch.PosRssi],
-								SinrLayer0: tokens[valStart+posUlPucch.PosSinrLayer0],
-								SinrLayer1: tokens[valStart+posUlPucch.PosSinrLayer1],
-								Dtx: tokens[valStart+posUlPucch.PosDtx],
-								SrBit: tokens[valStart+posUlPucch.PosSrBit],
-								SubcellId: tokens[valStart+posUlPucch.PosSubcellId],
+								StartPrb:    tokens[valStart+posUlPucch.PosStartPrb],
+								Rssi:        tokens[valStart+posUlPucch.PosRssi],
+								SinrLayer0:  tokens[valStart+posUlPucch.PosSinrLayer0],
+								SinrLayer1:  tokens[valStart+posUlPucch.PosSinrLayer1],
+								Dtx:         tokens[valStart+posUlPucch.PosDtx],
+								SrBit:       tokens[valStart+posUlPucch.PosSrBit],
+								SubcellId:   tokens[valStart+posUlPucch.PosSubcellId],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -1141,17 +1141,17 @@ func (p *L2TtiTraceParser) Exec() {
 									PhysCellId: tokens[valStart+posUlPusch.PosEventHeader.PosPhysCellId],
 								},
 
-								Rssi: tokens[valStart+posUlPusch.PosRssi],
-								SinrLayer0: tokens[valStart+posUlPusch.PosSinrLayer0],
-								SinrLayer1: tokens[valStart+posUlPusch.PosSinrLayer1],
-								Dtx: tokens[valStart+posUlPusch.PosDtx],
-								UlRank: tokens[valStart+posUlPusch.PosUlRank],
-								UlPmiRank1: tokens[valStart+posUlPusch.PosUlPmiRank1],
-								UlPmiRank1Sinr: tokens[valStart+posUlPusch.PosUlPmiRank1Sinr],
-								UlPmiRank2: tokens[valStart+posUlPusch.PosUlPmiRank2],
+								Rssi:                 tokens[valStart+posUlPusch.PosRssi],
+								SinrLayer0:           tokens[valStart+posUlPusch.PosSinrLayer0],
+								SinrLayer1:           tokens[valStart+posUlPusch.PosSinrLayer1],
+								Dtx:                  tokens[valStart+posUlPusch.PosDtx],
+								UlRank:               tokens[valStart+posUlPusch.PosUlRank],
+								UlPmiRank1:           tokens[valStart+posUlPusch.PosUlPmiRank1],
+								UlPmiRank1Sinr:       tokens[valStart+posUlPusch.PosUlPmiRank1Sinr],
+								UlPmiRank2:           tokens[valStart+posUlPusch.PosUlPmiRank2],
 								UlPmiRank2SinrLayer0: tokens[valStart+posUlPusch.PosUlPmiRank2SinrLayer0],
 								UlPmiRank2SinrLayer1: tokens[valStart+posUlPusch.PosUlPmiRank2SinrLayer1],
-								LongTermRank: tokens[valStart+posUlPusch.PosLongTermRank],
+								LongTermRank:         tokens[valStart+posUlPusch.PosLongTermRank],
 							}
 
 							k2 := v.TtiEventHeader.PhysCellId + "_" + v.TtiEventHeader.Rnti
@@ -1186,9 +1186,9 @@ func (p *L2TtiTraceParser) Exec() {
 								RcvdBytesList: make([]string, 0),
 							}
 
-							numLcId := 32  // for LC 1~32 and maxLC-ID = 32
+							numLcId := 32 // for LC 1~32 and maxLC-ID = 32
 							for i := 0; i < numLcId; i += 1 {
-								posLcId := valStart+posUlPduDemux.PosTempCrnti+1+2*i
+								posLcId := valStart + posUlPduDemux.PosTempCrnti + 1 + 2*i
 								if posLcId >= len(tokens) || len(tokens[posLcId]) == 0 {
 									break
 								}
@@ -1217,14 +1217,14 @@ func (p *L2TtiTraceParser) Exec() {
 	}
 
 	/*
-	for event := range mapEventRecord {
-		for dn := range mapEventRecord[event] {
-			for _, ts := range mapEventRecord[event][dn].Keys() {
-				p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v,dn=%v,k=%v, v=%v\n", event, dn, ts, mapEventRecord[event][dn].Val(ts)))
+		for event := range mapEventRecord {
+			for dn := range mapEventRecord[event] {
+				for _, ts := range mapEventRecord[event][dn].Keys() {
+					p.writeLog(zapcore.DebugLevel, fmt.Sprintf("event=%v,dn=%v,k=%v, v=%v\n", event, dn, ts, mapEventRecord[event][dn].Val(ts)))
+				}
 			}
 		}
-	}
-	 */
+	*/
 
 	if p.ttiFilter == "dl" || p.ttiFilter == "both" {
 		// update dlSchedAggFields
@@ -1290,14 +1290,14 @@ func (p *L2TtiTraceParser) Exec() {
 			p.writeLog(zapcore.InfoLevel, fmt.Sprintf("  processing DL UE(PCI_RNTI) = %v, nbrRecord=%v, please wait...", dn, mapEventRecord["dlFdSchedData"][dn].Len()))
 			for p1 := 0; p1 < mapEventRecord["dlFdSchedData"][dn].Len(); p1 += 1 {
 				/*
-				for {
-					if runtime.NumGoroutine() >= p.maxgo {
-						time.Sleep(1 * time.Second)
-					} else {
-						break
+					for {
+						if runtime.NumGoroutine() >= p.maxgo {
+							time.Sleep(1 * time.Second)
+						} else {
+							break
+						}
 					}
-				}
-				 */
+				*/
 
 				wg.Add(1)
 
@@ -1318,14 +1318,14 @@ func (p *L2TtiTraceParser) Exec() {
 					totPrbAlloc := 0
 					for _, ue := range mapDlFdUes[ku] {
 						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
-						if math.Abs(float64(ueEventId - v1.eventId)) <= 100 {
+						if math.Abs(float64(ueEventId-v1.eventId)) <= 100 {
 							dlFdUes = append(dlFdUes, ue)
 						}
 					}
 					for _, ue := range mapDlFdra[ku] {
 						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
 						numOfPrb := p.unsafeAtoi(strings.Split(ue, "_")[2])
-						if math.Abs(float64(ueEventId - v1.eventId)) <= 100 {
+						if math.Abs(float64(ueEventId-v1.eventId)) <= 100 {
 							dlFdra = append(dlFdra, ue)
 							totPrbAlloc += numOfPrb
 						}
@@ -1363,7 +1363,7 @@ func (p *L2TtiTraceParser) Exec() {
 					}
 
 					// aggregate dlTdSchedSubcellData
-					dnDlTdSched := dnPci+"_"+dnSfn+"_"+dnSlot
+					dnDlTdSched := dnPci + "_" + dnSfn + "_" + dnSlot
 					if _, e := mapEventRecord["dlTdSchedSubcellData"][dnDlTdSched]; e {
 						m2 := mapEventRecord["dlTdSchedSubcellData"][dnDlTdSched]
 						p2 := p.findDlTdSched(mapEventRecord["dlFdSchedData"][dn], m2, p1)
@@ -1375,7 +1375,7 @@ func (p *L2TtiTraceParser) Exec() {
 							for i := 0; i < m2.Len(); i += 1 {
 								k3 := m2.Keys()[i].(int)
 								v3 := m2.Val(k3).(*TtiDlTdSchedSubcellData)
-								if math.Abs(float64(v3.eventId - v2.eventId)) <= 100 {
+								if math.Abs(float64(v3.eventId-v2.eventId)) <= 100 {
 									cs2List = append(cs2List, v3.Cs2List...)
 								}
 							}
@@ -1562,7 +1562,7 @@ func (p *L2TtiTraceParser) Exec() {
 
 		if len(mapEventRecord["ulPuschReceiveRespPsData"]) > 0 {
 			ulSchedAggFields += ","
-			ulSchedAggFields += strings.Join([]string{"ulPusch.eventId", "ulPusch.sfn", "ulPusch.slot", "ulPusch.rssi", "ulPusch.sinrLayer0", "ulPusch.sinrLayer1", "ulPusch.dtx", "ulPusch.ulRank", "ulPusch.ulPmiRank1", "ulPusch.ulPmiRank1Sinr",  "ulPusch.ulPmiRank2", "ulPusch.ulPmiRank2SinrLayer0", "ulPusch.ulPmiRank2SinrLayer1", "ulPusch.longTermRank"}, ",")
+			ulSchedAggFields += strings.Join([]string{"ulPusch.eventId", "ulPusch.sfn", "ulPusch.slot", "ulPusch.rssi", "ulPusch.sinrLayer0", "ulPusch.sinrLayer1", "ulPusch.dtx", "ulPusch.ulRank", "ulPusch.ulPmiRank1", "ulPusch.ulPmiRank1Sinr", "ulPusch.ulPmiRank2", "ulPusch.ulPmiRank2SinrLayer0", "ulPusch.ulPmiRank2SinrLayer1", "ulPusch.longTermRank"}, ",")
 		}
 
 		if len(mapEventRecord["ulPduDemuxData"]) > 0 {
@@ -1594,14 +1594,14 @@ func (p *L2TtiTraceParser) Exec() {
 					totPrbAlloc := 0
 					for _, ue := range mapUlFdUes[ku] {
 						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
-						if math.Abs(float64(ueEventId - v1.eventId)) <= 100 {
+						if math.Abs(float64(ueEventId-v1.eventId)) <= 100 {
 							ulFdUes = append(ulFdUes, ue)
 						}
 					}
 					for _, ue := range mapUlFdra[ku] {
 						ueEventId := p.unsafeAtoi(strings.Split(ue, "_")[0])
 						numOfPrb := p.unsafeAtoi(strings.Split(ue, "_")[2])
-						if math.Abs(float64(ueEventId - v1.eventId)) <= 100 {
+						if math.Abs(float64(ueEventId-v1.eventId)) <= 100 {
 							ulFdra = append(ulFdra, ue)
 							totPrbAlloc += numOfPrb
 						}
@@ -1652,7 +1652,7 @@ func (p *L2TtiTraceParser) Exec() {
 							for i := 0; i < m2.Len(); i += 1 {
 								k3 := m2.Keys()[i].(int)
 								v3 := m2.Val(k3).(*TtiUlTdSchedSubcellData)
-								if math.Abs(float64(v3.eventId - v2.eventId)) <= 100 {
+								if math.Abs(float64(v3.eventId-v2.eventId)) <= 100 {
 									cs2List = append(cs2List, v3.Cs2List...)
 								}
 							}
@@ -1817,7 +1817,7 @@ func (p *L2TtiTraceParser) Exec() {
 }
 
 func (p *L2TtiTraceParser) makeTimeStamp(hsfn, sfn, slot int) int {
-	return 1024 * p.slotsPerRf * hsfn + p.slotsPerRf * sfn + slot
+	return 1024*p.slotsPerRf*hsfn + p.slotsPerRf*sfn + slot
 }
 
 func (p *L2TtiTraceParser) unsafeAtoi(s string) int {
@@ -1827,19 +1827,19 @@ func (p *L2TtiTraceParser) unsafeAtoi(s string) int {
 
 func (p *L2TtiTraceParser) ttiDlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
-	classPriority := []string {"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "voipTraffic", "gbrTraffic", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "dtxOptimizedDrbTraffic", "lastUnUsed"}
+	classPriority := []string{"rachMsg2", "harqRetxMsg4", "harqRetxSrb1", "harqRetxSrb3", "harqRetxSrb2", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "dlMacCe", "srb1Traffic", "srb3Traffic", "srb2Traffic", "voipTraffic", "gbrTraffic", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "dtxOptimizedDrbTraffic", "lastUnUsed"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
 func (p *L2TtiTraceParser) ttiUlPreSchedClassPriority(cp string) string {
 	// TODO fix classPriority for 5G21A
-	classPriority := []string {"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "gbrTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "ulProSched", "lastUnUsed", "unknown"}
+	classPriority := []string{"rachMsg3", "ulGrantContRes", "harqRetxMsg3", "harqRetxSrb", "harqRetxVoip", "harqRetxGbr", "harqRetxDrb", "ulGrantSr", "srbTraffic", "voipTraffic", "gbrTraffic", "ulGrantTa", "drbTraffic", "deprioritizedVoip", "deprioritizedGbr", "ulProSched", "lastUnUsed", "unknown"}
 
 	return fmt.Sprintf("%s(%s)", cp, classPriority[p.unsafeAtoi(cp)])
 }
 
-func (p *L2TtiTraceParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlBeam(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1860,7 +1860,7 @@ func (p *L2TtiTraceParser) findDlBeam(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlPreSched(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1882,7 +1882,7 @@ func (p *L2TtiTraceParser) findDlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlTdSched(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1891,7 +1891,7 @@ func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiDlTdSchedSubcellData)
 
-		if p.contains(v2.Cs2List, v1.Rnti) && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
+		if p.contains(v2.Cs2List, v1.Rnti) && math.Abs(float64(v2.eventId-v1.eventId)) <= 1000 {
 			p2 = i
 			break
 		}
@@ -1900,7 +1900,7 @@ func (p *L2TtiTraceParser) findDlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlHarq(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 	_, sfn, slot := p.incSlot(1, p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K1))
@@ -1921,7 +1921,7 @@ func (p *L2TtiTraceParser) findDlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlLaAvgCqi(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1942,7 +1942,7 @@ func (p *L2TtiTraceParser) findDlLaAvgCqi(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findCsiSrReport(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1963,7 +1963,7 @@ func (p *L2TtiTraceParser) findCsiSrReport(m1,m2 *utils.OrderedMap, p1 int) int 
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlFlowControl(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -1984,7 +1984,7 @@ func (p *L2TtiTraceParser) findDlFlowControl(m1,m2 *utils.OrderedMap, p1 int) in
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlLaDeltaCqi(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -2005,7 +2005,7 @@ func (p *L2TtiTraceParser) findDlLaDeltaCqi(m1,m2 *utils.OrderedMap, p1 int) int
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlBsr(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2026,7 +2026,7 @@ func (p *L2TtiTraceParser) findUlBsr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlHarq(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2036,7 +2036,7 @@ func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlHarqRxData)
 
 		//if v2.eventId >= v1.eventId {
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId-v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti+v1.UlHarqProcessIndex == v2.PhysCellId+v2.Rnti+v2.UlHarqProcessIndex {
 				p2 = i
 				break
@@ -2047,7 +2047,7 @@ func (p *L2TtiTraceParser) findUlHarq(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlDrx(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2068,7 +2068,7 @@ func (p *L2TtiTraceParser) findUlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findDlDrx(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiDlFdSchedData)
 
@@ -2089,7 +2089,7 @@ func (p *L2TtiTraceParser) findDlDrx(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaDeltaSinr(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2110,7 +2110,7 @@ func (p *L2TtiTraceParser) findUlLaDeltaSinr(m1,m2 *utils.OrderedMap, p1 int) in
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaAvgSinr(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2131,7 +2131,7 @@ func (p *L2TtiTraceParser) findUlLaAvgSinr(m1,m2 *utils.OrderedMap, p1 int) int 
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlLaPhr(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2152,7 +2152,7 @@ func (p *L2TtiTraceParser) findUlLaPhr(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlPucchRcvResp(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPucchRcvResp(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2173,7 +2173,7 @@ func (p *L2TtiTraceParser) findUlPucchRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlPuschRcvResp(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPuschRcvResp(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2183,7 +2183,7 @@ func (p *L2TtiTraceParser) findUlPuschRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 		v2 := m2.Val(k2).(*TtiUlPuschReceiveRespPsData)
 
 		//if v2.eventId <= v1.eventId {
-		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
+		if v1.Sfn == v2.Sfn && v1.Slot == v2.Slot && math.Abs(float64(v2.eventId-v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 				break
@@ -2194,7 +2194,7 @@ func (p *L2TtiTraceParser) findUlPuschRcvResp(m1,m2 *utils.OrderedMap, p1 int) i
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPduDemux(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2215,7 +2215,7 @@ func (p *L2TtiTraceParser) findUlPduDemux(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlPreSched(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 	_, sfn, slot := p.decSlot(1, p.unsafeAtoi(v1.Sfn), p.unsafeAtoi(v1.Slot), p.unsafeAtoi(v1.K2))
@@ -2226,7 +2226,7 @@ func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		v2 := m2.Val(k2).(*TtiUlPreSchedData)
 
 		// if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && v2.eventId <= v1.eventId {
-		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
+		if v2.Sfn == strconv.Itoa(sfn) && v2.Slot == strconv.Itoa(slot) && math.Abs(float64(v2.eventId-v1.eventId)) <= 1000 {
 			if v1.PhysCellId+v1.Rnti == v2.PhysCellId+v2.Rnti {
 				p2 = i
 				break
@@ -2237,7 +2237,7 @@ func (p *L2TtiTraceParser) findUlPreSched(m1,m2 *utils.OrderedMap, p1 int) int {
 	return p2
 }
 
-func (p *L2TtiTraceParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
+func (p *L2TtiTraceParser) findUlTdSched(m1, m2 *utils.OrderedMap, p1 int) int {
 	k1 := m1.Keys()[p1].(int)
 	v1 := m1.Val(k1).(*TtiUlFdSchedData)
 
@@ -2246,7 +2246,7 @@ func (p *L2TtiTraceParser) findUlTdSched(m1,m2 *utils.OrderedMap, p1 int) int {
 		k2 := m2.Keys()[i].(int)
 		v2 := m2.Val(k2).(*TtiUlTdSchedSubcellData)
 
-		if p.contains(v2.Cs2List, v1.Rnti)  && math.Abs(float64(v2.eventId - v1.eventId)) <= 1000 {
+		if p.contains(v2.Cs2List, v1.Rnti) && math.Abs(float64(v2.eventId-v1.eventId)) <= 1000 {
 			p2 = i
 			break
 		}
@@ -2378,9 +2378,9 @@ func (p *L2TtiTraceParser) makeSliv(S, L int) (int, error) {
 
 	sliv := 0
 	if (L - 1) <= 7 {
-		sliv = 14 * (L-1) + S
+		sliv = 14*(L-1) + S
 	} else {
-		sliv = 14 * (14-L+1) + (14-1-S)
+		sliv = 14*(14-L+1) + (14 - 1 - S)
 	}
 
 	return sliv, nil
@@ -2392,10 +2392,10 @@ func (p *L2TtiTraceParser) makeRiv(numPrb, startPrb, bwpSize int) (int, error) {
 	}
 
 	riv := 0
-	if (numPrb-1) <=  int(math.Floor(float64(bwpSize)/2)) {
-		riv = bwpSize * (numPrb-1) + startPrb
+	if (numPrb - 1) <= int(math.Floor(float64(bwpSize)/2)) {
+		riv = bwpSize*(numPrb-1) + startPrb
 	} else {
-		riv = bwpSize * (bwpSize-numPrb+1) + (bwpSize-1-startPrb)
+		riv = bwpSize*(bwpSize-numPrb+1) + (bwpSize - 1 - startPrb)
 	}
 
 	return riv, nil

@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	gnblist string
-	gnblogs string
+	gnblist  string
+	gnblogs  string
 	gnbtools string
 )
 
@@ -55,7 +55,7 @@ And finally means finally: init is called after all the variable declarations in
 Besides initializations that cannot be expressed as declarations, a common use of init functions is to verify or repair correctness of the program state before real execution begins.
 */
 func init() {
-	if cmdFlags& CMD_FLAG_AUTO_BIP != 0 {
+	if cmdFlags&CMD_FLAG_AUTO_BIP != 0 {
 		rootCmd.AddCommand(autobipCmd)
 	}
 

@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ var rootCmd = &cobra.Command{
 	Use:   "ngapp",
 	Short: "",
 	Long: `ngapp is a collection of useful applets for 4G and 5G NPO.
-Author: zhengwei.gao@yahoo.com
+Author: 28912001@qq.com
 Blog: http://blog.csdn.net/jeffyko`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()

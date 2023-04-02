@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Zhengwei Gao<zhengwei.gao@yahoo.com>
+Copyright © 2020 Zhengwei Gao<28912001@qq.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import (
 )
 
 type XmlParser struct {
-	log *zap.Logger
-	out string
+	log   *zap.Logger
+	out   string
 	debug bool
 }
 
@@ -94,7 +94,7 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-3</p>
 				<p>MRBTS-1619304/NRBTS-1619304/NRHOIR-4</p>
 			</list>
-			 */
+			*/
 			numItem := len(list.FindElements("item"))
 			if numItem == 0 {
 				val := make([]string, 0)
@@ -161,12 +161,12 @@ func (p *XmlParser) ParseScfcVendor(xml string) {
 		for _, par := range data[dn].Keys() {
 			fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
 			/*
-			if _, ok := data[dn].Val(par).([]string); ok {
-				fout.WriteString(fmt.Sprintf("%s===%+q\n", par, data[dn].Val(par)))
-			} else {
-				fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
-			}
-			 */
+				if _, ok := data[dn].Val(par).([]string); ok {
+					fout.WriteString(fmt.Sprintf("%s===%+q\n", par, data[dn].Val(par)))
+				} else {
+					fout.WriteString(fmt.Sprintf("%s===%v\n", par, data[dn].Val(par)))
+				}
+			*/
 		}
 	}
 	fout.Close()
